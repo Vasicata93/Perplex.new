@@ -34,6 +34,7 @@ interface SidebarProps {
   onDuplicateNote: (id: string) => void;
   onMoveNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
+  setSidebarOpen: (open: boolean) => void;
   expandedSection: string | null;
   setExpandedSection: (section: string | null) => void;
   showFavorites?: boolean;
@@ -65,6 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDuplicateNote,
   onMoveNote,
   onDeleteNote,
+  setSidebarOpen,
   expandedSection,
   setExpandedSection,
   showFavorites,
@@ -213,6 +215,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[140] md:hidden animate-fadeIn"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       <div 
         ref={sidebarRef}
         className={sidebarClasses}
@@ -237,6 +247,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <PerplexityLogo className="w-9 h-9 text-pplx-text shrink-0" />
                 {!isCollapsed && <span className="ml-2.5 text-xl font-medium tracking-tight text-pplx-text font-serif truncate">perplex</span>}
               </div>
+              
+              {/* Mobile Close Button */}
+              {!isCollapsed && (
+                <button 
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-2 text-pplx-muted hover:text-pplx-text md:hidden rounded-full hover:bg-pplx-hover transition-colors"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+              )}
           </div>
 
           {/* Main Nav */}

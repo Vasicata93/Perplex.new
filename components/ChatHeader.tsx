@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, Headphones, Eye, MoreHorizontal, Share2, Copy, Square, FolderPlus } from 'lucide-react';
+import { ChevronLeft, Headphones, Eye, MoreHorizontal, Share2, Copy, Square, FolderPlus, Menu } from 'lucide-react';
 
 import { Space } from '../types';
 
@@ -15,6 +15,7 @@ interface ChatHeaderProps {
   onShare?: () => void;
   onSave?: () => void;
   activeSpace?: Space | null;
+  onToggleSidebar?: () => void;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ 
@@ -27,7 +28,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onCopy,
   onShare,
   onSave,
-  activeSpace
+  activeSpace,
+  onToggleSidebar
 }) => {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -37,6 +39,15 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     <div className="sticky top-0 z-40 flex items-center justify-between w-full px-4 pt-3 pb-3 md:pt-4 md:pb-5 bg-pplx-primary/80 backdrop-blur-md transition-all supports-[backdrop-filter]:bg-pplx-primary/50">
       {/* Left: Navigation Actions */}
       <div className="flex items-center relative z-20 shrink-0">
+        {/* Sidebar Toggle - Mobile Only */}
+        <button 
+          onClick={onToggleSidebar}
+          className={`${actionButtonClass} mr-2 md:hidden`}
+          title="Open Sidebar"
+        >
+          <Menu size={20} className="md:stroke-[2.2]" />
+        </button>
+
         {/* Back Button - Always visible, acts as Home on mobile. First on mobile. */}
         <button 
           onClick={onBack}

@@ -23,7 +23,7 @@ import {
     User, BookOpen, FileText, Globe, Copy, ChevronLeft, ChevronRight, X,
     Star, MoreHorizontal, Download, Upload, Trash2, Wifi, Lock, FileEdit, ClipboardCopy,
     CopyPlus, Languages, FolderInput, Undo2, Brain, ArrowRight,
-    RefreshCw, Share2, FolderPlus, Pencil, Check, ArrowDown, MessageSquare, ImageIcon, Plus
+    RefreshCw, Share2, FolderPlus, Pencil, Check, ArrowDown, MessageSquare, ImageIcon, Plus, Menu
 } from 'lucide-react';
 import { db, STORES } from './services/db';
 
@@ -33,15 +33,17 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // --- Premium Tornado Thinking Component (Updated: Persistent Visibility) ---
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(true); 
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768); 
   const [isSpaceFilesModalOpen, setIsSpaceFilesModalOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => 
     Number(sessionStorage.getItem('pplx_sidebarWidth')) || 280
   );
 
-  // Sync sidebar open/collapsed state with width
+  // Sync sidebar open/collapsed state with width (Desktop only)
   useEffect(() => {
+    if (window.innerWidth < 768) return; // Don't sync on mobile, let it be manual
+
     if (sidebarWidth === 0) {
       setSidebarOpen(false);
       setSidebarCollapsed(false);
@@ -1421,6 +1423,7 @@ function App() {
           isCollapsed={sidebarCollapsed} 
           sidebarWidth={sidebarWidth}
           setSidebarWidth={setSidebarWidth}
+          setSidebarOpen={setSidebarOpen}
           threads={threads} 
           spaces={spaces} 
           notes={notes} 
@@ -1609,7 +1612,13 @@ function App() {
                      </div>
                 </div>
 
-                {/* Sidebar Toggle Removed */}
+                {/* Sidebar Toggle */}
+                <button 
+                    onClick={() => setSidebarOpen(true)}
+                    className="md:hidden p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted pointer-events-auto transition-all"
+                >
+                    <Menu size={24} />
+                </button>
             </div>
         )}
 
@@ -1637,6 +1646,7 @@ function App() {
                             onShare={() => targetMessage && handleShare(targetMessage.content)}
                             onSave={() => targetMessage && setActiveAddToSpaceId(targetMessage.id)}
                             activeSpace={activeSpace}
+                            onToggleSidebar={() => setSidebarOpen(true)}
                         />
                     );
                 })()}
@@ -1655,6 +1665,7 @@ function App() {
           onAiEdit={handleAiTextEdit}
           onSelectNote={handleSelectNote}
           isSideChatOpen={isSideChatOpen}
+          onToggleSidebar={() => setSidebarOpen(true)}
        />
     </div>
 ) : activeView === 'calendar' ? (
@@ -1664,6 +1675,7 @@ function App() {
             onAddEvent={handleAddEvent}
             onUpdateEvent={handleUpdateEvent}
             onDeleteEvent={handleDeleteEvent}
+            onToggleSidebar={() => setSidebarOpen(true)}
         />
     </div>
 ) : (
@@ -1696,7 +1708,12 @@ function App() {
                                                     {activeSpace.title}
                                                 </h1>
                                                 <div className="flex items-center gap-2 md:hidden">
-                                                    {/* Mobile Actions if needed */}
+                                                    <button 
+                                                        onClick={() => setSidebarOpen(true)}
+                                                        className="p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted transition-all"
+                                                    >
+                                                        <Menu size={20} />
+                                                    </button>
                                                 </div>
                                             </div>
                                             <p className="text-pplx-muted text-base font-light leading-relaxed">

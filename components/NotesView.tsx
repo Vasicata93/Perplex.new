@@ -29,7 +29,7 @@ import {
     Table as TableIcon, BarChart, TrendingUp,
     ListChecks, ArrowUpRight, Briefcase,
     CalendarDays, PieChart, MousePointerClick, Sigma, AtSign, Layers,
-    ListOrdered
+    ListOrdered, Menu
 } from 'lucide-react';
 import { Note } from '../types';
 import { EMOJI_LIST } from '../constants';
@@ -48,6 +48,7 @@ interface NotesViewProps {
     onAiEdit: (text: string, instruction: string) => Promise<string>;
     onSelectNote: (id: string) => void;
     isSideChatOpen?: boolean;
+    onToggleSidebar?: () => void;
 }
 
 const COVERS = [
@@ -389,7 +390,15 @@ const BlockRow = ({
     );
 };
 
-export const NotesView: React.FC<NotesViewProps> = ({ activeNoteId, notes, onSaveNote, onDeleteNote, onAiEdit, onSelectNote }) => {
+export const NotesView: React.FC<NotesViewProps> = ({ 
+    activeNoteId, 
+    notes, 
+    onSaveNote, 
+    onDeleteNote, 
+    onAiEdit, 
+    onSelectNote,
+    onToggleSidebar 
+}) => {
     const [blocks, setBlocks] = useState<Block[]>([]);
     const [isPreviewMode] = useState(false);
     const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
@@ -693,6 +702,19 @@ export const NotesView: React.FC<NotesViewProps> = ({ activeNoteId, notes, onSav
 
     return (
         <div className="flex flex-col flex-1 bg-pplx-primary text-pplx-text overflow-hidden relative">
+            {/* Mobile Header */}
+            <div className="flex md:hidden items-center gap-3 px-4 py-3 border-b border-pplx-border bg-pplx-primary/80 backdrop-blur-md sticky top-0 z-40">
+                <button 
+                    onClick={onToggleSidebar}
+                    className="p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted transition-all"
+                >
+                    <Menu size={20} />
+                </button>
+                <span className="text-sm font-bold text-pplx-text truncate">
+                    {activeNote.title || 'Untitled'}
+                </span>
+            </div>
+
             <TableOfContents blocks={blocks} />
             <div className={`flex-1 overflow-y-auto custom-scrollbar relative ${getFontClass(activeNote.fontStyle)}`}>
                 {activeNote.cover && (
