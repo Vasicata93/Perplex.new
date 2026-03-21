@@ -33,14 +33,26 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // --- Premium Tornado Thinking Component (Updated: Persistent Visibility) ---
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(true); // Default to open as per user request
+  const [sidebarOpen, setSidebarOpen] = useState(true); 
   const [isSpaceFilesModalOpen, setIsSpaceFilesModalOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => 
-    sessionStorage.getItem('pplx_sidebarCollapsed') === 'true'
-  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => 
     Number(sessionStorage.getItem('pplx_sidebarWidth')) || 280
   );
+
+  // Sync sidebar open/collapsed state with width
+  useEffect(() => {
+    if (sidebarWidth === 0) {
+      setSidebarOpen(false);
+      setSidebarCollapsed(false);
+    } else if (sidebarWidth <= 70) { // Reduced from 80 to accommodate 58px collapsed width
+      setSidebarOpen(true);
+      setSidebarCollapsed(true);
+    } else {
+      setSidebarOpen(true);
+      setSidebarCollapsed(false);
+    }
+  }, [sidebarWidth]);
   // NEW: Lifted state from Sidebar to App to control expansion via Back button
   const [expandedSidebarSection, setExpandedSidebarSection] = useState<string | null>(null);
   
@@ -209,9 +221,8 @@ function App() {
 
     sessionStorage.setItem('pplx_openNoteIds', JSON.stringify(openNoteIds));
     sessionStorage.setItem('pplx_isDashboardMode', String(isDashboardMode));
-    sessionStorage.setItem('pplx_sidebarCollapsed', String(sidebarCollapsed));
     sessionStorage.setItem('pplx_sidebarWidth', String(sidebarWidth));
-  }, [activeView, activeThreadId, activeSpaceId, activeNoteId, openNoteIds, isDashboardMode, sidebarCollapsed, sidebarWidth]);
+  }, [activeView, activeThreadId, activeSpaceId, activeNoteId, openNoteIds, isDashboardMode, sidebarWidth]);
 
   // Subscribe to Learning State
   useEffect(() => {
@@ -1354,7 +1365,10 @@ function App() {
   };
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartRef.current = e.targetTouches[0].clientX; touchYRef.current = e.targetTouches[0].clientY; };
-  const handleTouchEnd = (e: React.TouchEvent) => { if (!touchStartRef.current || !touchYRef.current) return; const touchEnd = e.changedTouches[0].clientX; const touchEndY = e.changedTouches[0].clientY; const diffX = touchEnd - touchStartRef.current; const diffY = touchEndY - touchYRef.current; if (Math.abs(diffX) > Math.abs(diffY)) { if (diffX > 60 && touchStartRef.current < 40 && !sidebarOpen) { setSidebarOpen(true); if (navigator.vibrate) navigator.vibrate(10); } } touchStartRef.current = null; touchYRef.current = null; };
+  const handleTouchEnd = () => { 
+    touchStartRef.current = null; 
+    touchYRef.current = null; 
+  };
 
   // --- POPSTATE HANDLER (Back Button Logic) ---
   useEffect(() => {
@@ -1362,25 +1376,22 @@ function App() {
         let handled = false;
         if (settingsOpen) { setSettingsOpen(false); handled = true; } 
         else if (spacesModalOpen) { setSpacesModalOpen(false); handled = true; } 
-        else if (sidebarOpen && window.innerWidth < 768) { setSidebarOpen(false); handled = true; } 
         else if (isDashboardMode) { setIsDashboardMode(false); handled = true; } 
         
         // --- Custom Back Logic for Mobile ---
-        // 1. If viewing a Note -> Close Note, Open Sidebar, Expand Library
+        // 1. If viewing a Note -> Close Note, Expand Library
         else if (activeView === 'library' && activeNoteId) { 
             setActiveNoteId(null); 
             setActiveView('chat'); // Switch view to hide empty library state
             if (window.innerWidth < 768) {
-                setSidebarOpen(true);
                 setExpandedSidebarSection('library');
             }
             handled = true; 
         } 
-        // 2. If viewing a Thread -> Close Thread, Open Sidebar, Expand Chats
+        // 2. If viewing a Thread -> Close Thread, Expand Chats
         else if (activeView === 'chat' && activeThreadId) { 
             setActiveThreadId(null); 
             if (window.innerWidth < 768) {
-                setSidebarOpen(true);
                 setExpandedSidebarSection('chat');
             }
             handled = true; 
@@ -1394,8 +1405,6 @@ function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [settingsOpen, spacesModalOpen, sidebarOpen, isDashboardMode, activeView, activeNoteId, activeThreadId]);
-
-  const showSidebarToggle = !sidebarOpen && !activeThreadId;
 
   useEffect(() => {
     if (settings.enableMobileDock) {
@@ -1412,8 +1421,6 @@ function App() {
           isCollapsed={sidebarCollapsed} 
           sidebarWidth={sidebarWidth}
           setSidebarWidth={setSidebarWidth}
-          toggleSidebar={() => setSidebarOpen(!sidebarOpen)} 
-          toggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} 
           threads={threads} 
           spaces={spaces} 
           notes={notes} 
@@ -1466,9 +1473,7 @@ function App() {
             </div>
         )}
 
-        {showSidebarToggle && activeView === 'chat' && (
-            <button onClick={() => setSidebarOpen(true)} className={`fixed top-4 left-4 z-50 text-pplx-muted hover:text-pplx-text p-2 rounded-lg hover:bg-pplx-hover transition-colors ${!activeThreadId && !activeSpace ? 'hidden md:block' : ''}`} title="Open Sidebar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 18H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-        )}
+        {/* Sidebar Toggle Button Removed */}
 
         {/* Workspace Files Modal */}
         {activeSpace && (
@@ -1502,7 +1507,7 @@ function App() {
              <>
                 <div className="flex items-center h-10 px-3 select-none bg-pplx-primary border-none z-50 w-full relative border-b border-pplx-border/50 md:border-none">
                      <div className="flex-1 flex items-center min-w-0">
-                         {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="p-1 mr-2 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded transition-colors"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 18H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button> )}
+                         {/* Sidebar Toggle Button Removed */}
                         
                         {/* UNDO / REDO BUTTONS */}
                         <div className="flex items-center gap-4 mr-2 shrink-0 -ml-2"> 
@@ -1604,17 +1609,7 @@ function App() {
                      </div>
                 </div>
 
-                {/* Sidebar Toggle (Custom Icon: Shorter Bottom Line) */}
-                <button 
-                    onClick={() => setSidebarOpen(true)}
-                    className="pointer-events-auto p-2 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors flex items-center gap-2 mt-1"
-                >
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <line x1="3" y1="12" x2="21" y2="12" />
-                        <line x1="3" y1="18" x2="15" y2="18" />
-                    </svg>
-                </button>
+                {/* Sidebar Toggle Removed */}
             </div>
         )}
 
@@ -1634,8 +1629,6 @@ function App() {
                         <ChatHeader 
                             title={activeThread?.title} 
                             onBack={handleBackToNewThread} 
-                            shouldShowSidebarToggle={!sidebarOpen} 
-                            onToggleSidebar={() => setSidebarOpen(true)} 
                             showActions={!!targetMessage && !targetMessage.isThinking}
                             onTTS={() => targetMessage && handleTTS(targetMessage.content)}
                             isPlayingAudio={isPlayingAudio}
@@ -1671,8 +1664,6 @@ function App() {
             onAddEvent={handleAddEvent}
             onUpdateEvent={handleUpdateEvent}
             onDeleteEvent={handleDeleteEvent}
-            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-            isSidebarOpen={sidebarOpen}
         />
     </div>
 ) : (

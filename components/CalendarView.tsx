@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
-  Clock, MapPin, Plus, X, Trash2, Search, ChevronDown, PanelLeft,
+  Clock, MapPin, Plus, X, Trash2, Search, ChevronDown,
   Sun, CloudRain, CloudSnow, CloudLightning, CloudSun, CloudFog, Info,
   Wind, Navigation
 } from 'lucide-react';
@@ -13,8 +13,6 @@ interface CalendarViewProps {
   onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   onDeleteEvent: (id: string) => void;
-  onToggleSidebar?: () => void;
-  isSidebarOpen?: boolean;
 }
 
 type ViewMode = 'year' | 'month' | 'week' | 'day' | 'agenda';
@@ -263,9 +261,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   events,
   onAddEvent,
   onUpdateEvent,
-  onDeleteEvent,
-  onToggleSidebar,
-  isSidebarOpen
+  onDeleteEvent
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -939,15 +935,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto justify-between md:justify-start">
             {/* Desktop: Weather Widget (Replacing Title) */}
             <div className="hidden md:flex items-center gap-3 shrink-0">
-                {onToggleSidebar && !isSidebarOpen && (
-                    <button 
-                        onClick={onToggleSidebar}
-                        className="p-2 text-pplx-muted hover:text-pplx-text rounded-xl transition-all duration-300 hover:bg-pplx-hover active:scale-95 shrink-0 border border-transparent hover:border-pplx-border shadow-sm"
-                        title="Open Sidebar"
-                    >
-                        <PanelLeft size={20} className="stroke-[2.2]" />
-                    </button>
-                )}
                 <div className="bg-pplx-card border border-pplx-border rounded-2xl px-3 py-1.5 shadow-sm">
                   <WeatherWidget selectedDate={currentDate} />
                 </div>

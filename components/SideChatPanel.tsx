@@ -62,9 +62,9 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
   const isResizing = useRef(false);
   const isResizingMobile = useRef(false);
   const isDragging = useRef(false);
-  const isResizingFloat = useRef(false);
+  const isResizingFloat = useRef<string | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
-  const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0, posX: 0, posY: 0 });
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -93,10 +93,22 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
       if (isResizingFloat.current) {
         const dx = e.clientX - resizeStart.current.x;
         const dy = e.clientY - resizeStart.current.y;
-        setFloatSize({
-            width: Math.max(350, resizeStart.current.w + dx),
-            height: Math.max(400, resizeStart.current.h + dy)
-        });
+        
+        if (isResizingFloat.current === 'br') {
+          setFloatSize({
+              width: Math.max(350, resizeStart.current.w + dx),
+              height: Math.max(400, resizeStart.current.h + dy)
+          });
+        } else if (isResizingFloat.current === 'tl') {
+          const newWidth = Math.max(350, resizeStart.current.w - dx);
+          const newHeight = Math.max(400, resizeStart.current.h - dy);
+          
+          setFloatSize({ width: newWidth, height: newHeight });
+          setFloatPos({
+            x: resizeStart.current.posX + (resizeStart.current.w - newWidth),
+            y: resizeStart.current.posY + (resizeStart.current.h - newHeight)
+          });
+        }
       }
     };
 
@@ -104,7 +116,7 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
       isResizing.current = false;
       isResizingMobile.current = false;
       isDragging.current = false;
-      isResizingFloat.current = false;
+      isResizingFloat.current = null;
       document.body.style.cursor = 'default';
     };
 
@@ -221,6 +233,28 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
             }}
         >
             {headerContent}
+            
+            {/* Top-Left Resize Handle */}
+            <div 
+                className="absolute top-0 left-0 w-6 h-6 cursor-nwse-resize z-50 flex items-center justify-center text-white/0 hover:text-white/40 transition-colors group/tl"
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    isResizingFloat.current = 'tl';
+                    resizeStart.current = { 
+                        x: e.clientX, 
+                        y: e.clientY, 
+                        w: floatSize.width, 
+                        h: floatSize.height,
+                        posX: floatPos.x,
+                        posY: floatPos.y
+                    };
+                }}
+            >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="rotate-180">
+                    <path d="M10 10L0 10L10 0L10 10Z" />
+                </svg>
+            </div>
+
             <div className="flex-1 min-h-0">
                 {chatContent}
             </div>
@@ -230,8 +264,15 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
                 className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize z-50 flex items-center justify-center text-white/20 hover:text-white/50 transition-colors"
                 onMouseDown={(e) => {
                     e.preventDefault();
-                    isResizingFloat.current = true;
-                    resizeStart.current = { x: e.clientX, y: e.clientY, w: floatSize.width, h: floatSize.height };
+                    isResizingFloat.current = 'br';
+                    resizeStart.current = { 
+                        x: e.clientX, 
+                        y: e.clientY, 
+                        w: floatSize.width, 
+                        h: floatSize.height,
+                        posX: floatPos.x,
+                        posY: floatPos.y
+                    };
                 }}
             >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">

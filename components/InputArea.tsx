@@ -344,16 +344,18 @@ export const InputArea: React.FC<InputAreaProps> = ({
   };
 
   // Helper to handle drag start only when at top
-  const handleDragStart = (e: React.PointerEvent, controls: any, scrollRef: React.RefObject<HTMLDivElement>) => {
-    if (window.innerWidth >= 768) return; // Only mobile
-    
-    // Don't start drag if clicking a button or input to allow their own interactions
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('input') || target.closest('textarea') || target.closest('select')) {
-      return;
-    }
-
-    if (!scrollRef.current || scrollRef.current.scrollTop <= 0) {
+  const handleDragStart = (
+    e: React.PointerEvent,
+    controls: any,
+    scrollRef: React.RefObject<HTMLDivElement>
+  ) => {
+    if (window.innerWidth >= 768) return; // Doar pe mobil
+    const el = scrollRef.current;
+    if (!el) return;
+    const atTop = el.scrollTop <= 0;
+    const draggingDown = (e as any).movementY > 0;
+    if (atTop || draggingDown) {
+      e.stopPropagation();
       controls.start(e);
     }
   };
@@ -594,44 +596,44 @@ export const InputArea: React.FC<InputAreaProps> = ({
                  {showAttachMenu && (
                     <motion.div 
                         ref={attachScrollRef}
-                        drag="y"
+                        drag={isMobile ? "y" : false}
                         dragControls={attachDragControls}
                         dragListener={false}
                         dragConstraints={{ top: 0, bottom: 0 }}
                         dragElastic={{ top: 0, bottom: 1 }}
                         dragMomentum={false}
                         onDragEnd={(_: any, info: any) => {
-                            if (info.offset.y > 100 || info.velocity.y > 500) {
+                            if (isMobile && (info.offset.y > 100 || info.velocity.y > 500)) {
                                 setShowAttachMenu(false);
                             }
                         }}
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        onPointerDown={(e: React.PointerEvent) => handleDragStart(e, attachDragControls, attachScrollRef)}
-                        className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full max-h-[90vh] overflow-y-auto overscroll-contain bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl p-4 z-50 pb-8 md:absolute md:bottom-12 md:left-0 ${compact ? 'md:w-full' : 'md:w-80'} md:border md:rounded-xl md:p-3 md:pb-3 md:border-b custom-scrollbar touch-pan-y`}
+                        initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
+                        animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                        exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
+                        transition={isMobile ? { duration: 0.18, ease: [0.4, 0, 0.2, 1] } : { duration: 0.2, ease: "easeOut" }}
+                        onPointerDown={(e: React.PointerEvent) => isMobile && handleDragStart(e, attachDragControls, attachScrollRef)}
+                        className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full max-h-[90vh] overflow-y-auto overscroll-contain bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl p-4 z-50 pb-8 md:absolute md:bottom-12 md:left-0 ${compact ? 'md:w-full' : 'md:w-64'} md:border md:rounded-xl md:p-2 md:pb-2 md:border-b custom-scrollbar touch-pan-y`}
                     >
                         {/* Mobile Drag Handle */}
                         <div 
                             onPointerDown={(e: React.PointerEvent) => attachDragControls.start(e)}
                             className="w-full py-2 -mt-2 mb-2 md:hidden cursor-grab active:cursor-grabbing flex justify-center" 
                         >
-                            <div className="w-12 h-1 bg-pplx-muted/50 rounded-full" />
+                            <div className="w-12 h-1 bg-gray-600/50 rounded-full" />
                         </div>
                         
                         {/* Attach Section (Horizontal) */}
                         <div className="mb-2">
                             <div className="flex flex-row justify-between gap-2 px-1">
-                                <button onClick={() => imageInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center space-y-1 p-4 md:p-2 rounded-lg text-sm text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text transition-colors border border-pplx-border">
+                                <button onClick={() => imageInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center space-y-1 p-4 md:p-1.5 rounded-lg text-sm text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text transition-colors border border-pplx-border">
                                     <ImageIcon size={24} className="md:w-5 md:h-5" />
                                     <span className="text-xs">Photo</span>
                                 </button>
-                                <button onClick={() => fileInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center space-y-1 p-4 md:p-2 rounded-lg text-sm text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text transition-colors border border-pplx-border">
+                                <button onClick={() => fileInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center space-y-1 p-4 md:p-1.5 rounded-lg text-sm text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text transition-colors border border-pplx-border">
                                     <File size={24} className="md:w-5 md:h-5" />
                                     <span className="text-xs">File</span>
                                 </button>
-                                <button onClick={() => cameraInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center space-y-1 p-4 md:p-2 rounded-lg text-sm text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text transition-colors border border-pplx-border">
+                                <button onClick={() => cameraInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center space-y-1 p-4 md:p-1.5 rounded-lg text-sm text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text transition-colors border border-pplx-border">
                                     <Camera size={24} className="md:w-5 md:h-5" />
                                     <span className="text-xs">Camera</span>
                                 </button>
@@ -892,23 +894,23 @@ export const InputArea: React.FC<InputAreaProps> = ({
                 <AnimatePresence>
                 {showFocusMenu && (
                     <motion.div 
-                        drag="y"
+                        drag={isMobile ? "y" : false}
                         dragControls={focusDragControls}
                         dragListener={false}
                         dragConstraints={{ top: 0, bottom: 0 }}
                         dragElastic={{ top: 0, bottom: 1 }}
                         dragMomentum={false}
                         onDragEnd={(_: any, info: any) => {
-                            if (info.offset.y > 100 || info.velocity.y > 500) {
+                            if (isMobile && (info.offset.y > 100 || info.velocity.y > 500)) {
                                 setShowFocusMenu(false);
                             }
                         }}
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        onPointerDown={(e: React.PointerEvent) => handleDragStart(e, focusDragControls, focusScrollRef)}
-                        className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl p-2 z-50 pb-8 md:absolute md:bottom-12 md:right-0 ${compact ? 'md:w-full' : 'md:w-80'} md:border md:rounded-xl md:p-1 md:pb-1 md:border-b overscroll-contain touch-pan-y`}
+                        initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
+                        animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                        exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
+                        transition={isMobile ? { duration: 0.18, ease: [0.4, 0, 0.2, 1] } : { duration: 0.2, ease: "easeOut" }}
+                        onPointerDown={(e: React.PointerEvent) => isMobile && handleDragStart(e, focusDragControls, focusScrollRef)}
+                        className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl p-2 z-50 pb-8 md:absolute md:bottom-12 md:right-0 ${compact ? 'md:w-full' : 'md:w-64'} md:border md:rounded-xl md:p-1 md:pb-1 md:border-b overscroll-contain touch-pan-y`}
                     >
                         {/* Mobile Drag Handle */}
                         <div 
@@ -938,7 +940,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                                                 });
                                             }
                                         }}
-                                        className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm group transition-all ${
+                                        className={`w-full flex items-center justify-between px-3 py-3 md:py-1.5 rounded-lg text-sm group transition-all ${
                                             focusModes.includes(mode.id) ? 'bg-pplx-hover' : 'hover:bg-pplx-hover'
                                         }`}
                                     >

@@ -1,14 +1,12 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, Headphones, Eye, MoreHorizontal, Share2, Copy, PanelLeft, Square, FolderPlus } from 'lucide-react';
+import { ChevronLeft, Headphones, Eye, MoreHorizontal, Share2, Copy, Square, FolderPlus } from 'lucide-react';
 
 import { Space } from '../types';
 
 interface ChatHeaderProps {
   title?: string;
   onBack: () => void;
-  shouldShowSidebarToggle: boolean;
-  onToggleSidebar: () => void;
   showActions?: boolean;
   onTTS?: () => void;
   isPlayingAudio?: boolean;
@@ -22,8 +20,6 @@ interface ChatHeaderProps {
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ 
   title, 
   onBack, 
-  shouldShowSidebarToggle,
-  onToggleSidebar,
   showActions,
   onTTS,
   isPlayingAudio,
@@ -35,25 +31,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 }) => {
   const [showMenu, setShowMenu] = useState(false);
 
-  // Common class for permanent round background buttons
-  const buttonClass = "p-2 text-pplx-text rounded-full transition-all duration-300 border border-transparent bg-pplx-secondary/80 backdrop-blur-md md:bg-transparent md:hover:bg-pplx-hover";
   const actionButtonClass = "p-2 rounded-full transition-all duration-300 text-pplx-text bg-pplx-secondary/80 backdrop-blur-md md:bg-transparent border-transparent shadow-sm md:shadow-none hover:bg-pplx-hover md:hover:bg-pplx-hover";
 
   return (
     <div className="sticky top-0 z-40 flex items-center justify-between w-full px-4 pt-3 pb-3 md:pt-4 md:pb-5 bg-pplx-primary/80 backdrop-blur-md transition-all supports-[backdrop-filter]:bg-pplx-primary/50">
       {/* Left: Navigation Actions */}
       <div className="flex items-center relative z-20 shrink-0">
-        {/* Sidebar Toggle (Visible when sidebar is closed, hidden on mobile) */}
-        {shouldShowSidebarToggle && (
-            <button 
-                onClick={onToggleSidebar}
-                className={`${buttonClass} mr-2 hidden md:flex`}
-                title="Open Sidebar"
-            >
-                <PanelLeft size={20} className="md:stroke-[2.2]" />
-            </button>
-        )}
-
         {/* Back Button - Always visible, acts as Home on mobile. First on mobile. */}
         <button 
           onClick={onBack}

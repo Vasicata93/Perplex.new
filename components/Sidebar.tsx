@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Library, 
-  Settings, PanelLeftClose, Box,
+  Settings, Box,
   ChevronRight, ChevronDown, LayoutGrid, MessageSquareText, Plus,
   Trash2, MoreHorizontal, Copy, FolderInput, ChevronLeft, CalendarDays, Star
 } from 'lucide-react';
@@ -14,8 +14,6 @@ interface SidebarProps {
   isCollapsed: boolean;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
-  toggleSidebar: () => void;
-  toggleCollapse: () => void;
   threads: Thread[];
   spaces: Space[];
   notes: Note[];
@@ -47,8 +45,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   sidebarWidth,
   setSidebarWidth,
-  toggleSidebar,
-  toggleCollapse,
   threads,
   spaces,
   notes,
@@ -133,15 +129,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   const toggleSection = (section: string) => {
-    if (isCollapsed) {
-        toggleCollapse();
-        setExpandedSection(section);
-        return;
-    }
     setExpandedSection(expandedSection === section ? null : section);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Support both left (0) and right (2) click for resizing as per user request
+    if (e.button !== 0 && e.button !== 2) return;
     e.preventDefault();
     setIsResizing(true);
   };
@@ -151,12 +144,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       if (!isResizing) return;
       
       let newWidth = e.clientX;
-      if (newWidth < 160) {
-          // If dragged too small, maybe collapse?
-          // For now just limit
-          newWidth = 160;
+      
+      // Allow shrinking completely (to 0) or to icons-only range (46px to 70px)
+      if (newWidth < 30) {
+          newWidth = 0;
+      } else if (newWidth < 100) {
+          // Flexible icons-only width between 46px and 70px
+          newWidth = Math.max(46, Math.min(newWidth, 70));
       }
-      if (newWidth > 480) newWidth = 480;
+      
+      if (newWidth > 600) newWidth = 600;
       
       setSidebarWidth(newWidth);
     };
@@ -180,22 +177,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isResizing, setSidebarWidth]);
 
   useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      // Auto-close/collapse when mouse is at the very edge
-      if (window.innerWidth >= 768 && isOpen && e.clientX < 2 && !isResizing) {
-          if (!isCollapsed) {
-              toggleCollapse();
-          } else {
-              toggleSidebar();
-          }
-      }
-    };
+    // Auto-collapse logic removed as per user request
+    return () => {};
+  }, []);
 
-    window.addEventListener('mousemove', handleGlobalMouseMove);
-    return () => window.removeEventListener('mousemove', handleGlobalMouseMove);
-  }, [isCollapsed, isOpen, toggleCollapse, toggleSidebar, isResizing]);
-
-  const currentWidth = isCollapsed ? 30 : sidebarWidth;
+  const currentWidth = sidebarWidth;
 
   const sidebarClasses = `
     fixed inset-y-0 left-0 z-[150] bg-pplx-sidebar border-r border-pplx-border shadow-2xl h-full
@@ -207,10 +193,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleNavClick = (action?: () => void) => {
     if (action) action();
-    // On mobile, close sidebar after navigation. On desktop, keep it open unless user closes it.
-    if (window.innerWidth < 768) {
-        toggleSidebar(); 
-    }
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -220,20 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       };
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-      if (!touchStartRef.current) return;
-      const touchEnd = e.changedTouches[0].clientX;
-      const touchEndY = e.changedTouches[0].clientY;
-      
-      const diffX = touchStartRef.current.x - touchEnd; // Positive if swiping left
-      const diffY = Math.abs(touchStartRef.current.y - touchEndY);
-
-      // Only close if horizontal swipe is dominant and significant
-      // This prevents closing when scrolling vertically
-      if (diffX > 50 && diffY < 50) { 
-          toggleSidebar();
-          if (navigator.vibrate) navigator.vibrate(10);
-      }
+  const handleTouchEnd = () => {
       touchStartRef.current = null;
   };
 
@@ -244,51 +213,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Backdrop for mobile only */}
-      {isOpen && (
-        <div 
-            className="fixed inset-0 bg-black/50 z-[55] backdrop-blur-sm transition-opacity md:hidden" 
-            onClick={toggleSidebar}
-        />
-      )}
-
       <div 
         ref={sidebarRef}
         className={sidebarClasses}
         style={{ '--sidebar-width': `${currentWidth}px` } as React.CSSProperties}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        onClick={() => { if (isCollapsed) toggleCollapse(); }}
       >
         {/* Resize Handle */}
         <div 
           onMouseDown={handleMouseDown}
-          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-pplx-accent/30 transition-colors z-50 hidden md:block"
+          onContextMenu={(e) => e.preventDefault()}
+          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-pplx-accent/50 transition-colors z-50 hidden md:block"
         />
 
         <div className="h-full flex flex-col overflow-hidden w-[280px] md:w-[var(--sidebar-width)]">
-          {/* Header - Fixed layout: Logo Left, Close Button Right */}
-          <div className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-4 mb-2`}>
+          {/* Header - Fixed layout: Logo Left */}
+          <div className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-4 mb-2 h-[72px] shrink-0`}>
               <div 
                 className={`flex items-center cursor-pointer opacity-90 hover:opacity-100 transition-opacity ${isCollapsed ? 'w-full justify-center' : ''}`} 
                 onClick={() => handleNavClick(() => { onChangeView('chat'); onNewThread(); })}
               >
-                <PerplexityLogo className={`${isCollapsed ? 'w-7 h-7' : 'w-9 h-9'} text-pplx-text shrink-0`} />
+                <PerplexityLogo className="w-9 h-9 text-pplx-text shrink-0" />
                 {!isCollapsed && <span className="ml-2.5 text-xl font-medium tracking-tight text-pplx-text font-serif truncate">perplex</span>}
               </div>
-              
-              {/* Close Button */}
-              {!isCollapsed && (
-                <div className="flex items-center space-x-1">
-                  <button 
-                      onClick={toggleSidebar} 
-                      className="text-pplx-muted hover:text-pplx-text p-2 rounded-lg hover:bg-pplx-hover transition-colors"
-                      title="Close Sidebar"
-                  >
-                    <PanelLeftClose size={20} />
-                  </button>
-                </div>
-              )}
           </div>
 
           {/* Main Nav */}
@@ -381,7 +329,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               </button>
                           ))}
                           <button 
-                              onClick={() => { onManageSpaces(); toggleSidebar(); }} 
+                              onClick={() => { onManageSpaces(); }} 
                               className="w-full flex items-center space-x-3 px-3 py-3 text-sm text-pplx-accent hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors"
                           >
                               <Box size={16} />
@@ -482,19 +430,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   icon={<CalendarDays size={22} />} 
                   label="Calendar" 
                   active={activeView === 'calendar'} 
-                  onClick={() => { onChangeView('calendar'); if (window.innerWidth < 768) toggleSidebar(); }} 
+                  onClick={() => { onChangeView('calendar'); }} 
                   isCollapsed={isCollapsed}
               />
           </div>
 
           {/* Footer User Section - Hidden on Mobile */}
-          <div className={`hidden md:block py-2 mt-auto bg-pplx-sidebar ${isCollapsed ? 'flex justify-center px-0' : 'px-2'}`}>
+          <div className={`hidden md:block py-2 mt-auto bg-pplx-sidebar ${isCollapsed ? 'flex justify-center px-0' : 'px-2'} h-[64px] shrink-0`}>
               <div 
-                onClick={(e) => { e.stopPropagation(); openSettings(); if(window.innerWidth < 768) toggleSidebar(); }} 
+                onClick={(e) => { e.stopPropagation(); openSettings(); }} 
                 className={`text-sm text-pplx-muted hover:text-pplx-text flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-2'} py-3 cursor-pointer rounded-lg hover:bg-pplx-hover transition-colors group`}
               >
                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3'}`}>
-                      <div className={`${isCollapsed ? 'w-6 h-6' : 'w-8 h-8'} rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold border border-white/10 overflow-hidden shrink-0`}>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold border border-white/10 overflow-hidden shrink-0">
                           {userProfile.avatar ? (
                             <img src={userProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
                           ) : (
@@ -528,7 +476,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {mobileLibraryFilter === 'favorites' ? 'Favorites' : 'Pages'}
                 </h2>
                 <button 
-                    onClick={() => { onNewNote(); setIsMobileLibraryOpen(false); toggleSidebar(); }} 
+                    onClick={() => { onNewNote(); setIsMobileLibraryOpen(false); }} 
                     className="p-2 text-pplx-text hover:bg-pplx-hover rounded-full transition-colors"
                 >
                     <Plus size={24}/>
@@ -544,7 +492,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             {[...notes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5).map(note => (
                                 <div 
                                     key={note.id}
-                                    onClick={() => { onSelectNote(note.id); setIsMobileLibraryOpen(false); toggleSidebar(); }}
+                                    onClick={() => { onSelectNote(note.id); setIsMobileLibraryOpen(false); }}
                                     className="flex-shrink-0 w-24 h-24 bg-pplx-card border border-pplx-border rounded-xl overflow-hidden relative snap-start cursor-pointer active:scale-95 transition-transform"
                                 >
                                     <div className="h-1/2 w-full bg-gradient-to-br from-pplx-secondary to-pplx-border relative">
@@ -574,11 +522,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 note={note} 
                                 allNotes={notes} 
                                 activeNoteId={activeNoteId}
-                                onSelectNote={(id: string) => { onSelectNote(id); setIsMobileLibraryOpen(false); toggleSidebar(); }}
+                                onSelectNote={(id: string) => { onSelectNote(id); setIsMobileLibraryOpen(false); }}
                                 onDuplicateNote={onDuplicateNote}
                                 onMoveNote={onMoveNote}
                                 onDeleteNote={onDeleteNote}
-                                onNewNote={(parentId?: string) => { onNewNote(parentId); setIsMobileLibraryOpen(false); toggleSidebar(); }}
+                                onNewNote={(parentId?: string) => { onNewNote(parentId); setIsMobileLibraryOpen(false); }}
                                 activeMenuNoteId={activeMenuNoteId}
                                 setActiveMenuNoteId={setActiveMenuNoteId}
                                 menuRef={menuRef}
@@ -606,11 +554,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 note={note} 
                                 allNotes={notes} 
                                 activeNoteId={activeNoteId}
-                                onSelectNote={(id: string) => { onSelectNote(id); setIsMobileLibraryOpen(false); toggleSidebar(); }}
+                                onSelectNote={(id: string) => { onSelectNote(id); setIsMobileLibraryOpen(false); }}
                                 onDuplicateNote={onDuplicateNote}
                                 onMoveNote={onMoveNote}
                                 onDeleteNote={onDeleteNote}
-                                onNewNote={(parentId?: string) => { onNewNote(parentId); setIsMobileLibraryOpen(false); toggleSidebar(); }}
+                                onNewNote={(parentId?: string) => { onNewNote(parentId); setIsMobileLibraryOpen(false); }}
                                 activeMenuNoteId={activeMenuNoteId}
                                 setActiveMenuNoteId={setActiveMenuNoteId}
                                 menuRef={menuRef}
@@ -651,8 +599,8 @@ const NavItem = ({
         : 'hover:bg-pplx-hover'
     }`}>
     <button onClick={onClick} className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3 px-1'} flex-1 text-left py-2.5`}>
-        <span className={`${active ? 'text-pplx-accent' : 'text-pplx-muted group-hover:text-pplx-text'} flex items-center justify-center ${isCollapsed ? 'w-full' : ''}`}>{icon}</span>
-        {!isCollapsed && <span className={`flex-1 text-base ${active ? 'text-pplx-text font-medium' : 'text-pplx-muted group-hover:text-pplx-text'}`}>{label}</span>}
+        <span className={`${active ? 'text-pplx-accent' : 'text-pplx-muted group-hover:text-pplx-text'} flex items-center justify-center w-9 shrink-0`}>{icon}</span>
+        {!isCollapsed && <span className={`flex-1 text-base ${active ? 'text-pplx-text font-medium' : 'text-pplx-muted group-hover:text-pplx-text'} truncate`}>{label}</span>}
     </button>
     {hasChevron && !isCollapsed && (
         <button 
