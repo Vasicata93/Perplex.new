@@ -80,6 +80,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   
+  // Swipe to Close Logic
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - touchStartX.current;
+    const deltaY = Math.abs(touchEndY - touchStartY.current);
+
+    // If swipe is from right to left (deltaX < -50) and it's horizontal
+    if (deltaX < -50 && Math.abs(deltaX) > deltaY) {
+      setSidebarOpen(false);
+    }
+  };
+
   // State for Mobile Library Full Screen
   const [isMobileLibraryOpen, setIsMobileLibraryOpen] = useState(false);
   const [mobileLibraryFilter, setMobileLibraryFilter] = useState<'all' | 'favorites'>('all');
@@ -104,9 +125,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       setIsMobileLibraryOpen(false);
     }
   }, [activeView, activeNoteId]);
-
-  // Swipe logic - Track X and Y to differentiate scroll from swipe
-  const touchStartRef = useRef<{ x: number, y: number } | null>(null);
 
   // Listen to settings changes for language (hacky way to update without full context)
   useEffect(() => {
@@ -197,17 +215,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (action) action();
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-      touchStartRef.current = {
-          x: e.targetTouches[0].clientX,
-          y: e.targetTouches[0].clientY
-      };
-  };
-
-  const handleTouchEnd = () => {
-      touchStartRef.current = null;
-  };
-
   // Generate User Initials
   const getUserInitials = (name: string) => {
     return name ? name.substring(0, 1).toUpperCase() : 'U';
@@ -248,13 +255,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {!isCollapsed && <span className="ml-2.5 text-xl font-medium tracking-tight text-pplx-text font-serif truncate">perplex</span>}
               </div>
               
-              {/* Mobile Close Button */}
+              {/* Desktop Sidebar Toggle Button (Close) */}
               {!isCollapsed && (
                 <button 
-                  onClick={() => setSidebarOpen(false)}
-                  className="p-2 text-pplx-muted hover:text-pplx-text md:hidden rounded-full hover:bg-pplx-hover transition-colors"
+                  onClick={() => setSidebarWidth(0)}
+                  className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-pplx-hover text-pplx-text-muted transition-colors"
+                  title="Close Sidebar"
                 >
-                  <ChevronLeft size={24} />
+                  <ChevronLeft size={20} />
                 </button>
               )}
           </div>

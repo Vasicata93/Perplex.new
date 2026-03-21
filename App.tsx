@@ -107,6 +107,40 @@ function App() {
   useEffect(() => {
       sessionStorage.setItem('pplx_inputIsLongThinking', String(inputIsLongThinking));
   }, [inputIsLongThinking]);
+
+  // Mobile Swipe to Open Sidebar
+  useEffect(() => {
+    if (window.innerWidth >= 768) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = Math.abs(touchEndY - touchStartY);
+
+      // Only trigger if swipe is from the left edge (first 40px)
+      // and it's a horizontal swipe (deltaX > 50 and deltaX > deltaY)
+      if (touchStartX < 40 && deltaX > 50 && deltaX > deltaY) {
+        setSidebarOpen(true);
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
   
   // Scroll State
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -1476,7 +1510,16 @@ function App() {
             </div>
         )}
 
-        {/* Sidebar Toggle Button Removed */}
+        {/* Sidebar Toggle Button - Desktop Only */}
+        {!sidebarOpen && (
+            <button 
+                onClick={() => setSidebarWidth(280)}
+                className="fixed top-4 left-4 z-[100] p-2 text-pplx-muted hover:text-pplx-text bg-pplx-primary border border-pplx-border rounded-lg shadow-md hidden md:flex transition-all hover:scale-105"
+                title="Open Sidebar"
+            >
+                <Menu size={20} />
+            </button>
+        )}
 
         {/* Workspace Files Modal */}
         {activeSpace && (
@@ -1510,7 +1553,6 @@ function App() {
              <>
                 <div className="flex items-center h-10 px-3 select-none bg-pplx-primary border-none z-50 w-full relative border-b border-pplx-border/50 md:border-none">
                      <div className="flex-1 flex items-center min-w-0">
-                         {/* Sidebar Toggle Button Removed */}
                         
                         {/* UNDO / REDO BUTTONS */}
                         <div className="flex items-center gap-4 mr-2 shrink-0 -ml-2"> 

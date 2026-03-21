@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
-  Clock, MapPin, Plus, X, Trash2, Search, ChevronDown,
+  Clock, MapPin, Plus, X, Trash2, Search, ChevronDown, PanelLeft,
   Sun, CloudRain, CloudSnow, CloudLightning, CloudSun, CloudFog, Info,
-  Wind, Navigation, Menu
+  Wind, Navigation
 } from 'lucide-react';
 import { CalendarEvent } from '../types';
 import { getHolidays, Holiday } from '../src/services/holidayService';
@@ -14,6 +14,7 @@ interface CalendarViewProps {
   onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   onDeleteEvent: (id: string) => void;
   onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
 }
 
 type ViewMode = 'year' | 'month' | 'week' | 'day' | 'agenda';
@@ -141,38 +142,45 @@ const WeatherWidget = ({ selectedDate }: { selectedDate: Date }) => {
     return <Sun {...iconProps} className="text-yellow-400" />;
   };
 
-  const isLoading = !weather;
-  const displayTemp = isLoading ? '--' : weather.temp;
-  const displayCondition = isLoading ? '...' : weather.condition;
-  const displayCode = isLoading ? 0 : weather.code;
-  const displayWind = isLoading ? 0 : weather.wind;
+  if (!weather) return (
+    <div className="flex items-center gap-4 px-2 py-0.5 opacity-50">
+        <div className="flex items-center gap-2">
+            <div className="w-[48px] h-[32px] bg-pplx-hover rounded-lg" />
+            <div className="w-[28px] h-[28px] bg-pplx-hover rounded-full" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+            <div className="w-16 h-2 bg-pplx-hover rounded" />
+            <div className="w-12 h-2 bg-pplx-hover rounded" />
+        </div>
+    </div>
+  );
 
   return (
-    <div className="relative h-[38px] flex items-center">
+    <div className="relative">
       <div 
-        onClick={() => !isLoading && setIsMenuOpen(!isMenuOpen)}
-        className={`flex items-center gap-4 px-2 py-0.5 transition-all ${isLoading ? 'opacity-40 cursor-default' : 'cursor-pointer group'}`}
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        className="flex items-center gap-4 px-2 py-0.5 transition-all cursor-pointer group"
       >
         {/* Left: Temp & Icon */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-3xl font-serif font-light text-pplx-text leading-none tracking-tight min-w-[40px] text-center">{displayTemp}{!isLoading && '°'}</span>
-          <div className={isLoading ? '' : 'group-hover:scale-110 transition-transform duration-500 ease-out'}>
-            {getWeatherIcon(displayCode, 28)}
+        <div className="flex items-center gap-2">
+          <span className="text-3xl font-serif font-light text-pplx-text leading-none tracking-tight">{weather.temp}°</span>
+          <div className="group-hover:scale-110 transition-transform duration-500 ease-out">
+            {getWeatherIcon(weather.code, 28)}
           </div>
         </div>
 
         {/* Right: Info */}
-        <div className="flex flex-col justify-center min-w-[70px]">
+        <div className="flex flex-col justify-center">
           <div className="flex items-center gap-1">
             <MapPin size={8} className="text-blue-400/70" />
             <span className="text-[9px] text-pplx-muted font-bold uppercase tracking-widest truncate max-w-[70px]">{location.name}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[9px] text-pplx-muted font-bold uppercase tracking-wider leading-tight truncate max-w-[60px]">{displayCondition}</span>
-            {!isLoading && displayWind > 0 && (
+            <span className="text-[9px] text-pplx-muted font-bold uppercase tracking-wider leading-tight">{weather.condition}</span>
+            {weather.wind > 0 && (
               <div className="flex items-center gap-1 text-[8px] text-pplx-muted border-l border-pplx-border pl-2">
                 <Wind size={8} />
-                <span>{displayWind} km/h</span>
+                <span>{weather.wind} km/h</span>
               </div>
             )}
           </div>
@@ -263,7 +271,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
-  onToggleSidebar
+  onToggleSidebar,
+  isSidebarOpen
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -935,18 +944,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       <div className="sticky top-0 z-20 flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4 shrink-0 bg-pplx-primary/80 backdrop-blur-md px-4 py-3 md:py-2 border-b border-pplx-border">
         {/* Top Row (Desktop: Sidebar Toggle, Icon, Title | Mobile: Weather & Date) */}
         <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto justify-between md:justify-start">
-            {/* Mobile Sidebar Toggle */}
-            <div className="flex md:hidden items-center gap-2">
-                <button 
-                    onClick={onToggleSidebar}
-                    className="p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted transition-all"
-                >
-                    <Menu size={20} />
-                </button>
-            </div>
-
             {/* Desktop: Weather Widget (Replacing Title) */}
             <div className="hidden md:flex items-center gap-3 shrink-0">
+                {onToggleSidebar && !isSidebarOpen && (
+                    <button 
+                        onClick={onToggleSidebar}
+                        className="p-2 text-pplx-muted hover:text-pplx-text rounded-xl transition-all duration-300 hover:bg-pplx-hover active:scale-95 shrink-0 border border-transparent hover:border-pplx-border shadow-sm"
+                        title="Open Sidebar"
+                    >
+                        <PanelLeft size={20} className="stroke-[2.2]" />
+                    </button>
+                )}
                 <div className="bg-pplx-card border border-pplx-border rounded-2xl px-3 py-1.5 shadow-sm">
                   <WeatherWidget selectedDate={currentDate} />
                 </div>
@@ -955,7 +963,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             {/* Mobile: Weather Widget & Month/Year Navigation */}
             <div className="flex md:hidden items-center justify-between w-full">
                 {/* Weather Widget */}
-                <div className="bg-pplx-card border border-pplx-border rounded-2xl px-3 py-1.5 shadow-sm">
+                <div className="bg-pplx-card border border-pplx-border rounded-xl px-2 py-1 shadow-sm">
                   <WeatherWidget selectedDate={currentDate} />
                 </div>
 
