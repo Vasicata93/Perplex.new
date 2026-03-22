@@ -162,7 +162,7 @@ export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, space
                             <div className="flex-1">
                                 <input 
                                     ref={titleInputRef}
-                                    className="w-full bg-pplx-input border border-pplx-border rounded-lg px-4 py-3.5 text-pplx-text placeholder-gray-500 focus:border-pplx-accent outline-none text-lg"
+                                    className="w-full bg-pplx-input border border-pplx-border rounded-lg px-4 py-3.5 text-pplx-text placeholder-pplx-muted focus:border-pplx-accent outline-none text-lg"
                                     placeholder="e.g. Project Alpha, Research, Coding..."
                                     value={editingSpace.title}
                                     onChange={(e) => setEditingSpace({...editingSpace, title: e.target.value})}
@@ -174,7 +174,7 @@ export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, space
                     <div className="mb-6">
                         <label className="block text-xs font-semibold text-pplx-muted uppercase tracking-wider mb-2">Description</label>
                         <input 
-                            className="w-full bg-pplx-input border border-pplx-border rounded-lg px-4 py-3 text-sm text-pplx-text placeholder-gray-500 focus:border-pplx-accent outline-none"
+                            className="w-full bg-pplx-input border border-pplx-border rounded-lg px-4 py-3 text-sm text-pplx-text placeholder-pplx-muted focus:border-pplx-accent outline-none"
                             placeholder="Briefly describe what this space is for..."
                             value={editingSpace.description}
                             onChange={(e) => setEditingSpace({...editingSpace, description: e.target.value})}
@@ -187,7 +187,7 @@ export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, space
                         </label>
                         <p className="text-xs text-pplx-muted mb-2">Define how the AI should behave in this space.</p>
                         <textarea 
-                            className="w-full h-40 bg-pplx-input border border-pplx-border rounded-lg px-4 py-3 text-sm text-pplx-text placeholder-gray-500 focus:border-pplx-accent outline-none resize-none"
+                            className="w-full h-40 bg-pplx-input border border-pplx-border rounded-lg px-4 py-3 text-sm text-pplx-text placeholder-pplx-muted focus:border-pplx-accent outline-none resize-none"
                             placeholder="You are a senior React engineer. Always prefer functional components..."
                             value={editingSpace.systemInstructions}
                             onChange={(e) => setEditingSpace({...editingSpace, systemInstructions: e.target.value})}
@@ -245,7 +245,7 @@ export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, space
                             className={`flex items-center space-x-2 px-6 py-2.5 rounded-full font-medium transition-colors ${
                                 editingSpace.title 
                                 ? 'bg-pplx-accent hover:bg-cyan-400 text-black' 
-                                : 'bg-pplx-hover text-gray-500 cursor-not-allowed'
+                                : 'bg-pplx-hover text-pplx-muted cursor-not-allowed'
                             }`}
                         >
                             <Save size={18} />

@@ -29,7 +29,7 @@ import {
     Table as TableIcon, BarChart, TrendingUp,
     ListChecks, ArrowUpRight, Briefcase,
     CalendarDays, PieChart, MousePointerClick, Sigma, AtSign, Layers,
-    ListOrdered, Menu
+    ListOrdered
 } from 'lucide-react';
 import { Note } from '../types';
 import { EMOJI_LIST } from '../constants';
@@ -48,7 +48,6 @@ interface NotesViewProps {
     onAiEdit: (text: string, instruction: string) => Promise<string>;
     onSelectNote: (id: string) => void;
     isSideChatOpen?: boolean;
-    onToggleSidebar?: () => void;
 }
 
 const COVERS = [
@@ -264,9 +263,9 @@ const renderBlockContent = (
     };
 
     switch (block.type) {
-        case 'h1': return <div className="flex items-center mt-6 mb-2"><Heading1 size={24} className="mr-2 text-pplx-muted shrink-0 opacity-50" /><AutoResizeTextarea {...textProps} className="text-3xl font-bold text-pplx-text placeholder-gray-500/50" placeholder="Heading 1" /></div>;
-        case 'h2': return <div className="flex items-center mt-5 mb-2"><Heading2 size={20} className="mr-2 text-pplx-muted shrink-0 opacity-50" /><AutoResizeTextarea {...textProps} className="text-2xl font-bold text-pplx-text placeholder-gray-500/50" placeholder="Heading 2" /></div>;
-        case 'h3': return <div className="flex items-center mt-4 mb-2"><Heading3 size={18} className="mr-2 text-pplx-muted shrink-0 opacity-50" /><AutoResizeTextarea {...textProps} className="text-xl font-semibold text-pplx-text placeholder-gray-500/50" placeholder="Heading 3" /></div>;
+        case 'h1': return <div className="flex items-center mt-6 mb-2"><Heading1 size={24} className="mr-2 text-pplx-muted shrink-0 opacity-50" /><AutoResizeTextarea {...textProps} className="text-3xl font-bold text-pplx-text placeholder-pplx-muted/50" placeholder="Heading 1" /></div>;
+        case 'h2': return <div className="flex items-center mt-5 mb-2"><Heading2 size={20} className="mr-2 text-pplx-muted shrink-0 opacity-50" /><AutoResizeTextarea {...textProps} className="text-2xl font-bold text-pplx-text placeholder-pplx-muted/50" placeholder="Heading 2" /></div>;
+        case 'h3': return <div className="flex items-center mt-4 mb-2"><Heading3 size={18} className="mr-2 text-pplx-muted shrink-0 opacity-50" /><AutoResizeTextarea {...textProps} className="text-xl font-semibold text-pplx-text placeholder-pplx-muted/50" placeholder="Heading 3" /></div>;
         case 'bullet': return <div className="flex items-start my-1"><div className="mr-2 mt-2 w-1.5 h-1.5 bg-pplx-text rounded-full shrink-0" /><AutoResizeTextarea {...textProps} className="text-base text-pplx-text leading-relaxed" placeholder="List item" /></div>;
         case 'number': return <div className="flex items-start my-1"><div className="mr-2 mt-1 w-5 text-right text-pplx-muted shrink-0 font-mono text-sm">1.</div><AutoResizeTextarea {...textProps} className="text-base text-pplx-text leading-relaxed" placeholder="List item" /></div>;
         case 'todo':
@@ -396,8 +395,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
     onSaveNote, 
     onDeleteNote, 
     onAiEdit, 
-    onSelectNote,
-    onToggleSidebar 
+    onSelectNote
 }) => {
     const [blocks, setBlocks] = useState<Block[]>([]);
     const [isPreviewMode] = useState(false);
@@ -702,19 +700,6 @@ export const NotesView: React.FC<NotesViewProps> = ({
 
     return (
         <div className="flex flex-col flex-1 bg-pplx-primary text-pplx-text overflow-hidden relative">
-            {/* Mobile Header */}
-            <div className="flex md:hidden items-center gap-3 px-4 py-3 border-b border-pplx-border bg-pplx-primary/80 backdrop-blur-md sticky top-0 z-40">
-                <button 
-                    onClick={onToggleSidebar}
-                    className="p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted transition-all"
-                >
-                    <Menu size={20} />
-                </button>
-                <span className="text-sm font-bold text-pplx-text truncate">
-                    {activeNote.title || 'Untitled'}
-                </span>
-            </div>
-
             <TableOfContents blocks={blocks} />
             <div className={`flex-1 overflow-y-auto custom-scrollbar relative ${getFontClass(activeNote.fontStyle)}`}>
                 {activeNote.cover && (
@@ -759,7 +744,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
                         )}
 
                         <div className="relative mb-3">
-                            <input type="text" placeholder="Untitled" value={activeNote.title} readOnly={activeNote.isLocked} onChange={(e) => onSaveNote({ ...activeNote, title: e.target.value }, false, false)} className={`w-full text-4xl md:text-5xl font-bold bg-transparent text-pplx-text placeholder-gray-500/50 outline-none font-serif leading-tight break-words border-none p-0 focus:ring-0 ${activeNote.isLocked ? 'cursor-default' : ''}`} />
+                            <input type="text" placeholder="Untitled" value={activeNote.title} readOnly={activeNote.isLocked} onChange={(e) => onSaveNote({ ...activeNote, title: e.target.value }, false, false)} className={`w-full text-4xl md:text-5xl font-bold bg-transparent text-pplx-text placeholder-pplx-muted/50 outline-none font-serif leading-tight break-words border-none p-0 focus:ring-0 ${activeNote.isLocked ? 'cursor-default' : ''}`} />
                         </div>
 
                         <div className="flex items-center gap-2 overflow-hidden flex-wrap min-h-[28px]">
@@ -771,7 +756,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
                             ))}
                             {!activeNote.isLocked && (
                                 isTagInputOpen ? (
-                                    <div className="flex items-center animate-fadeIn"><input autoFocus value={tagInputValue} onChange={(e) => setTagInputValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') setIsTagInputOpen(false); }} onBlur={() => setIsTagInputOpen(false)} placeholder="Type tag name..." className="bg-transparent border-b border-pplx-accent text-sm text-pplx-text px-1 py-0.5 w-32 outline-none placeholder-gray-500" /></div>
+                                    <div className="flex items-center animate-fadeIn"><input autoFocus value={tagInputValue} onChange={(e) => setTagInputValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') setIsTagInputOpen(false); }} onBlur={() => setIsTagInputOpen(false)} placeholder="Type tag name..." className="bg-transparent border-b border-pplx-accent text-sm text-pplx-text px-1 py-0.5 w-32 outline-none placeholder-pplx-muted" /></div>
                                 ) : <button onClick={() => setIsTagInputOpen(true)} className="text-xs text-pplx-muted hover:text-pplx-accent flex items-center gap-1 px-2 py-1 rounded-full hover:bg-pplx-hover transition-colors opacity-0 group-hover:opacity-100 duration-150"><Plus size={12} /> Add Tag</button>
                             )}
                         </div>

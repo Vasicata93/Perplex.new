@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
-  Clock, MapPin, Plus, X, Trash2, Search, ChevronDown, PanelLeft,
+  Clock, MapPin, Plus, X, Trash2, Search, ChevronDown,
   Sun, CloudRain, CloudSnow, CloudLightning, CloudSun, CloudFog, Info,
   Wind, Navigation
 } from 'lucide-react';
+import { SidebarToggle } from './SidebarToggle';
 import { CalendarEvent } from '../types';
 import { getHolidays, Holiday } from '../src/services/holidayService';
 
@@ -143,12 +144,12 @@ const WeatherWidget = ({ selectedDate }: { selectedDate: Date }) => {
   };
 
   if (!weather) return (
-    <div className="flex items-center gap-4 px-2 py-0.5 opacity-50">
-        <div className="flex items-center gap-2">
+    <div className="flex items-center gap-4 px-2 py-0.5 opacity-50 w-[160px] h-[36px]">
+        <div className="flex items-center gap-2 shrink-0">
             <div className="w-[48px] h-[32px] bg-pplx-hover rounded-lg" />
             <div className="w-[28px] h-[28px] bg-pplx-hover rounded-full" />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
             <div className="w-16 h-2 bg-pplx-hover rounded" />
             <div className="w-12 h-2 bg-pplx-hover rounded" />
         </div>
@@ -159,10 +160,10 @@ const WeatherWidget = ({ selectedDate }: { selectedDate: Date }) => {
     <div className="relative">
       <div 
         onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className="flex items-center gap-4 px-2 py-0.5 transition-all cursor-pointer group"
+        className="flex items-center gap-4 px-2 py-0.5 transition-all cursor-pointer group w-[160px] h-[36px]"
       >
         {/* Left: Temp & Icon */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-3xl font-serif font-light text-pplx-text leading-none tracking-tight">{weather.temp}°</span>
           <div className="group-hover:scale-110 transition-transform duration-500 ease-out">
             {getWeatherIcon(weather.code, 28)}
@@ -170,17 +171,17 @@ const WeatherWidget = ({ selectedDate }: { selectedDate: Date }) => {
         </div>
 
         {/* Right: Info */}
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col justify-center flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-1">
-            <MapPin size={8} className="text-blue-400/70" />
-            <span className="text-[9px] text-pplx-muted font-bold uppercase tracking-widest truncate max-w-[70px]">{location.name}</span>
+            <MapPin size={8} className="text-blue-400/70 shrink-0" />
+            <span className="text-[9px] text-pplx-muted font-bold uppercase tracking-widest truncate">{location.name}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[9px] text-pplx-muted font-bold uppercase tracking-wider leading-tight">{weather.condition}</span>
+            <span className="text-[9px] text-pplx-muted font-bold uppercase tracking-wider leading-tight truncate">{weather.condition}</span>
             {weather.wind > 0 && (
-              <div className="flex items-center gap-1 text-[8px] text-pplx-muted border-l border-pplx-border pl-2">
+              <div className="flex items-center gap-1 text-[8px] text-pplx-muted border-l border-pplx-border pl-2 shrink-0">
                 <Wind size={8} />
-                <span>{weather.wind} km/h</span>
+                <span>{weather.wind}</span>
               </div>
             )}
           </div>
@@ -947,13 +948,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             {/* Desktop: Weather Widget (Replacing Title) */}
             <div className="hidden md:flex items-center gap-3 shrink-0">
                 {onToggleSidebar && !isSidebarOpen && (
-                    <button 
+                    <SidebarToggle 
                         onClick={onToggleSidebar}
-                        className="p-2 text-pplx-muted hover:text-pplx-text rounded-xl transition-all duration-300 hover:bg-pplx-hover active:scale-95 shrink-0 border border-transparent hover:border-pplx-border shadow-sm"
-                        title="Open Sidebar"
-                    >
-                        <PanelLeft size={20} className="stroke-[2.2]" />
-                    </button>
+                        className="p-2"
+                        size={20}
+                    />
                 )}
                 <div className="bg-pplx-card border border-pplx-border rounded-2xl px-3 py-1.5 shadow-sm">
                   <WeatherWidget selectedDate={currentDate} />

@@ -430,9 +430,11 @@ export const InputArea: React.FC<InputAreaProps> = ({
     : "w-full max-w-3xl mx-auto z-20 relative transition-all duration-300";
 
   // Box Styles
-  const boxClass = centered
-    ? "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-300 md:rounded-3xl"
-    : "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-300 md:rounded-3xl";
+  const boxClass = isMobile
+    ? "bg-gradient-to-t from-[#222222] from-20% via-[#2c2c2c] to-[#363636] border border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.08)] rounded-[32px] flex flex-col transition-all duration-300"
+    : (centered
+        ? "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-300 md:rounded-3xl"
+        : "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-300 md:rounded-3xl");
 
   // -- Sizing Constants --
   const buttonPadding = centered ? 'p-2 sm:px-2.5 sm:py-1.5' : 'p-2 sm:px-2.5 sm:py-1.5';
@@ -441,7 +443,9 @@ export const InputArea: React.FC<InputAreaProps> = ({
   
   // Mobile: Dark circle/pill matching the image (Dark Grey/Black background, Light icon)
   // Desktop: transparent background, muted text, hover to text-primary
-  const mobileButtonFixedBg = "bg-pplx-hover text-pplx-text border border-pplx-border shadow-lg backdrop-blur-md hover:bg-pplx-hover/80 transition-all sm:bg-transparent dark:sm:bg-transparent sm:text-pplx-muted dark:sm:text-pplx-muted sm:hover:text-pplx-text sm:scale-100 sm:border-none sm:shadow-none sm:hover:bg-transparent";
+  const mobileButtonFixedBg = isMobile
+    ? "bg-[#2a2a2a] text-pplx-text border border-white/10 shadow-lg backdrop-blur-md hover:bg-[#3a3a3a] transition-all sm:bg-transparent dark:sm:bg-transparent sm:text-pplx-muted dark:sm:text-pplx-muted sm:hover:text-pplx-text sm:scale-100 sm:border-none sm:shadow-none sm:hover:bg-transparent"
+    : "bg-pplx-hover text-pplx-text border border-pplx-border shadow-lg backdrop-blur-md hover:bg-pplx-hover/80 transition-all sm:bg-transparent dark:sm:bg-transparent sm:text-pplx-muted dark:sm:text-pplx-muted sm:hover:text-pplx-text sm:scale-100 sm:border-none sm:shadow-none sm:hover:bg-transparent";
 
   // -- Components --
   const Tooltip = ({ text }: { text: string }) => (
@@ -1043,21 +1047,21 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     {showModelMenu && (
                         <div className="absolute bottom-12 right-0 w-56 bg-pplx-card border border-pplx-border rounded-xl shadow-xl p-1 z-50 animate-fadeIn">
                             <div className="px-2 py-1.5 text-[10px] uppercase font-bold text-pplx-muted">Cloud</div>
-                            <button onClick={() => { setSelectedModelId('gemini-pro'); setShowModelMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-pplx-hover hover:text-pplx-text rounded-lg flex justify-between items-center group">
+                            <button onClick={() => { setSelectedModelId('gemini-pro'); setShowModelMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-pplx-text hover:bg-pplx-hover hover:text-pplx-text rounded-lg flex justify-between items-center group">
                                 <span>Gemini Pro 1.5/2.0</span>
                                 {selectedModelId === 'gemini-pro' && <div className="w-2 h-2 rounded-full bg-pplx-accent"></div>}
                             </button>
 
                             {/* Added OpenRouter and OpenAI to Model Menu */}
                             {settings.openRouterApiKey && (
-                                <button onClick={() => { setSelectedModelId('openrouter'); setShowModelMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-pplx-hover hover:text-pplx-text rounded-lg flex justify-between items-center group">
+                                <button onClick={() => { setSelectedModelId('openrouter'); setShowModelMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-pplx-text hover:bg-pplx-hover hover:text-pplx-text rounded-lg flex justify-between items-center group">
                                     <span className="flex items-center gap-2"><Globe size={12}/> OpenRouter</span>
                                     {selectedModelId === 'openrouter' && <div className="w-2 h-2 rounded-full bg-pplx-accent"></div>}
                                 </button>
                             )}
 
                              {settings.openAiApiKey && (
-                                <button onClick={() => { setSelectedModelId('openai'); setShowModelMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-pplx-hover hover:text-pplx-text rounded-lg flex justify-between items-center group">
+                                <button onClick={() => { setSelectedModelId('openai'); setShowModelMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-pplx-text hover:bg-pplx-hover hover:text-pplx-text rounded-lg flex justify-between items-center group">
                                     <span className="flex items-center gap-2"><Zap size={12}/> OpenAI</span>
                                     {selectedModelId === 'openai' && <div className="w-2 h-2 rounded-full bg-pplx-accent"></div>}
                                 </button>
@@ -1067,7 +1071,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                                 <>
                                     <div className="px-2 py-1.5 text-[10px] uppercase font-bold text-pplx-muted mt-1">Local / Custom</div>
                                     {settings.localModels.map(m => (
-                                        <button key={m.id} onClick={() => { setSelectedModelId(m.id); setShowModelMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-pplx-hover hover:text-pplx-text rounded-lg flex justify-between items-center truncate">
+                                        <button key={m.id} onClick={() => { setSelectedModelId(m.id); setShowModelMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-pplx-text hover:bg-pplx-hover hover:text-pplx-text rounded-lg flex justify-between items-center truncate">
                                             <span>{m.name}</span>
                                             {selectedModelId === m.id && <div className="w-2 h-2 rounded-full bg-pplx-accent"></div>}
                                         </button>
@@ -1132,7 +1136,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     className={`ml-1 rounded-full transition-all duration-200 flex items-center justify-center ${
                         (isThinking || input.trim() || attachments.length > 0)
                         ? 'bg-pplx-accent text-black hover:bg-cyan-400 shadow-[0_0_15px_rgba(32,184,205,0.4)]' 
-                        : 'bg-pplx-hover text-gray-500 cursor-not-allowed'
+                        : 'bg-pplx-hover text-pplx-muted cursor-not-allowed'
                     } ${centered ? 'p-4 sm:p-2 scale-110' : 'p-3 sm:p-2 scale-110 sm:scale-100'} ${centered ? 'shadow-md origin-center' : ''}`}
                  >
                      {isThinking ? (

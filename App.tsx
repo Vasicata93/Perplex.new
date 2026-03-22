@@ -19,11 +19,12 @@ import { Role, Message, Thread, AppSettings, DEFAULT_SETTINGS, ModelProvider, Fo
 import { LLMService } from './services/geminiService';
 import { BlockService } from './services/blockService';
 import { Block } from './types/blockStructure';
+import { SidebarToggle } from './components/SidebarToggle';
 import { 
     User, BookOpen, FileText, Globe, Copy, ChevronLeft, ChevronRight, X,
     Star, MoreHorizontal, Download, Upload, Trash2, Wifi, Lock, FileEdit, ClipboardCopy,
     CopyPlus, Languages, FolderInput, Undo2, Brain, ArrowRight,
-    RefreshCw, Share2, FolderPlus, Pencil, Check, ArrowDown, MessageSquare, ImageIcon, Plus, Menu
+    RefreshCw, Share2, FolderPlus, Pencil, Check, ArrowDown, MessageSquare, ImageIcon, Plus
 } from 'lucide-react';
 import { db, STORES } from './services/db';
 
@@ -33,12 +34,35 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // --- Premium Tornado Thinking Component (Updated: Persistent Visibility) ---
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768); 
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = sessionStorage.getItem('pplx_sidebarWidth');
+    return saved !== null ? Number(saved) : 280;
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (window.innerWidth < 768) return false;
+    const savedWidth = sessionStorage.getItem('pplx_sidebarWidth');
+    if (savedWidth === null) return true;
+    return Number(savedWidth) > 0;
+  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (window.innerWidth < 768) return false;
+    const savedWidth = sessionStorage.getItem('pplx_sidebarWidth');
+    if (savedWidth === null) return false;
+    const width = Number(savedWidth);
+    return width > 0 && width <= 70;
+  });
   const [isSpaceFilesModalOpen, setIsSpaceFilesModalOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(() => 
-    Number(sessionStorage.getItem('pplx_sidebarWidth')) || 280
-  );
+
+  const handleOpenSidebar = () => {
+    if (window.innerWidth >= 768) {
+      if (sidebarWidth === 0) {
+        setSidebarWidth(280);
+      }
+      setSidebarOpen(true);
+    } else {
+      setSidebarOpen(true);
+    }
+  };
 
   // Sync sidebar open/collapsed state with width (Desktop only)
   useEffect(() => {
@@ -1510,17 +1534,6 @@ function App() {
             </div>
         )}
 
-        {/* Sidebar Toggle Button - Desktop Only */}
-        {!sidebarOpen && (
-            <button 
-                onClick={() => setSidebarWidth(280)}
-                className="fixed top-4 left-4 z-[100] p-2 text-pplx-muted hover:text-pplx-text bg-pplx-primary border border-pplx-border rounded-lg shadow-md hidden md:flex transition-all hover:scale-105"
-                title="Open Sidebar"
-            >
-                <Menu size={20} />
-            </button>
-        )}
-
         {/* Workspace Files Modal */}
         {activeSpace && (
             <SpaceFilesModal 
@@ -1554,11 +1567,24 @@ function App() {
                 <div className="flex items-center h-10 px-3 select-none bg-pplx-primary border-none z-50 w-full relative border-b border-pplx-border/50 md:border-none">
                      <div className="flex-1 flex items-center min-w-0">
                         
-                        {/* UNDO / REDO BUTTONS */}
+                        {/* SIDEBAR TOGGLE & UNDO / REDO BUTTONS */}
                         <div className="flex items-center gap-4 mr-2 shrink-0 -ml-2"> 
+                            {!sidebarOpen && (
+                                <SidebarToggle 
+                                    onClick={handleOpenSidebar}
+                                    className="hidden md:flex p-1 hover:bg-pplx-hover rounded text-pplx-muted transition-all"
+                                    size={20}
+                                />
+                            )}
                             <button onClick={handleUndo} disabled={!canUndo} className={`p-1 rounded transition-colors ${canUndo ? 'text-pplx-text hover:bg-pplx-hover cursor-pointer' : 'text-pplx-muted/30 cursor-default'}`} title="Undo (Back)"> <ChevronLeft size={22} /> </button> 
                             <button onClick={handleRedo} disabled={!canRedo} className={`p-1 rounded transition-colors ${canRedo ? 'text-pplx-text hover:bg-pplx-hover cursor-pointer' : 'text-pplx-muted/30 cursor-default'}`} title="Redo (Forward)"> <ChevronRight size={22} /> </button> 
                         </div>
+                        
+                        {activeNote && (
+                            <span className="text-sm font-bold text-pplx-text truncate md:hidden ml-2">
+                                {activeNote.title || 'Untitled'}
+                            </span>
+                        )}
                         
                         {openNoteIds.length > 0 && ( <div className="hidden md:flex flex-1 items-center overflow-x-auto no-scrollbar gap-1 ml-1"> {openNoteIds.map(noteId => { const n = notes.find(note => note.id === noteId); if (!n) return null; const isActive = activeNoteId === noteId; return ( <div key={noteId} onClick={() => navigateToNote(noteId)} className={` group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-all max-w-[150px] ${isActive ? 'text-pplx-text font-medium' : 'text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary/50' } `} > <span className="truncate text-xs">{n.emoji || '📄'} {n.title || 'Untitled'}</span> <button onClick={(e) => handleCloseTab(e, noteId)} className="opacity-0 group-hover:opacity-100 hover:bg-pplx-hover rounded p-0.5 transition-opacity" > <X size={10} /> </button> </div> ); })} </div> )}
                      </div>
@@ -1624,20 +1650,20 @@ function App() {
              </>
         )}
 
-        {/* Home Header (Mobile Only) */}
+        {/* Home Header */}
         {!activeThreadId && activeView === 'chat' && !activeSpaceId && (
-            <div className="md:hidden absolute top-0 left-0 right-0 z-20 p-6 pt-10 flex flex-col items-start gap-4 pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 z-20 p-6 pt-12 md:p-2 md:pt-4 flex flex-col items-start gap-6 md:gap-4 pointer-events-none">
                 {/* Profile Section (Click to Open Settings) */}
                 <div 
                     onClick={() => setSettingsOpen(true)}
-                    className="flex items-center gap-4 pointer-events-auto cursor-pointer active:opacity-80 transition-opacity"
+                    className="md:hidden flex items-center gap-5 pointer-events-auto cursor-pointer active:opacity-80 transition-opacity"
                 >
                      {/* Avatar (Larger) - Simple, no border/bg colors */}
-                     <div className="w-[64px] h-[64px] rounded-full overflow-hidden shrink-0">
+                     <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0 shadow-lg border border-white/10">
                          {settings.userProfile.avatar ? (
                              <img src={settings.userProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
                          ) : (
-                             <div className="w-full h-full bg-pplx-secondary flex items-center justify-center text-pplx-text text-2xl font-bold">
+                             <div className="w-full h-full bg-pplx-secondary flex items-center justify-center text-pplx-text text-3xl font-bold">
                                  {(settings.userProfile.name ? settings.userProfile.name.substring(0, 1).toUpperCase() : 'U')}
                              </div>
                          )}
@@ -1645,22 +1671,45 @@ function App() {
                      
                      {/* Name & Subtitle (Larger Name, Smaller Subtitle) */}
                      <div className="flex flex-col">
-                         <span className="text-[26px] font-semibold text-pplx-text leading-tight drop-shadow-md">
+                         <span className="text-[28px] font-semibold text-pplx-text leading-tight drop-shadow-md">
                              {settings.userProfile.name || 'User'}
                          </span>
-                         <span className="text-xs text-pplx-muted font-light tracking-wide opacity-90 drop-shadow-sm mt-0.5">
+                         <span className="text-sm text-pplx-muted font-light tracking-wide opacity-90 drop-shadow-sm mt-1">
                              Where knowledge begins
                          </span>
                      </div>
                 </div>
 
                 {/* Sidebar Toggle */}
-                <button 
-                    onClick={() => setSidebarOpen(true)}
-                    className="md:hidden p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted pointer-events-auto transition-all"
-                >
-                    <Menu size={24} />
-                </button>
+                {!sidebarOpen && (
+                    <SidebarToggle 
+                        onClick={handleOpenSidebar}
+                        className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden"
+                        size={36}
+                    />
+                )}
+                
+                {/* Desktop Sidebar Toggle */}
+                {!sidebarOpen && (
+                    <SidebarToggle 
+                        onClick={handleOpenSidebar}
+                        className="hidden md:flex p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted pointer-events-auto transition-all"
+                        size={24}
+                    />
+                )}
+            </div>
+        )}
+
+        {/* Space Header Toggle */}
+        {!activeThreadId && activeView === 'chat' && activeSpaceId && (
+            <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none">
+                 {!sidebarOpen && (
+                    <SidebarToggle 
+                        onClick={handleOpenSidebar}
+                        className="hidden md:flex p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted pointer-events-auto transition-all"
+                        size={24}
+                    />
+                )}
             </div>
         )}
 
@@ -1688,7 +1737,8 @@ function App() {
                             onShare={() => targetMessage && handleShare(targetMessage.content)}
                             onSave={() => targetMessage && setActiveAddToSpaceId(targetMessage.id)}
                             activeSpace={activeSpace}
-                            onToggleSidebar={() => setSidebarOpen(true)}
+                            onToggleSidebar={handleOpenSidebar}
+                            isSidebarOpen={sidebarOpen}
                         />
                     );
                 })()}
@@ -1707,7 +1757,6 @@ function App() {
           onAiEdit={handleAiTextEdit}
           onSelectNote={handleSelectNote}
           isSideChatOpen={isSideChatOpen}
-          onToggleSidebar={() => setSidebarOpen(true)}
        />
     </div>
 ) : activeView === 'calendar' ? (
@@ -1717,7 +1766,8 @@ function App() {
             onAddEvent={handleAddEvent}
             onUpdateEvent={handleUpdateEvent}
             onDeleteEvent={handleDeleteEvent}
-            onToggleSidebar={() => setSidebarOpen(true)}
+            onToggleSidebar={handleOpenSidebar}
+           isSidebarOpen={sidebarOpen}
         />
     </div>
 ) : (
@@ -1730,14 +1780,14 @@ function App() {
             {!activeThreadId || !activeThread ? (
                 <div className="flex flex-col min-h-full relative z-10">
                     {activeSpace ? (
-                        <div className="flex flex-col min-h-full animate-fadeIn relative max-w-6xl mx-auto w-full">
+                        <div className="flex flex-col min-h-full animate-fadeIn relative max-w-5xl mx-auto w-full">
                             {/* Top Navigation (Desktop) */}
-                            <div className="hidden md:flex items-center gap-2 text-sm text-pplx-muted hover:text-pplx-text cursor-pointer mb-8 pt-8 px-8" onClick={() => setActiveSpaceId(null)}>
+                            <div className="hidden md:flex items-center gap-2 text-sm text-pplx-muted hover:text-pplx-text cursor-pointer mb-8 pt-8 px-12" onClick={() => setActiveSpaceId(null)}>
                                 <ChevronLeft size={16} />
                                 <span>All projects</span>
                             </div>
 
-                            <div className="flex-1 no-scrollbar px-4 md:px-8 pb-4 md:pb-32">
+                            <div className="flex-1 no-scrollbar px-4 md:px-12 pb-4 md:pb-32">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
                                     
                                     {/* LEFT COLUMN: Info & Activity */}
@@ -1749,13 +1799,8 @@ function App() {
                                                     {activeSpace.emoji && <span className="mr-3">{activeSpace.emoji}</span>}
                                                     {activeSpace.title}
                                                 </h1>
-                                                <div className="flex items-center gap-2 md:hidden">
-                                                    <button 
-                                                        onClick={() => setSidebarOpen(true)}
-                                                        className="p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted transition-all"
-                                                    >
-                                                        <Menu size={20} />
-                                                    </button>
+                                                <div className="flex items-center gap-2">
+                                                    {/* Toggle removed from here */}
                                                 </div>
                                             </div>
                                             <p className="text-pplx-muted text-base font-light leading-relaxed">
