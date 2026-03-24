@@ -353,7 +353,7 @@ const ImageGallery: React.FC<{ images: Attachment[] }> = ({ images }) => (
                     <img 
                         src={img.content} 
                         alt={img.name} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                        className="w-full h-full object-cover transition-transform duration-150 group-hover:scale-110" 
                     />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <span className="text-white text-xs font-medium px-2 py-1 bg-black/50 rounded backdrop-blur-sm">
@@ -416,7 +416,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ message, onClose }
 
   return (
     <div 
-        className={`fixed top-0 left-0 right-0 z-50 bg-pplx-primary overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-10 duration-300`} 
+        className={`fixed top-0 left-0 right-0 z-50 bg-pplx-primary overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-10 duration-150`} 
         style={{ 
             bottom: document.body.classList.contains('dock-active') && window.innerWidth < 640 
                 ? 'calc(72px + env(safe-area-inset-bottom))' 

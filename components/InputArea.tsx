@@ -426,15 +426,15 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   // Responsive Container Class
   const containerClass = centered 
-    ? `w-full max-w-4xl mx-auto z-20 fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 px-4 md:static md:px-0 md:bottom-auto md:relative transition-all duration-300` 
-    : "w-full max-w-3xl mx-auto z-20 relative transition-all duration-300";
+    ? `w-full max-w-4xl mx-auto z-20 fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 px-4 md:static md:px-0 md:bottom-auto md:relative transition-all duration-150` 
+    : "w-full max-w-3xl mx-auto z-20 relative transition-all duration-150";
 
   // Box Styles
   const boxClass = isMobile
-    ? "bg-gradient-to-t from-[#222222] from-20% via-[#2c2c2c] to-[#363636] border border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.08)] rounded-[32px] flex flex-col transition-all duration-300"
+    ? "bg-gradient-to-t from-[#1a1a1a] from-20% via-[#222222] to-[#2a2a2a] border border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.08)] rounded-[32px] flex flex-col transition-all duration-150"
     : (centered
-        ? "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-300 md:rounded-3xl"
-        : "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-300 md:rounded-3xl");
+        ? "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-150 md:rounded-3xl"
+        : "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-150 md:rounded-3xl");
 
   // -- Sizing Constants --
   const buttonPadding = centered ? 'p-2 sm:px-2.5 sm:py-1.5' : 'p-2 sm:px-2.5 sm:py-1.5';
@@ -533,7 +533,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     {isAgentMode && (
                         <button 
                             onClick={() => setIsAgentMode(false)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-pplx-accent/10 border border-pplx-accent/20 text-[10px] font-medium text-pplx-accent whitespace-nowrap animate-in fade-in zoom-in duration-200 hover:bg-pplx-accent/20 transition-colors group"
+                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-pplx-accent/10 border border-pplx-accent/20 text-[10px] font-medium text-pplx-accent whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-pplx-accent/20 transition-colors group"
                         >
                             <Bot size={10} />
                             <span>Agent</span>
@@ -543,7 +543,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     {isLongThinking && (
                         <button 
                             onClick={() => setIsLongThinking(false)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-medium text-indigo-400 whitespace-nowrap animate-in fade-in zoom-in duration-200 hover:bg-indigo-500/20 transition-colors group"
+                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-medium text-indigo-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-indigo-500/20 transition-colors group"
                         >
                             <Brain size={10} />
                             <span>Thinking</span>
@@ -558,7 +558,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                             return (
                                 <button 
                                     onClick={() => setProMode(ProMode.STANDARD)}
-                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[10px] font-medium text-orange-400 whitespace-nowrap animate-in fade-in zoom-in duration-200 hover:bg-orange-500/20 transition-colors group"
+                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[10px] font-medium text-orange-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-orange-500/20 transition-colors group"
                                 >
                                     <Icon size={10} />
                                     <span>{mode.label}</span>
@@ -573,7 +573,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                             return (
                                 <button 
                                     onClick={() => onSelectSpace?.(null)}
-                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-medium text-blue-400 whitespace-nowrap animate-in fade-in zoom-in duration-200 hover:bg-blue-500/20 transition-colors group"
+                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-medium text-blue-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-blue-500/20 transition-colors group"
                                 >
                                     <span>{space?.emoji || '📁'}</span>
                                     <span className="max-w-[80px] truncate">{space?.title}</span>
@@ -587,7 +587,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         <button 
                             key={idx}
                             onClick={() => removeAttachment(idx)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-500/10 border border-gray-500/20 text-[10px] font-medium text-gray-400 whitespace-nowrap animate-in fade-in zoom-in duration-200 hover:bg-gray-500/20 transition-colors group"
+                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-500/10 border border-gray-500/20 text-[10px] font-medium text-gray-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-gray-500/20 transition-colors group"
                         >
                             {att.type === 'image' ? <ImageIcon size={10} /> : <File size={10} />}
                             <span className="max-w-[60px] truncate">{att.name || 'File'}</span>
@@ -614,7 +614,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
                         animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
                         exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
-                        transition={isMobile ? { duration: 0.18, ease: [0.4, 0, 0.2, 1] } : { duration: 0.2, ease: "easeOut" }}
+                        transition={isMobile ? { duration: 0.15, ease: [0.4, 0, 0.2, 1] } : { duration: 0.15, ease: "easeOut" }}
                         onPointerDown={(e: React.PointerEvent) => isMobile && handleDragStart(e, attachDragControls, attachScrollRef)}
                         className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full max-h-[90vh] overflow-y-auto overscroll-contain bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl p-4 z-50 pb-8 md:absolute md:bottom-12 md:left-0 ${compact ? 'md:w-full' : 'md:w-64'} md:border md:rounded-xl md:p-2 md:pb-2 md:border-b custom-scrollbar touch-pan-y`}
                     >
@@ -886,7 +886,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                 >
                     <div className={`flex items-center gap-1.5 ${!focusModes.includes(FocusMode.WEB_SEARCH) || focusModes.length > 1 ? 'text-pplx-accent' : ''}`}>
                         {focusModes.includes(FocusMode.LIBRARY) && selectedLibraryIds.length > 0 && (
-                            <span className="text-xs font-bold animate-in fade-in zoom-in duration-200">
+                            <span className="text-xs font-bold animate-in fade-in zoom-in duration-150">
                                 {selectedLibraryIds.length}
                             </span>
                         )}
@@ -912,7 +912,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
                         animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
                         exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
-                        transition={isMobile ? { duration: 0.18, ease: [0.4, 0, 0.2, 1] } : { duration: 0.2, ease: "easeOut" }}
+                        transition={isMobile ? { duration: 0.15, ease: [0.4, 0, 0.2, 1] } : { duration: 0.15, ease: "easeOut" }}
                         onPointerDown={(e: React.PointerEvent) => isMobile && handleDragStart(e, focusDragControls, focusScrollRef)}
                         className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl p-2 z-50 pb-8 md:absolute md:bottom-12 md:right-0 ${compact ? 'md:w-full' : 'md:w-64'} md:border md:rounded-xl md:p-1 md:pb-1 md:border-b overscroll-contain touch-pan-y`}
                     >
@@ -959,7 +959,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                                         <div className={`w-9 h-5 rounded-full relative transition-colors ${
                                             focusModes.includes(mode.id) ? 'bg-pplx-accent' : 'bg-gray-600'
                                         }`}>
-                                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-150 ${
                                                 focusModes.includes(mode.id) ? 'left-[18px]' : 'left-[2px]'
                                             }`} />
                                         </div>
@@ -1102,7 +1102,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                 onClick={handleVoiceInput} 
                 onMouseEnter={() => setHoveredTooltip('voice')}
                 onMouseLeave={() => setHoveredTooltip(null)}
-                className={`relative flex items-center justify-center transition-all duration-300 gap-2 shrink-0 ${
+                className={`relative flex items-center justify-center transition-all duration-150 gap-2 shrink-0 ${
                     isListening 
                     ? 'bg-red-500/10 text-red-500 px-4 py-2 sm:py-1.5 rounded-full border border-red-500/30' 
                     : `rounded-full hover:text-pplx-text ${roundButtonPadding} ${mobileButtonFixedBg} ${mobileSidePanel ? '!p-1.5' : ''}`
@@ -1133,7 +1133,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                  <button 
                     onClick={isThinking ? onStop : handleSubmit}
                     disabled={(!isThinking && !input.trim() && attachments.length === 0)}
-                    className={`ml-1 rounded-full transition-all duration-200 flex items-center justify-center ${
+                    className={`ml-1 rounded-full transition-all duration-150 flex items-center justify-center ${
                         (isThinking || input.trim() || attachments.length > 0)
                         ? 'bg-pplx-accent text-black hover:bg-cyan-400 shadow-[0_0_15px_rgba(32,184,205,0.4)]' 
                         : 'bg-pplx-hover text-pplx-muted cursor-not-allowed'

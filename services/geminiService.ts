@@ -2165,7 +2165,15 @@ export class LLMService {
 
         } catch (error: any) {
             console.error("Generic API Loop Error:", error);
-            return { text: `Error: ${error.message}`, citations: [], relatedQuestions: [], searchImages: [] };
+            let errorMsg = error.message;
+            if (errorMsg.includes('401') || errorMsg.includes('User not found') || errorMsg.includes('Invalid API key')) {
+                errorMsg = "Eroare de autentificare (401). Te rog să verifici dacă ai introdus o cheie API validă în Setări.";
+            } else if (errorMsg.includes('429')) {
+                errorMsg = "Ai atins limita de cereri (429). Te rog să încerci din nou mai târziu.";
+            } else if (errorMsg.includes('Failed to fetch')) {
+                errorMsg = "Nu m-am putut conecta la server. Verifică conexiunea la internet sau dacă serverul local rulează (pentru Ollama).";
+            }
+            return { text: `⚠️ **Eroare:**\n\n${errorMsg}`, citations: [], relatedQuestions: [], searchImages: [] };
         }
     } // End While
 

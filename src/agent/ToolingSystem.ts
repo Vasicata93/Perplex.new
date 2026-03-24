@@ -1,5 +1,6 @@
 import { ToolDefinition, ToolResult, AgentContext } from './types';
 import { TavilyService } from '../../services/tavilyService';
+import * as math from 'mathjs';
 
 export class ToolingSystem {
     private tools: Map<string, ToolDefinition> = new Map();
@@ -50,6 +51,70 @@ export class ToolingSystem {
                         data: { title: args.title, content: args.content }
                     }
                 };
+            }
+        });
+
+        // Wikipedia Tool
+        this.register({
+            name: 'wikipedia_search',
+            description: 'Searches Wikipedia for a given topic and returns a summary. Use this for general knowledge, history, people, and concepts.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string', description: 'The topic to search for on Wikipedia.' }
+                },
+                required: ['query'],
+                additionalProperties: false
+            },
+            execute: async (args: { query: string }, _context: AgentContext) => {
+                try {
+                    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(args.query)}&utf8=&format=json&origin=*`;
+                    const searchResponse = await fetch(searchUrl);
+                    const searchData = await searchResponse.json();
+                    
+                    if (searchData.query && searchData.query.search && searchData.query.search.length > 0) {
+                        const topResult = searchData.query.search[0];
+                        const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=&explaintext=&titles=${encodeURIComponent(topResult.title)}&format=json&origin=*`;
+                        const extractResponse = await fetch(extractUrl);
+                        const extractData = await extractResponse.json();
+                        
+                        const pages = extractData.query.pages;
+                        const pageId = Object.keys(pages)[0];
+                        
+                        if (pageId !== '-1') {
+                            return {
+                                title: pages[pageId].title,
+                                extract: pages[pageId].extract,
+                                url: `https://en.wikipedia.org/wiki/${encodeURIComponent(pages[pageId].title.replace(/ /g, '_'))}`
+                            };
+                        }
+                    }
+                    return { error: 'No results found on Wikipedia.' };
+                } catch (error: any) {
+                    return { error: `Wikipedia search failed: ${error.message}` };
+                }
+            }
+        });
+
+        // Calculator Tool
+        this.register({
+            name: 'calculator',
+            description: 'Evaluates mathematical expressions. Use this for precise math calculations. Supports basic arithmetic (+, -, *, /, %, ^) and common math functions (sin, cos, tan, sqrt, log, exp).',
+            parameters: {
+                type: 'object',
+                properties: {
+                    expression: { type: 'string', description: 'The mathematical expression to evaluate (e.g., "2 + 2", "sqrt(16)", "sin(pi/2)").' }
+                },
+                required: ['expression'],
+                additionalProperties: false
+            },
+            execute: async (args: { expression: string }, _context: AgentContext) => {
+                try {
+                    const result = math.evaluate(args.expression);
+                    return { result: result, expression: args.expression };
+                } catch (error: any) {
+                    return { error: `Calculation error: ${error.message}` };
+                }
             }
         });
     }

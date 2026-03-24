@@ -28,6 +28,7 @@ interface SidebarProps {
   onChangeView: (view: 'chat' | 'library' | 'calendar') => void;
   onNewThread: () => void;
   onNewNote: (parentId?: string) => void;
+  onNewPortfolioTracker?: () => void;
   onManageSpaces: () => void;
   openSettings: () => void;
   onDeleteThread: (id: string) => void;
@@ -60,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onChangeView,
   onNewThread,
   onNewNote,
+  onNewPortfolioTracker,
   onManageSpaces,
   openSettings,
   onDeleteThread,
@@ -208,7 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     w-[280px] md:static md:shadow-none md:translate-x-0
     ${isOpen ? 'translate-x-0 md:w-[var(--sidebar-width)]' : '-translate-x-full md:w-0 md:border-r-0 md:overflow-hidden'}
     flex flex-col
-    ${!isResizing ? 'transition-all duration-400 cubic-bezier(0.4, 0, 0.2, 1)' : ''}
+    ${!isResizing ? 'transition-all duration-150 cubic-bezier(0.4, 0, 0.2, 1)' : ''}
   `;
 
   const handleNavClick = (action?: () => void) => {
@@ -446,6 +448,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   menuRef={menuRef}
                               />
                           ))}
+                          {onNewPortfolioTracker && (
+                              <div className="mt-4 mb-2 px-3">
+                                  <div className="text-[10px] font-bold text-pplx-muted uppercase tracking-wider mb-2">Templates</div>
+                                  <button 
+                                      onClick={(e) => { e.stopPropagation(); onNewPortfolioTracker(); toggleSection('library'); }}
+                                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
+                                  >
+                                      <Plus size={14} /> Portfolio Tracker
+                                  </button>
+                              </div>
+                          )}
                       </div>
                   )}
               </div>
@@ -593,6 +606,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 isMobile={true}
                             />
                         ))}
+                        {onNewPortfolioTracker && (
+                            <div className="mt-6 mb-4 px-3">
+                                <div className="text-xs font-bold text-pplx-muted uppercase tracking-wider mb-2">Templates</div>
+                                <button 
+                                    onClick={() => { onNewPortfolioTracker(); setIsMobileLibraryOpen(false); }}
+                                    className="w-full flex items-center gap-3 px-3 py-3 text-sm text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-xl transition-colors text-left border border-pplx-border/50"
+                                >
+                                    <Plus size={16} /> Portfolio Tracker
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

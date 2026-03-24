@@ -123,7 +123,7 @@ const WeatherWidget = ({ selectedDate }: { selectedDate: Date }) => {
   const getWeatherIcon = (code: number, size = 20) => {
     const iconProps = { 
       size, 
-      className: "drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all duration-700" 
+      className: "drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all duration-150" 
     };
     
     if (code === 0) return <Sun {...iconProps} className="text-yellow-400 drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]" />;
@@ -165,7 +165,7 @@ const WeatherWidget = ({ selectedDate }: { selectedDate: Date }) => {
         {/* Left: Temp & Icon */}
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-3xl font-serif font-light text-pplx-text leading-none tracking-tight">{weather.temp}°</span>
-          <div className="group-hover:scale-110 transition-transform duration-500 ease-out">
+          <div className="group-hover:scale-110 transition-transform duration-150 ease-out">
             {getWeatherIcon(weather.code, 28)}
           </div>
         </div>
@@ -191,7 +191,7 @@ const WeatherWidget = ({ selectedDate }: { selectedDate: Date }) => {
       {isMenuOpen && (
         <>
           <div className="fixed inset-0 z-[120]" onClick={() => setIsMenuOpen(false)} />
-          <div className="absolute top-full left-0 mt-3 w-60 bg-pplx-card border border-pplx-border rounded-[20px] shadow-2xl z-[121] overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+          <div className="absolute top-full left-0 mt-3 w-60 bg-pplx-card border border-pplx-border rounded-[20px] shadow-2xl z-[121] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="p-3 border-b border-pplx-border bg-pplx-hover/20 space-y-3">
               <div className="text-[9px] font-black text-pplx-muted uppercase tracking-[0.2em]">Locație</div>
               
@@ -1026,11 +1026,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     className="flex items-center gap-3 px-4 py-2 bg-pplx-card border border-pplx-border rounded-2xl text-xs font-bold text-pplx-text hover:bg-pplx-hover transition-all min-w-[110px] justify-between shadow-sm active:scale-95"
                 >
                     <span className="capitalize">{viewMode === 'agenda' ? prevViewMode : viewMode}</span>
-                    <ChevronDown size={14} className={`transition-transform duration-300 ${isViewMenuOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={14} className={`transition-transform duration-150 ${isViewMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
                 {isViewMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-36 bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 p-1">
+                    <div className="absolute right-0 top-full mt-2 w-36 bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150 p-1">
                         {(['year', 'month', 'week', 'day'] as ViewMode[]).map((mode) => (
                             <button
                                 key={mode}
@@ -1108,7 +1108,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2 md:gap-4 overflow-hidden px-0 md:px-2 pb-2 relative">
           {/* Calendar Grid - Darker background */}
-          <div className="flex-[0.6] md:flex-1 h-full overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700 px-4 md:px-0">
+          <div className="flex-[0.6] md:flex-1 h-full overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-150 px-4 md:px-0">
             {viewMode === 'year' && renderYearView()}
             {viewMode === 'month' && renderMonthView()}
             {viewMode === 'week' && renderWeekView()}
@@ -1127,7 +1127,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           {/* Mobile Search Overlay */}
           {isMobileSearchOpen && (
             <div 
-                className={`fixed inset-0 z-[110] bg-pplx-primary flex flex-col animate-in fade-in duration-200`}
+                className={`fixed inset-0 z-[110] bg-pplx-primary flex flex-col animate-in fade-in duration-150`}
             >
                 <div className="p-4 border-b border-pplx-border bg-pplx-card/50 backdrop-blur-md sticky top-0">
                     <div className="flex items-center gap-3">
@@ -1187,7 +1187,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           )}
 
           {/* Right Sidebar (Desktop Only) - Lighter background */}
-          <div className="hidden lg:flex flex-col w-64 shrink-0 gap-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-200 overflow-hidden">
+          <div className="hidden lg:flex flex-col w-64 shrink-0 gap-4 animate-in fade-in slide-in-from-right-4 duration-150 delay-200 overflow-hidden">
               <div className="bg-pplx-card rounded-2xl p-0.5 shrink-0 border border-pplx-border shadow-2xl">
                 {renderMiniCalendar()}
               </div>
@@ -1204,7 +1204,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {/* Holiday Detail Modal */}
       {isHolidayModalOpen && selectedHoliday && (
         <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="bg-pplx-card border border-pplx-border rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="bg-pplx-card border border-pplx-border rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
             <div className={`h-32 relative flex items-end p-8 ${selectedHoliday.isPublic ? 'bg-gradient-to-br from-red-500/40 to-red-900/60' : 'bg-gradient-to-br from-emerald-500/40 to-emerald-900/60'}`}>
               <button 
                 onClick={() => setIsHolidayModalOpen(false)}
@@ -1265,7 +1265,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {/* Event Modal */}
       {isEventModalOpen && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-center justify-center p-2 md:p-4">
-            <div className="bg-pplx-card border border-pplx-border rounded-[32px] shadow-2xl w-full max-w-md max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-pplx-card border border-pplx-border rounded-[32px] shadow-2xl w-full max-w-md max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
                 <div className="p-5 md:p-6 border-b border-pplx-border flex justify-between items-center bg-pplx-hover/5 shrink-0">
                     <h3 className="font-serif font-bold text-xl md:text-2xl text-pplx-text">{selectedEventId ? 'Edit Event' : 'New Event'}</h3>
                     <button onClick={() => setIsEventModalOpen(false)} className="text-pplx-muted hover:text-pplx-text p-2.5 hover:bg-pplx-hover rounded-full transition-all border border-transparent hover:border-pplx-border"><X size={22} /></button>

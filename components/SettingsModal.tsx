@@ -59,10 +59,10 @@ const SidebarItem = ({ id, label, icon: Icon, activeTab, onSelect }: { id: TabTy
 const MobileMenuItem = ({ icon: Icon, label, description, onClick, active }: { icon: any, label: string, description?: string, onClick: () => void, active?: boolean }) => (
     <button 
         onClick={onClick}
-        className="w-full flex items-center justify-between p-4 my-1 mx-0 md:mx-2 rounded-2xl active:scale-[0.98] transition-all duration-200 group bg-transparent hover:bg-pplx-hover/50"
+        className="w-full flex items-center justify-between p-4 my-1 mx-0 md:mx-2 rounded-2xl active:scale-[0.98] transition-all duration-150 group bg-transparent hover:bg-pplx-hover/50"
     >
         <div className="flex items-center gap-5">
-            <div className={`p-3 rounded-2xl transition-colors duration-300 ${active ? 'bg-pplx-accent text-black' : 'bg-pplx-secondary/50 text-pplx-muted group-hover:text-pplx-text'}`}>
+            <div className={`p-3 rounded-2xl transition-colors duration-150 ${active ? 'bg-pplx-accent text-black' : 'bg-pplx-secondary/50 text-pplx-muted group-hover:text-pplx-text'}`}>
                 <Icon size={22} strokeWidth={1.5} />
             </div>
             <div className="flex flex-col text-left">
@@ -121,9 +121,9 @@ const ToggleRow = ({ label, description, checked, onChange, isBeta = false }: an
             <p className="text-xs text-pplx-muted max-w-md leading-relaxed opacity-70">{description}</p>
         </div>
         <button
-            className={`flex-shrink-0 w-12 h-7 rounded-full relative transition-colors duration-300 ease-out ${checked ? 'bg-pplx-text' : 'bg-pplx-secondary'}`}
+            className={`flex-shrink-0 w-12 h-7 rounded-full relative transition-colors duration-150 ease-out ${checked ? 'bg-pplx-text' : 'bg-pplx-secondary'}`}
         >
-            <div className={`absolute top-1 left-1 w-5 h-5 bg-pplx-primary rounded-full shadow-sm transition-transform duration-300 ease-out ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+            <div className={`absolute top-1 left-1 w-5 h-5 bg-pplx-primary rounded-full shadow-sm transition-transform duration-150 ease-out ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
         </button>
     </div>
 );
@@ -141,7 +141,7 @@ interface OfflineModelCardProps {
 // Offline Model Card Component
 const OfflineModelCard: React.FC<OfflineModelCardProps> = ({ model, isDownloaded, isActive, onDownload, onSelect, onDelete, progress }) => {
     return (
-        <div className={`p-4 rounded-2xl border transition-all duration-300 ${isActive ? 'bg-pplx-card border-pplx-accent shadow-md' : 'bg-pplx-secondary/20 border-pplx-border hover:bg-pplx-secondary/40'}`}>
+        <div className={`p-4 rounded-2xl border transition-all duration-150 ${isActive ? 'bg-pplx-card border-pplx-accent shadow-md' : 'bg-pplx-secondary/20 border-pplx-border hover:bg-pplx-secondary/40'}`}>
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                     <span className="font-bold text-pplx-text text-sm">{model.name}</span>
@@ -165,7 +165,7 @@ const OfflineModelCard: React.FC<OfflineModelCardProps> = ({ model, isDownloaded
                         <span>{progress}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-pplx-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-pplx-accent transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
+                        <div className="h-full bg-pplx-accent transition-all duration-150 ease-out" style={{ width: `${progress}%` }} />
                     </div>
                 </div>
             ) : (
@@ -388,7 +388,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-6 transition-opacity duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-6 transition-opacity duration-150">
       <div className="bg-pplx-primary w-full max-w-5xl md:rounded-3xl shadow-2xl border-none md:border border-pplx-border/50 overflow-hidden flex flex-col md:flex-row h-[100dvh] md:h-[85vh] max-h-[900px] text-pplx-text relative">
         
         {/* --- MOBILE ROOT MENU --- */}
@@ -408,7 +408,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 {/* Profile Hero Card (Now Scrollable) */}
                 <div className="px-4 py-6">
                     <div 
-                        className="bg-pplx-card rounded-3xl p-6 shadow-xl shadow-black/5 relative overflow-hidden group active:scale-[0.98] transition-transform duration-200" 
+                        className="bg-pplx-card rounded-3xl p-6 shadow-xl shadow-black/5 relative overflow-hidden group active:scale-[0.98] transition-transform duration-150" 
                         onClick={() => handleMobileNav('profile')}
                     >
                         <div className="flex items-center gap-5 relative z-10">
@@ -526,7 +526,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                         <button
                                             key={opt.id}
                                             onClick={() => setFormData({ ...formData, theme: opt.id as any })}
-                                            className={`flex flex-col items-center justify-center py-5 px-2 rounded-2xl transition-all duration-300 ${
+                                            className={`flex flex-col items-center justify-center py-5 px-2 rounded-2xl transition-all duration-150 ${
                                                 formData.theme === opt.id
                                                 ? 'bg-pplx-card text-pplx-text shadow-xl shadow-black/5 ring-1 ring-black/5 dark:ring-white/10'
                                                 : 'bg-pplx-secondary/30 text-pplx-muted hover:bg-pplx-secondary/60 hover:text-pplx-text'
@@ -636,7 +636,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                              <div className="flex gap-2 mb-4 bg-pplx-secondary/30 p-1 rounded-xl">
                                 <button 
                                     onClick={() => setFormData({ ...formData, searchProvider: 'tavily' })}
-                                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
+                                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-150 ${
                                         formData.searchProvider === 'tavily' 
                                         ? 'bg-pplx-text text-pplx-primary shadow-md transform scale-[1.02]' 
                                         : 'bg-transparent text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary/50'
@@ -646,7 +646,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 </button>
                                 <button 
                                     onClick={() => setFormData({ ...formData, searchProvider: 'brave' })}
-                                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 ${
+                                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-150 ${
                                         formData.searchProvider === 'brave' 
                                         ? 'bg-pplx-text text-pplx-primary shadow-md transform scale-[1.02]' 
                                         : 'bg-transparent text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary/50'
@@ -677,7 +677,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                             <div className="bg-pplx-input p-1.5 rounded-2xl flex w-full md:w-auto">
                                 <button 
                                     onClick={() => setModelType('cloud')} 
-                                    className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                                    className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 ${
                                         modelType === 'cloud' 
                                         ? 'bg-pplx-text text-pplx-primary shadow-lg transform scale-[1.02]' 
                                         : 'bg-transparent text-pplx-muted hover:text-pplx-text'
@@ -687,7 +687,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 </button>
                                 <button 
                                     onClick={() => setModelType('local')} 
-                                    className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+                                    className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 ${
                                         modelType === 'local' 
                                         ? 'bg-pplx-text text-pplx-primary shadow-lg transform scale-[1.02]' 
                                         : 'bg-transparent text-pplx-muted hover:text-pplx-text'
@@ -701,7 +701,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         {modelType === 'cloud' && (
                             <div className="space-y-4 animate-fadeIn">
                                 {/* Gemini Card */}
-                                <div className={`group rounded-3xl p-6 transition-all duration-300 cursor-pointer select-none ${formData.modelProvider === ModelProvider.GEMINI ? 'bg-pplx-card shadow-lg ring-1 ring-black/5 dark:ring-white/10' : 'bg-pplx-card/50 hover:bg-pplx-card'}`}>
+                                <div className={`group rounded-3xl p-6 transition-all duration-150 cursor-pointer select-none ${formData.modelProvider === ModelProvider.GEMINI ? 'bg-pplx-card shadow-lg ring-1 ring-black/5 dark:ring-white/10' : 'bg-pplx-card/50 hover:bg-pplx-card'}`}>
                                     <div className="flex items-center justify-between" onClick={() => setFormData({ ...formData, modelProvider: ModelProvider.GEMINI })}>
                                         <div className="flex items-center gap-4">
                                             <div className={`p-3 rounded-2xl ${formData.modelProvider === ModelProvider.GEMINI ? 'bg-pplx-text text-pplx-primary' : 'bg-pplx-secondary text-pplx-muted'}`}><Sparkles size={20} /></div>
@@ -721,7 +721,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 </div>
 
                                 {/* OpenRouter Card */}
-                                <div className={`group rounded-3xl p-6 transition-all duration-300 cursor-pointer select-none ${formData.modelProvider === ModelProvider.OPENROUTER ? 'bg-pplx-card shadow-lg ring-1 ring-black/5 dark:ring-white/10' : 'bg-pplx-card/50 hover:bg-pplx-card'}`}>
+                                <div className={`group rounded-3xl p-6 transition-all duration-150 cursor-pointer select-none ${formData.modelProvider === ModelProvider.OPENROUTER ? 'bg-pplx-card shadow-lg ring-1 ring-black/5 dark:ring-white/10' : 'bg-pplx-card/50 hover:bg-pplx-card'}`}>
                                     <div className="flex items-center justify-between" onClick={() => setFormData({ ...formData, modelProvider: ModelProvider.OPENROUTER })}>
                                         <div className="flex items-center gap-4">
                                             <div className={`p-3 rounded-2xl ${formData.modelProvider === ModelProvider.OPENROUTER ? 'bg-pplx-text text-pplx-primary' : 'bg-pplx-secondary text-pplx-muted'}`}><Globe size={20} /></div>
@@ -758,7 +758,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 </div>
 
                                 {/* OpenAI Card */}
-                                <div className={`group rounded-3xl p-6 transition-all duration-300 cursor-pointer select-none ${formData.modelProvider === ModelProvider.OPENAI ? 'bg-pplx-card shadow-lg ring-1 ring-black/5 dark:ring-white/10' : 'bg-pplx-card/50 hover:bg-pplx-card'}`}>
+                                <div className={`group rounded-3xl p-6 transition-all duration-150 cursor-pointer select-none ${formData.modelProvider === ModelProvider.OPENAI ? 'bg-pplx-card shadow-lg ring-1 ring-black/5 dark:ring-white/10' : 'bg-pplx-card/50 hover:bg-pplx-card'}`}>
                                     <div className="flex items-center justify-between" onClick={() => setFormData({ ...formData, modelProvider: ModelProvider.OPENAI })}>
                                         <div className="flex items-center gap-4">
                                             <div className={`p-3 rounded-2xl ${formData.modelProvider === ModelProvider.OPENAI ? 'bg-pplx-text text-pplx-primary' : 'bg-pplx-secondary text-pplx-muted'}`}><Zap size={20} /></div>
@@ -973,7 +973,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
             </div>
             
             {/* Mobile Action Footer (Fixed Bottom inside the Flex container) */}
-            <div className={`md:hidden p-4 bg-pplx-primary/95 backdrop-blur-md flex gap-3 z-30 shrink-0 transition-all duration-300 ${formData.enableMobileDock ? 'pb-[80px]' : 'pb-8'}`}>
+            <div className={`md:hidden p-4 bg-pplx-primary/95 backdrop-blur-md flex gap-3 z-30 shrink-0 transition-all duration-150 ${formData.enableMobileDock ? 'pb-[80px]' : 'pb-8'}`}>
                 <button 
                     onClick={() => setIsMobileDetail(false)} 
                     className="flex-1 py-2.5 rounded-xl text-xs font-medium text-pplx-text bg-pplx-secondary hover:bg-pplx-hover transition-colors"

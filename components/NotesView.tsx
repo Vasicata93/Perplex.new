@@ -717,7 +717,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
                 <input type="file" ref={coverInputRef} className="hidden" accept="image/*" onChange={handleCoverUpload} />
                 <input type="file" ref={blockFileInputRef} className="hidden" onChange={handleFileBlockUpload} />
 
-                <div className="max-w-4xl mx-auto px-4 md:px-12 pb-32 pt-12 relative z-10">
+                <div className="max-w-4xl mx-auto px-4 md:px-12 pb-32 pt-12 relative z-10 bg-pplx-secondary/5 rounded-2xl">
                     <div className="group relative mb-8">
                         {!activeNote.isLocked && (
                             <div className={`flex gap-4 text-xs font-medium text-pplx-muted opacity-0 group-hover:opacity-100 transition-opacity duration-150 mb-2`}>

@@ -377,7 +377,7 @@ export const CalendarBlock = ({ content, onChange, readOnly }: { content: string
 export const ChartBlock = ({ type, content, onChange, readOnly }: { type: 'chart_bar_v' | 'chart_bar_h' | 'chart_line' | 'chart_donut', content: string, onChange: (val: string) => void, readOnly?: boolean }) => {
     const [isEditing, setIsEditing] = useState(false);
     
-    const parseData = (str: string) => str.split('\n').map(line => {
+    const parseData = (str: string) => str.split(/[\n;]/).map(line => {
         const [label, val] = line.split(',');
         return { label: label || 'Item', value: parseFloat(val) || 0 };
     }).filter(d => d.label);
@@ -409,13 +409,54 @@ export const ChartBlock = ({ type, content, onChange, readOnly }: { type: 'chart
                         <div className="flex items-end gap-3 h-full w-full pl-8 pb-6 pr-2 pt-4 relative z-10">
                             {data.map((d, i) => (
                                 <div key={i} className="flex-1 flex flex-col justify-end items-center h-full group/bar relative">
-                                    <div className="w-full rounded-t-lg transition-all min-w-[12px] hover:brightness-110 shadow-sm" style={{ height: `${(d.value / maxVal) * 100}%`, backgroundColor: colors[i % colors.length] }} />
+                                    <div className="w-full rounded-t-lg transition-all min-w-[12px] hover:brightness-110 shadow-sm" style={{ height: `${Math.max(0, (d.value / maxVal) * 100)}%`, backgroundColor: colors[i % colors.length] }} />
                                     <span className="text-[10px] font-medium text-pplx-muted mt-3 truncate w-full text-center absolute -bottom-6">{d.label}</span>
                                 </div>
                             ))}
                         </div>
                     )}
-                    {(type === 'chart_bar_h' || type === 'chart_line' || type === 'chart_donut') && (
+                    {type === 'chart_donut' && (
+                        <div className="flex items-center justify-center h-full w-full relative">
+                            <svg viewBox="0 0 100 100" className="h-full w-auto transform -rotate-90">
+                                {data.reduce((acc, d, i) => {
+                                    const total = data.reduce((sum, item) => sum + item.value, 0);
+                                    const percentage = (d.value / total);
+                                    const circumference = 2 * Math.PI * 40;
+                                    const dashArray = `${percentage * circumference} ${circumference}`;
+                                    const offset = circumference - acc.currentOffset;
+                                    acc.currentOffset += percentage * circumference;
+                                    
+                                    acc.elements.push(
+                                        <circle
+                                            key={i}
+                                            cx="50" cy="50" r="40"
+                                            fill="transparent"
+                                            stroke={colors[i % colors.length]}
+                                            strokeWidth="20"
+                                            strokeDasharray={dashArray}
+                                            strokeDashoffset={offset}
+                                            className="transition-all duration-500 hover:stroke-[22px] cursor-pointer"
+                                        />
+                                    );
+                                    return acc;
+                                }, { currentOffset: 0, elements: [] as JSX.Element[] }).elements}
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-2xl font-bold text-pplx-text">{data.reduce((sum, item) => sum + item.value, 0).toLocaleString()}</span>
+                                <span className="text-[10px] text-pplx-muted uppercase tracking-wider">Total</span>
+                            </div>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+                                {data.map((d, i) => (
+                                    <div key={i} className="flex items-center gap-2 text-xs">
+                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
+                                        <span className="text-pplx-text font-medium">{d.label}</span>
+                                        <span className="text-pplx-muted">{((d.value / data.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(1)}%</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {(type === 'chart_bar_h' || type === 'chart_line') && (
                         <div className="flex flex-col items-center justify-center text-pplx-muted">
                             <BarChart3 size={32} />
                             <span className="text-xs mt-2">Visualization enabled</span>

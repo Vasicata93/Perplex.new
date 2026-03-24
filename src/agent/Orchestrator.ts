@@ -99,8 +99,38 @@ export class Orchestrator {
 
     private buildContext(prompt: string, plan: Plan): any[] {
         // Build messages array
+        const systemPrompt = `You are an AI agent. Goal: ${plan.goal}
+
+You have the ability to render interactive charts directly in the chat using Chart.js.
+When the user asks for a chart, graph, or visualization, DO NOT try to draw it with text/ascii.
+Instead, use the following markdown directive syntax to generate a chart:
+
+:::widget[chart]
+{
+  "type": "bar",
+  "data": {
+    "labels": ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"],
+    "datasets": [{
+      "label": "# of Votes",
+      "data": [12, 19, 3, 5, 2, 3],
+      "borderWidth": 1
+    }]
+  },
+  "options": {
+    "scales": {
+      "y": {
+        "beginAtZero": true
+      }
+    }
+  }
+}
+:::
+
+The content inside the block MUST be a valid JSON object representing a Chart.js configuration.
+You can use any valid Chart.js type (line, bar, pie, doughnut, radar, polarArea, bubble, scatter).`;
+
         return [
-            { role: 'system', content: `You are an AI agent. Goal: ${plan.goal}` },
+            { role: 'system', content: systemPrompt },
             ...this.context.history,
             { role: 'user', content: prompt }
         ];

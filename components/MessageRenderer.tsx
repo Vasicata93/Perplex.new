@@ -2,7 +2,58 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkDirective from 'remark-directive';
+import { visit } from 'unist-util-visit';
 import { Copy } from 'lucide-react';
+import { WidgetRenderer } from './WidgetRenderer';
+
+// Plugin to handle :::widget[type]{config}
+function remarkWidgetPlugin() {
+    return (tree: any) => {
+        visit(tree, (node) => {
+            if (
+                node.type === 'textDirective' ||
+                node.type === 'leafDirective' ||
+                node.type === 'containerDirective'
+            ) {
+                if (node.name !== 'widget') return;
+
+                const data = node.data || (node.data = {});
+                
+                // The type is passed in the brackets: :::widget[chart]
+                let widgetType = 'unknown';
+                let configStr = '{}';
+                
+                if (node.type === 'containerDirective') {
+                    const labelChild = node.children.find((c: any) => c.data && c.data.directiveLabel);
+                    if (labelChild && labelChild.children && labelChild.children.length > 0) {
+                        widgetType = labelChild.children[0].value;
+                    }
+
+                    // Extract text from children (excluding the label)
+                    const extractText = (n: any): string => {
+                        if (n.type === 'text' || n.type === 'code') return n.value;
+                        if (n.children) return n.children.map(extractText).join('');
+                        return '';
+                    };
+                    
+                    const contentNodes = node.children.filter((c: any) => !(c.data && c.data.directiveLabel));
+                    configStr = contentNodes.map(extractText).join('\n');
+                } else if (node.type === 'leafDirective' || node.type === 'textDirective') {
+                    if (node.children && node.children.length > 0) {
+                        widgetType = node.children[0].value;
+                    }
+                }
+
+                data.hName = 'custom-widget';
+                data.hProperties = {
+                    widgetType: widgetType,
+                    configStr: configStr
+                };
+            }
+        });
+    };
+}
 
 interface MessageRendererProps {
     content: string;
@@ -11,9 +62,20 @@ interface MessageRendererProps {
 export const MessageRenderer: React.FC<MessageRendererProps> = ({ content }) => {
     return (
         <ReactMarkdown 
-            remarkPlugins={[remarkGfm]}
+            remarkPlugins={[remarkGfm, remarkDirective, remarkWidgetPlugin]}
             components={{
-                p: ({node, ...props}) => <p className="mb-6 leading-7 md:leading-8 text-pplx-text font-normal text-[15px] md:text-[16px]" {...props} />,
+                // @ts-ignore
+                'custom-widget': ({ node, widgetType, configStr, ...props }) => {
+                    return <WidgetRenderer type={widgetType as string} configStr={configStr as string} />;
+                },
+                p: ({node, ...props}) => {
+                    // Check if paragraph contains a custom-widget to avoid validateDOMNesting warning
+                    const hasWidget = node?.children?.some((child: any) => child.tagName === 'custom-widget');
+                    if (hasWidget) {
+                        return <div className="mb-6 leading-7 md:leading-8 text-pplx-text font-normal text-[15px] md:text-[16px]" {...props} />;
+                    }
+                    return <p className="mb-6 leading-7 md:leading-8 text-pplx-text font-normal text-[15px] md:text-[16px]" {...props} />;
+                },
                 ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-6 space-y-2 text-pplx-text" {...props} />,
                 ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-6 space-y-2 text-pplx-text" {...props} />,
                 li: ({node, ...props}) => <li className="pl-1 leading-7" {...props} />,

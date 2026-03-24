@@ -475,6 +475,45 @@ function App() {
       setExpandedSidebarSection('library');
   };
 
+  const handleNewPortfolioTracker = () => {
+      const initialContent = `# The Digital Curator | Dashboard Consolidat
+---
+> Total Value: €1,420,500 | YTD Returns: +12.4% | Last Month: +4.2% | Volatility: 8.4%
+---
+## Active Allocation Strategy
+[CHART_D]AAPL,10;MSFT,7;VUSA,14.8;GOLD,8;OTHER,47.2
+---
+## PERIODIC PERFORMANCE (12 M)
+[CHART_V]Jan,2;Feb,3;Mar,-1;Apr,4;May,5;Jun,-2;Jul,6;Aug,2;Sep,-3;Oct,4;Nov,5;Dec,8
+---
+## ACTIVE STRATEGIES
+- **Momentum Alpha** (ACTIVE)
+- **Yield Guardian** (DEFENSIVE)
+---
+## PORTOFOLIU COMPOZIT
+[TABLE][["Asset","Value","Change"],["AAPL","€142,050","+12.4%"],["MSFT","€99,435","+8.2%"],["VUSA","€210,234","+15.1%"],["GOLD","€113,640","+2.1%"],["BTC","€71,025","+45.2%"],["O","€42,615","-1.2%"],["NSRGY","€28,410","+0.5%"],["TSLA","€56,820","-15.4%"],["NVDA","€85,230","+112.4%"]]
+---
+## WATCHLIST
+- [ ] **PLTR** - Monitor for entry below $20
+- [ ] **AMD** - Check upcoming earnings report
+- [ ] **ETH** - Wait for consolidation
+`;
+
+      const newNote: Note = {
+          id: generateId(),
+          title: 'Portfolio Manager Tracker',
+          content: initialContent,
+          updatedAt: Date.now(),
+          status: 'In Progress',
+          tags: ['portfolio', 'finance', 'tracker'],
+          emoji: '📈',
+          cover: 'linear-gradient(to right, #0f2027, #203a43, #2c5364)'
+      };
+      setNotes(prev => [newNote, ...prev]);
+      navigateToNote(newNote.id);
+      setExpandedSidebarSection('library');
+  };
+
   // New: Delete Thread Handler
   const handleDeleteThread = (id: string) => {
     setThreads(prev => prev.filter(t => t.id !== id));
@@ -1496,6 +1535,7 @@ function App() {
           onChangeView={(view) => { pushToHistory(); setActiveView(view); }} 
           onNewThread={handleNewThread} 
           onNewNote={handleNewNote} 
+          onNewPortfolioTracker={handleNewPortfolioTracker}
           onManageSpaces={() => setSpacesModalOpen(true)} 
           openSettings={() => setSettingsOpen(true)}
           onDeleteThread={handleDeleteThread}
@@ -1510,7 +1550,7 @@ function App() {
       />
 
       <main 
-        className={`flex-1 h-full flex flex-col relative overflow-hidden transition-all duration-400 bg-pplx-primary`}
+        className={`flex-1 h-full flex flex-col relative overflow-hidden transition-all duration-150 bg-pplx-primary`}
         style={{ 
           paddingBottom: settings.enableMobileDock && window.innerWidth < 640 
             ? 'calc(72px + env(safe-area-inset-bottom))' 
@@ -1946,12 +1986,11 @@ function App() {
                     ) : (
                         <div className={`flex flex-col h-full items-center justify-center relative z-10 ${activeView === 'chat' && !activeThreadId ? 'md:mt-24 -mt-10' : '-mt-10'}`}>
                             {/* ... existing default home view ... */}
-                            <div className="hidden md:flex flex-col items-center">
+                        <div className="hidden md:flex flex-col items-center">
                                 <PerplexityLogo className="w-16 h-16 text-pplx-text mb-8 drop-shadow-xl dark:drop-shadow-2xl" />
                                 <h1 className="text-4xl md:text-5xl font-light text-transparent bg-clip-text bg-gradient-to-b from-pplx-text to-pplx-muted mb-4 font-serif tracking-tight drop-shadow-sm">
                                     Where knowledge begins
                                 </h1>
-                                <div className="h-px w-12 bg-gradient-to-r from-transparent via-pplx-border to-transparent mb-4" />
                                 <p className="text-sm md:text-base text-pplx-muted font-light tracking-[0.2em] uppercase">
                                     Ask anything
                                 </p>
@@ -1971,7 +2010,7 @@ function App() {
                         onClose={() => setIsDashboardMode(false)}
                     />
                 ) : (
-                    <div className="max-w-3xl mx-auto w-full py-4 space-y-6 px-4 md:px-0 mt-4 md:mt-0 relative z-0">
+                    <div className="max-w-3xl mx-auto w-full py-4 space-y-6 px-4 md:px-0 mt-4 md:mt-0 relative z-0 bg-pplx-secondary/5 rounded-2xl">
                         
                         {activeThread.messages.map((msg) => (
                             // ... existing message mapping ...
@@ -2237,7 +2276,7 @@ function App() {
                     }}
                 />
 
-                <div className={`w-full bg-pplx-primary pt-2 px-4 z-30 shrink-0 border-t border-transparent transition-all duration-500 ${settings.enableMobileDock ? 'sm:pb-6' : 'pb-0'} ${activeView === 'chat' && !activeThreadId && !activeSpace ? 'md:pb-[35vh]' : 'md:pb-0'}`}>
+                <div className={`w-full bg-pplx-primary pt-2 px-4 z-30 shrink-0 border-t border-transparent transition-all duration-150 ${settings.enableMobileDock ? 'sm:pb-6' : 'pb-0'} ${activeView === 'chat' && !activeThreadId && !activeSpace ? 'md:pb-[35vh]' : 'md:pb-0'}`}>
                     <div className="pointer-events-auto">
                           <InputArea 
                             key={activeThreadId || 'home'} 

@@ -189,12 +189,12 @@ export const MobileDock: React.FC<MobileDockProps> = ({
         
         {/* Black Backdrop Overlay for Menu */}
         <div 
-          className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 z-[-1] ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+          className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-150 z-[-1] ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
           onClick={() => setIsMenuOpen(false)}
         />
 
         {/* Rainbow Menu (Arc) */}
-        <div className={`absolute bottom-full mb-6 transition-all duration-300 ${isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-90 pointer-events-none'}`}>
+        <div className={`absolute bottom-full mb-6 transition-all duration-150 ${isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-90 pointer-events-none'}`}>
            <div className="relative w-64 h-32 flex items-end justify-center">
               {menuItems.map((item, index) => {
                 const total = menuItems.length;
@@ -218,7 +218,7 @@ export const MobileDock: React.FC<MobileDockProps> = ({
                     onMouseEnter={() => setHoveredMenuItemId(item.id)}
                     onMouseLeave={() => setHoveredMenuItemId(null)}
                   >
-                    <div className={`absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap transition-all duration-200 ${hoveredMenuItemId === item.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}>
+                    <div className={`absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap transition-all duration-150 ${hoveredMenuItemId === item.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}>
                         {item.label}
                     </div>
 
@@ -251,7 +251,7 @@ export const MobileDock: React.FC<MobileDockProps> = ({
             {/* Home / Back Button */}
             <button
               onClick={() => onNavigate('home')}
-              className={`relative flex items-center justify-center w-[43px] h-[43px] rounded-full transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ${
+              className={`relative flex items-center justify-center w-[43px] h-[43px] rounded-full transition-all duration-150 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ${
                 activeView === 'home' || isHomeBackActive
                   ? 'bg-[#e8dcc4] text-black' 
                   : 'bg-[#2a2a2a] text-white/70 hover:text-white'
@@ -275,7 +275,7 @@ export const MobileDock: React.FC<MobileDockProps> = ({
                   onMouseDown={() => handleTouchStart(slotIndex)}
                   onMouseUp={handleTouchEnd}
                   onMouseLeave={handleTouchEnd}
-                  className={`relative flex items-center justify-center w-[38px] h-[38px] rounded-full transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ${
+                  className={`relative flex items-center justify-center w-[38px] h-[38px] rounded-full transition-all duration-150 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ${
                     isActive 
                       ? 'bg-[#e8dcc4] text-black' 
                       : 'bg-[#2a2a2a] text-white/70 hover:text-white'
@@ -292,7 +292,7 @@ export const MobileDock: React.FC<MobileDockProps> = ({
           {/* Plus Button */}
           <button
             onClick={handlePlusClick}
-            className={`relative w-[43px] h-[43px] bg-[#e8dcc4] text-black rounded-full flex items-center justify-center shadow-lg transform transition-all duration-300 shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)] ${isMenuOpen ? 'rotate-45' : 'active:scale-90'}`}
+            className={`relative w-[43px] h-[43px] bg-[#e8dcc4] text-black rounded-full flex items-center justify-center shadow-lg transform transition-all duration-150 shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)] ${isMenuOpen ? 'rotate-45' : 'active:scale-90'}`}
           >
             <Plus size={24} strokeWidth={2.5} />
             {/* Button Shine */}
