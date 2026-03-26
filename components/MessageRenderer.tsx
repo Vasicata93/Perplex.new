@@ -87,6 +87,11 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({ content }) => 
                     const match = /language-(\w+)/.exec(props.className || '')
                     // @ts-ignore
                     const isInline = !match && !String(props.children).includes('\n');
+                    
+                    if (!isInline && match && (match[1] === 'chart' || match[1] === 'widget')) {
+                        return <WidgetRenderer type="chart" configStr={String(props.children)} />;
+                    }
+
                     return isInline ? <code className="bg-pplx-secondary text-pplx-accent px-1.5 py-0.5 rounded text-sm font-mono border border-pplx-border" {...props} /> : <div className="relative my-6 rounded-lg overflow-hidden border border-pplx-border bg-pplx-card shadow-sm"><div className="flex items-center justify-between px-4 py-2 bg-pplx-hover/40 border-b border-pplx-border"><span className="text-xs text-pplx-muted font-mono lowercase">{match?.[1] || 'code'}</span><button onClick={() => navigator.clipboard.writeText(String(props.children))} className="flex items-center gap-1.5 text-xs text-pplx-muted hover:text-pplx-text transition-colors"><Copy size={12} /> Copy</button></div><pre className="p-4 overflow-x-auto text-sm text-pplx-text font-mono leading-relaxed custom-scrollbar"><code className={props.className} {...props} /></pre></div>
                 },
                 table: ({node, ...props}) => (<div className="my-6 w-full overflow-hidden rounded-lg border border-pplx-border shadow-sm"><div className="overflow-x-auto"><table className="w-full border-collapse text-sm text-left" {...props} /></div></div>),

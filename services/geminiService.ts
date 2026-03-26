@@ -1359,6 +1359,13 @@ export class LLMService {
                 tools: tools,
                 thinkingConfig: thinkingConfig,
                 systemInstruction: systemInstruction,
+                httpOptions: tools.length > 0 ? {
+                    extraBody: {
+                        tool_config: {
+                            include_server_side_tool_invocations: true
+                        }
+                    }
+                } as any : undefined
             }
         });
         
@@ -1830,14 +1837,21 @@ export class LLMService {
 
             while (true) {
                 const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split("\n");
-                buffer = lines.pop() || ""; 
+                
+                if (value) {
+                    buffer += decoder.decode(value, { stream: true });
+                }
+                
+                let lines = buffer.split("\n");
+                if (!done) {
+                    buffer = lines.pop() || ""; 
+                } else {
+                    buffer = ""; // Process all remaining lines
+                }
 
                 for (const line of lines) {
                     const trimmed = line.trim();
+                    if (!trimmed) continue;
                     if (trimmed === "data: [DONE]") continue;
                     if (!trimmed.startsWith("data: ")) continue;
 
@@ -1914,6 +1928,7 @@ export class LLMService {
                         // Ignore partial JSON parse errors
                     }
                 }
+                if (done) break;
             }
 
             // Turn Complete
@@ -2124,7 +2139,7 @@ export class LLMService {
                         if (onChunk) onChunk("", `\n🗺️ Mapat structura workspace-ului...\n`);
                     } else if (toolCall.function.name === 'semantic_search_workspace') {
                         const query = args.query as string;
-                        let toolResultContent = `Semantic search results for "${query}":\n`;
+                        toolResultContent = `Semantic search results for "${query}":\n`;
                         
                         const queryEmbedding = await this.generateEmbedding(query);
                         if (!queryEmbedding) {
@@ -2434,6 +2449,36 @@ export class LLMService {
               parts.push(memoryContext);
           }
       }
+
+      // Add chart generation instructions
+      parts.push(`\n**CHART GENERATION PROTOCOL:**
+You have the ability to render interactive charts directly in the chat using Chart.js.
+When the user asks for a chart, graph, or visualization, DO NOT try to draw it with text/ascii.
+Instead, use a standard markdown code block with the language set to \`chart\` to generate a chart:
+
+\`\`\`chart
+{
+  "type": "bar",
+  "data": {
+    "labels": ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"],
+    "datasets": [{
+      "label": "# of Votes",
+      "data": [12, 19, 3, 5, 2, 3],
+      "borderWidth": 1
+    }]
+  },
+  "options": {
+    "scales": {
+      "y": {
+        "beginAtZero": true
+      }
+    }
+  }
+}
+\`\`\`
+
+The content inside the block MUST be a valid JSON object representing a Chart.js configuration.
+You can use any valid Chart.js type (line, bar, pie, doughnut, radar, polarArea, bubble, scatter).`);
 
       if (spaceSystemInstruction) {
           parts.push(`\n\nCurrent Workspace Instructions:\n${spaceSystemInstruction}`);

@@ -25,87 +25,171 @@ export class Orchestrator {
     }
 
     public async run(prompt: string): Promise<AgentResult> {
-        // 1. Analyze Request (Task Interpreter)
-        const intent = await this.analyzeIntent(prompt);
-        this.memory.updateWorkingMemory('activeSubtask', intent);
-        this.eventEmitter({ type: 'thinking', content: `Analyzing request: ${intent}` });
-
-        // 2. Plan Actions (Planner Engine)
-        const plan = await this.createPlan(intent);
-        this.eventEmitter({ type: 'thinking', content: `Created plan: ${plan.goal}` });
-
-        // 3. Reasoning Loop
-        let turns = 0;
-        const maxTurns = 5;
         let finalResult: AgentResult = { text: '', citations: [], relatedQuestions: [], searchImages: [] };
+        let accumulatedReasoning = "";
 
-        while (turns < maxTurns) {
-            // Context Builder
-            const messages = this.buildContext(prompt, plan);
-            
-            // LLM Reasoning Call
-            const response = await this.llm.generateCompletion(messages, this.tooling.getAllTools());
-            
-            // Tool Decision Router
-            if (response.toolCalls && response.toolCalls.length > 0) {
-                for (const call of response.toolCalls) {
-                    this.eventEmitter({ type: 'tool_start', tool: call.name, args: call.args });
-                    
-                    // Tool Executor
-                    const result = await this.tooling.executeTool(call.name, call.args, this.context);
-                    
-                    // Observation Parser
-                    this.memory.addToBuffer('tool', JSON.stringify(result));
-                    this.eventEmitter({ type: 'tool_end', tool: call.name, result: result.output });
+        try {
+            // Step 1: Analyze Request (Intent)
+            this.eventEmitter({ type: 'thinking', content: `Analyzing intent...` });
+            const intent = await this.analyzeIntent(prompt);
+            this.memory.updateWorkingMemory('activeSubtask', intent);
+            accumulatedReasoning += `Intent: ${intent}\n`;
 
-                    // Handle Pending Actions (Save)
-                    if (result.output && result.output.pendingAction) {
-                        finalResult.pendingAction = result.output.pendingAction;
-                        return finalResult; // Exit loop on pending action
-                    }
+            // Step 2: Plan Actions (Planner Engine)
+            this.eventEmitter({ type: 'thinking', content: `Creating execution plan...` });
+            const plan = await this.createPlan(intent, prompt);
+            accumulatedReasoning += `Plan: ${plan.tasks.map(t => t.description).join(' -> ')}\n`;
+
+            // Step 3: ReAct (Reasoning Loop)
+            let turns = 0;
+            const maxTurns = 7;
+            let currentContext = this.buildContext(prompt, plan);
+            let rawResponseText = "";
+
+            while (turns < maxTurns) {
+                this.eventEmitter({ type: 'thinking', content: `Executing step ${turns + 1}/${maxTurns}...` });
+                
+                const response = await this.llm.generateCompletion(currentContext, this.tooling.getAllTools());
+                
+                if (response.reasoning) {
+                    accumulatedReasoning += `\nThought: ${response.reasoning}\n`;
                 }
-            } else {
-                // Completion Evaluator
-                finalResult.text = response.text;
-                // Extract reasoning if available
-                // ...
-                break; // Done
+
+                // Tool Decision Router
+                if (response.toolCalls && response.toolCalls.length > 0) {
+                    currentContext.push({ role: 'assistant', content: response.text || '', tool_calls: response.toolCalls });
+                    
+                    for (const call of response.toolCalls) {
+                        this.eventEmitter({ type: 'tool_start', tool: call.name, args: call.args });
+                        
+                        // Execute Tool
+                        const result = await this.tooling.executeTool(call.name, call.args, this.context);
+                        
+                        // Parse Observation
+                        const observation = JSON.stringify(result.output);
+                        this.memory.addToBuffer('tool', observation);
+                        this.eventEmitter({ type: 'tool_end', tool: call.name, result: result.output });
+
+                        // Handle Pending Actions (e.g., Save to Library requires user confirmation)
+                        if (result.output && result.output.pendingAction) {
+                            finalResult.pendingAction = result.output.pendingAction;
+                            finalResult.text = "I have prepared the action. Please confirm to proceed.";
+                            finalResult.reasoning = accumulatedReasoning;
+                            return finalResult;
+                        }
+
+                        currentContext.push({ role: 'tool', tool_call_id: call.id, name: call.name, content: observation });
+                    }
+                } else {
+                    // No more tools needed, we have a final text
+                    rawResponseText = response.text;
+                    break;
+                }
+
+                turns++;
             }
 
-            turns++;
+            if (turns >= maxTurns) {
+                this.eventEmitter({ type: 'thinking', content: `Reached maximum reasoning turns.` });
+            }
+
+            // Step 4: Self-check (Evaluate Completion)
+            this.eventEmitter({ type: 'thinking', content: `Self-checking response...` });
+            const isSufficient = await this.selfCheck(prompt, rawResponseText);
+            if (!isSufficient) {
+                accumulatedReasoning += `\nSelf-check failed. Refining response...\n`;
+                const refinementContext = [
+                    ...currentContext, 
+                    { role: 'user', content: "The previous response was insufficient or incomplete. Please refine and provide a comprehensive final answer." }
+                ];
+                const refinedResponse = await this.llm.generateCompletion(refinementContext, []);
+                rawResponseText = refinedResponse.text;
+            }
+
+            // Step 5: Format (Result Aggregator)
+            this.eventEmitter({ type: 'thinking', content: `Formatting final output...` });
+            finalResult = await this.formatResult(rawResponseText, accumulatedReasoning);
+
+        } catch (error: any) {
+            this.eventEmitter({ type: 'error', message: error.message });
+            finalResult.text = `An error occurred during execution: ${error.message}`;
         }
 
-        // 4. Finalizer
-        // Result Aggregator
-        // ...
-        
         this.eventEmitter({ type: 'complete', result: finalResult });
         return finalResult;
     }
 
     private async analyzeIntent(prompt: string): Promise<string> {
-        // Simple heuristic or LLM call
-        return "User Intent: " + prompt.substring(0, 50);
+        const messages = [
+            { role: 'system', content: 'You are an intent analyzer. Summarize the user\'s core intent in one concise sentence.' },
+            { role: 'user', content: prompt }
+        ];
+        const response = await this.llm.generateCompletion(messages, []);
+        return response.text.trim();
     }
 
-    private async createPlan(intent: string): Promise<Plan> {
-        // Simple plan creation
+    private async createPlan(intent: string, prompt: string): Promise<Plan> {
+        const messages = [
+            { role: 'system', content: 'You are a planner. Break down the user intent into 1-3 logical steps. Return ONLY a JSON array of strings representing the steps.' },
+            { role: 'user', content: `Intent: ${intent}\nOriginal prompt: ${prompt}` }
+        ];
+        
+        try {
+            const response = await this.llm.generateCompletion(messages, []);
+            const stepsText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const steps: string[] = JSON.parse(stepsText);
+            
+            return {
+                id: `plan-${Date.now()}`,
+                goal: intent,
+                tasks: steps.map((step, i) => ({
+                    id: `task-${i}`,
+                    description: step,
+                    status: 'pending',
+                    dependencies: i > 0 ? [`task-${i-1}`] : []
+                }))
+            };
+        } catch (e) {
+            // Fallback plan
+            return {
+                id: `plan-${Date.now()}`,
+                goal: intent,
+                tasks: [{ id: 'task-0', description: 'Execute user request', status: 'pending', dependencies: [] }]
+            };
+        }
+    }
+
+    private async selfCheck(_prompt: string, responseText: string): Promise<boolean> {
+        // Simple heuristic for now, could be an LLM call
+        if (!responseText || responseText.length < 10) return false;
+        return true;
+    }
+
+    private async formatResult(rawText: string, reasoning: string): Promise<AgentResult> {
+        // Extract citations and related questions if present
+        // For now, just return the raw text and reasoning
         return {
-            id: 'plan-1',
-            goal: intent,
-            tasks: [{ id: 'task-1', description: intent, status: 'pending', dependencies: [] }]
+            text: rawText,
+            citations: [],
+            relatedQuestions: [],
+            searchImages: [],
+            reasoning: reasoning
         };
     }
 
     private buildContext(prompt: string, plan: Plan): any[] {
-        // Build messages array
-        const systemPrompt = `You are an AI agent. Goal: ${plan.goal}
+        const systemPrompt = `You are Robo, an advanced personal AI assistant.
+Goal: ${plan.goal}
+Plan:
+${plan.tasks.map((t, i) => `${i + 1}. ${t.description}`).join('\n')}
+
+IMPORTANT: You have access to tools. You MUST use the appropriate tools to execute the steps in the plan. Do not try to answer from your own knowledge if a tool can provide accurate, up-to-date information (e.g., use the search tool for current events or facts).
 
 You have the ability to render interactive charts directly in the chat using Chart.js.
 When the user asks for a chart, graph, or visualization, DO NOT try to draw it with text/ascii.
-Instead, use the following markdown directive syntax to generate a chart:
+Instead, use a standard markdown code block with the language set to \`chart\` to generate a chart:
 
-:::widget[chart]
+\`\`\`chart
 {
   "type": "bar",
   "data": {
@@ -124,14 +208,14 @@ Instead, use the following markdown directive syntax to generate a chart:
     }
   }
 }
-:::
+\`\`\`
 
 The content inside the block MUST be a valid JSON object representing a Chart.js configuration.
 You can use any valid Chart.js type (line, bar, pie, doughnut, radar, polarArea, bubble, scatter).`;
 
         return [
             { role: 'system', content: systemPrompt },
-            ...this.context.history,
+            ...this.context.history.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })),
             { role: 'user', content: prompt }
         ];
     }
