@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Copy } from 'lucide-react';
 import { buildWidgetHtml } from '../services/widgetHtmlBuilder';
 
 interface WidgetRendererProps {
@@ -49,25 +50,149 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
                 throw new Error("Received HTML instead of JSON configuration. Please check the agent's output.");
             }
 
-            // 3. Fix literal newlines/tabs inside string literals
-            // This regex finds content between double quotes and replaces literal control chars
-            cleanConfigStr = cleanConfigStr.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match) => {
-                return match
-                    .replace(/\n/g, '\\n')
-                    .replace(/\r/g, '\\r')
-                    .replace(/\t/g, '\\t');
-            });
+            // 3. Aggressive cleaning for common LLM JSON errors
+            const aggressiveClean = (str: string) => {
+                let s = str.trim();
+                
+                // 1. Fix smart quotes
+                s = s.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
 
-            // 4. Remove trailing commas in objects and arrays
-            cleanConfigStr = cleanConfigStr.replace(/,\s*([\}\]])/g, '$1');
+                // 2. Remove comments
+                s = s.replace(/\/\/.*$/gm, '');
+                s = s.replace(/\/\*[\s\S]*?\*\//g, '');
+                
+                // 3. Fix literal newlines/tabs inside string literals
+                // This regex matches "..." and '...' including those spanning multiple lines
+                s = s.replace(/(["'])([\s\S]*?)(?<!\\)\1/g, (_, quote, content) => {
+                    return quote + content
+                        .replace(/\n/g, '\\n')
+                        .replace(/\r/g, '\\r')
+                        .replace(/\t/g, '\\t') + quote;
+                });
 
-            const config = JSON.parse(cleanConfigStr);
+                // 4. Fix unquoted keys
+                // Matches keys that are not quoted: { key: ... } or { key : ... }
+                s = s.replace(/([{,]\s*)([a-zA-Z0-9_\-\s]+)(\s*:)/g, (match, p1, p2, p3) => {
+                    const trimmedKey = p2.trim();
+                    // If it's already quoted, don't double quote it
+                    if ((trimmedKey.startsWith('"') && trimmedKey.endsWith('"')) || 
+                        (trimmedKey.startsWith("'") && trimmedKey.endsWith("'"))) {
+                        return match;
+                    }
+                    return p1 + '"' + trimmedKey + '"' + p3;
+                });
+                
+                // 5. Fix single quotes on keys/values (if they are used as delimiters)
+                s = s.replace(/([{,]\s*)'([^']*)'(\s*:)/g, '$1"$2"$3'); // Keys
+                s = s.replace(/(:\s*)'([^']*)'(\s*[,}\]])/g, '$1"$2"$3'); // Values
+                
+                // 6. Handle truncated JSON
+                const quoteCount = (s.match(/"/g) || []).length;
+                if (quoteCount % 2 !== 0) {
+                    s += '"';
+                }
+
+                const openBraces = (s.match(/\{/g) || []).length;
+                const closeBraces = (s.match(/\}/g) || []).length;
+                if (openBraces > closeBraces) {
+                    s += '}'.repeat(openBraces - closeBraces);
+                }
+                
+                const openBrackets = (s.match(/\[/g) || []).length;
+                const closeBrackets = (s.match(/\]/g) || []).length;
+                if (openBrackets > closeBrackets) {
+                    s += ']'.repeat(openBrackets - closeBrackets);
+                }
+
+                // 7. Remove trailing commas
+                s = s.replace(/,\s*([\}\]])/g, '$1');
+
+                return s;
+            };
+
+            // 4. Stack-based JSON extractor
+            const extractJson = (str: string) => {
+                const firstBrace = str.indexOf('{');
+                const firstBracket = str.indexOf('[');
+                let start = -1;
+                
+                if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+                    start = firstBrace;
+                } else if (firstBracket !== -1) {
+                    start = firstBracket;
+                }
+                
+                if (start === -1) return null;
+                
+                let stack = 0;
+                let inString = false;
+                let escape = false;
+                let quoteChar = '';
+                
+                for (let i = start; i < str.length; i++) {
+                    const c = str[i];
+                    if (escape) { escape = false; continue; }
+                    if (c === '\\') { escape = true; continue; }
+                    if (inString) {
+                        if (c === quoteChar) inString = false;
+                        continue;
+                    }
+                    if (c === '"' || c === "'") {
+                        inString = true;
+                        quoteChar = c;
+                        continue;
+                    }
+                    if (c === '{' || c === '[') stack++;
+                    else if (c === '}' || c === ']') {
+                        stack--;
+                        if (stack === 0) return str.substring(start, i + 1);
+                    }
+                }
+                return str.substring(start); // Return truncated if not balanced
+            };
+
+            let config;
+            if (type === 'mermaid' || type === 'diagram') {
+                try {
+                    config = JSON.parse(cleanConfigStr);
+                } catch (e) {
+                    config = cleanConfigStr;
+                }
+            } else {
+                // Try multiple parsing strategies
+                const strategies = [
+                    () => JSON.parse(cleanConfigStr),
+                    () => JSON.parse(aggressiveClean(cleanConfigStr)),
+                    () => {
+                        const extracted = extractJson(cleanConfigStr);
+                        if (!extracted) throw new Error("No JSON structure found");
+                        return JSON.parse(extracted);
+                    },
+                    () => {
+                        const extracted = extractJson(cleanConfigStr);
+                        if (!extracted) throw new Error("No JSON structure found");
+                        return JSON.parse(aggressiveClean(extracted));
+                    }
+                ];
+
+                let lastError = null;
+                for (const strategy of strategies) {
+                    try {
+                        config = strategy();
+                        break;
+                    } catch (e) {
+                        lastError = e;
+                    }
+                }
+
+                if (!config) throw lastError || new Error("Failed to parse configuration");
+            }
             
             // Build the HTML string with theme support
             const html = buildWidgetHtml(type, config, isDark ? 'dark' : 'light');
             
             // ONLY update if the HTML content has actually changed
-            if (html === lastHtmlRef.current && blobUrl) {
+            if (html === lastHtmlRef.current && blobUrlRef.current) {
                 return;
             }
             
@@ -89,7 +214,7 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
             console.error('Failed to parse widget config:', err);
             setError(`Invalid widget configuration: ${err.message}`);
         }
-    }, [type, configStr, isDark, blobUrl]);
+    }, [type, configStr, isDark]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -103,9 +228,17 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
     if (error) {
         return (
             <div className="my-6 p-4 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 text-sm font-mono">
-                <div className="font-bold mb-1">Widget Error</div>
-                <div className="opacity-80">{error}</div>
-                <pre className="mt-2 p-2 bg-black/20 rounded overflow-x-auto text-[10px]">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="font-bold">Widget Error</div>
+                    <button 
+                        onClick={() => navigator.clipboard.writeText(configStr)}
+                        className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-[10px] transition-colors flex items-center gap-1"
+                    >
+                        <Copy size={10} /> Copy Config
+                    </button>
+                </div>
+                <div className="opacity-80 mb-2">{error}</div>
+                <pre className="p-2 bg-black/20 rounded overflow-x-auto text-[10px] max-h-40 custom-scrollbar">
                     {configStr}
                 </pre>
             </div>
