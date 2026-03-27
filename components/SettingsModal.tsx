@@ -10,6 +10,7 @@ import {
 import { AppSettings, ModelProvider, LocalModelConfig, MemoryItem, MemoryCategory } from '../types';
 import { MemoryService } from '../services/memoryService';
 import { UI_STRINGS, AVAILABLE_OFFLINE_MODELS } from '../constants';
+import { checkLocalModelSupport } from '../services/localLlmService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -136,28 +137,60 @@ interface OfflineModelCardProps {
     onSelect: () => void;
     onDelete: () => void;
     progress: number;
+    isSupported: boolean;
+    unsupportedReason: string;
 }
 
 // Offline Model Card Component
-const OfflineModelCard: React.FC<OfflineModelCardProps> = ({ model, isDownloaded, isActive, onDownload, onSelect, onDelete, progress }) => {
+const OfflineModelCard: React.FC<OfflineModelCardProps> = ({ 
+    model, 
+    isDownloaded, 
+    isActive, 
+    onDownload, 
+    onSelect, 
+    onDelete, 
+    progress,
+    isSupported,
+    unsupportedReason
+}) => {
     return (
-        <div className={`p-4 rounded-2xl border transition-all duration-150 ${isActive ? 'bg-pplx-card border-pplx-accent shadow-md' : 'bg-pplx-secondary/20 border-pplx-border hover:bg-pplx-secondary/40'}`}>
+        <div
+            className={`p-4 rounded-2xl border transition-all duration-150 ${
+                isActive
+                    ? 'bg-pplx-card border-pplx-accent shadow-md'
+                    : 'bg-pplx-secondary/20 border-pplx-border hover:bg-pplx-secondary/40'
+            } ${!isSupported ? 'opacity-60' : ''}`}
+        >
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                     <span className="font-bold text-pplx-text text-sm">{model.name}</span>
-                    <span className="text-[10px] font-bold bg-pplx-secondary text-pplx-muted px-1.5 py-0.5 rounded uppercase tracking-wide">{model.family}</span>
+                    <span className="text-[10px] font-bold bg-pplx-secondary text-pplx-muted px-1.5 py-0.5 rounded uppercase tracking-wide">
+                        {model.family}
+                    </span>
                 </div>
                 {isDownloaded ? (
                     <div className="flex items-center gap-1 text-[10px] text-green-500 font-bold uppercase tracking-wider bg-green-500/10 px-2 py-0.5 rounded-full">
                         <Check size={10} strokeWidth={3} /> Ready
                     </div>
                 ) : (
-                    <span className="text-[10px] text-pplx-muted font-medium bg-pplx-secondary px-2 py-0.5 rounded-full">{model.fileSize}</span>
+                    <span className="text-[10px] text-pplx-muted font-medium bg-pplx-secondary px-2 py-0.5 rounded-full">
+                        {model.fileSize}
+                    </span>
                 )}
             </div>
-            
-            <p className="text-xs text-pplx-muted mb-4 leading-relaxed line-clamp-2 min-h-[32px]">{model.description}</p>
 
+            <p className="text-xs text-pplx-muted mb-4 leading-relaxed line-clamp-2 min-h-[32px]">
+                {model.description}
+            </p>
+
+            {/* Unsupported warning */}
+            {!isSupported && (
+                <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] leading-relaxed">
+                    <AlertTriangle size={12} className="inline mr-1 mb-0.5" /> {unsupportedReason}
+                </div>
+            )}
+
+            {/* Progress bar */}
             {progress > 0 && progress < 100 ? (
                 <div className="space-y-1.5">
                     <div className="flex justify-between text-[10px] text-pplx-muted font-bold uppercase tracking-wider">
@@ -165,25 +198,28 @@ const OfflineModelCard: React.FC<OfflineModelCardProps> = ({ model, isDownloaded
                         <span>{progress}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-pplx-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-pplx-accent transition-all duration-150 ease-out" style={{ width: `${progress}%` }} />
+                        <div
+                            className="h-full bg-pplx-accent transition-all duration-300 ease-out"
+                            style={{ width: `${progress}%` }}
+                        />
                     </div>
                 </div>
             ) : (
                 <div className="flex items-center gap-2">
                     {isDownloaded ? (
                         <>
-                            <button 
+                            <button
                                 onClick={onSelect}
                                 disabled={isActive}
                                 className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                                    isActive 
-                                    ? 'bg-pplx-text text-pplx-primary cursor-default' 
-                                    : 'bg-pplx-secondary hover:bg-pplx-hover text-pplx-text'
+                                    isActive
+                                        ? 'bg-pplx-text text-pplx-primary cursor-default'
+                                        : 'bg-pplx-secondary hover:bg-pplx-hover text-pplx-text'
                                 }`}
                             >
                                 {isActive ? 'Selected' : 'Select'}
                             </button>
-                            <button 
+                            <button
                                 onClick={onDelete}
                                 className="p-2 rounded-xl bg-pplx-secondary/50 text-pplx-muted hover:text-red-400 hover:bg-pplx-hover transition-colors"
                             >
@@ -191,11 +227,21 @@ const OfflineModelCard: React.FC<OfflineModelCardProps> = ({ model, isDownloaded
                             </button>
                         </>
                     ) : (
-                        <button 
-                            onClick={onDownload}
-                            className="w-full py-2 rounded-xl bg-pplx-text text-pplx-primary text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                        <button
+                            onClick={isSupported ? onDownload : undefined}
+                            disabled={!isSupported}
+                            title={!isSupported ? unsupportedReason : `Download ${model.name} (${model.fileSize})`}
+                            className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                                isSupported
+                                    ? 'bg-pplx-text text-pplx-primary hover:opacity-90 cursor-pointer'
+                                    : 'bg-pplx-secondary/50 text-pplx-muted cursor-not-allowed'
+                            }`}
                         >
-                            <Download size={14} /> Download
+                            {isSupported ? (
+                                <><Download size={14} /> Download</>
+                            ) : (
+                                '🚫 Not available'
+                            )}
                         </button>
                     )}
                 </div>
@@ -314,45 +360,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
   // --- Offline Model Logic ---
   const handleDownloadModel = async (model: LocalModelConfig) => {
-      setDownloadProgress(prev => ({ ...prev, [model.id]: 0 }));
-      
-      try {
-          const { localLlmService } = await import('../services/localLlmService');
-          await localLlmService.initModel(model.id, (progress) => {
-              setDownloadProgress(prev => ({ ...prev, [model.id]: progress }));
-          });
-          
-          // Add to "downloaded" list in settings
-          const updatedLocalModels = [...formData.localModels];
-          const existingIdx = updatedLocalModels.findIndex(m => m.id === model.id);
-          
-          const completedModel = { ...model, isDownloaded: true };
-          
-          if (existingIdx >= 0) {
-              updatedLocalModels[existingIdx] = completedModel;
-          } else {
-              updatedLocalModels.push(completedModel);
-          }
+    // ── Check environment BEFORE trying to download ──────────────
+    const support = checkLocalModelSupport();
 
-          setFormData(prev => ({ 
-              ...prev, 
-              localModels: updatedLocalModels,
-              activeLocalModelId: prev.activeLocalModelId || model.id,
-              modelProvider: prev.modelProvider === ModelProvider.LOCAL ? prev.modelProvider : ModelProvider.LOCAL
-          }));
-      } catch (error) {
-          console.error("Failed to download model:", error);
-          alert("Failed to download model. Please check your connection and try again.");
-      } finally {
-          // Clear progress after short delay
-          setTimeout(() => {
-             setDownloadProgress(prev => {
-                 const next = { ...prev };
-                 delete next[model.id];
-                 return next;
-             });
-          }, 2000);
-      }
+    if (!support.supported) {
+      alert(`❌ Cannot download model\n\n${support.reason}\n\n${support.details}`);
+      return;
+    }
+
+    setDownloadProgress((prev) => ({ ...prev, [model.id]: 1 })); // Show spinner immediately
+
+    try {
+      const { localLlmService } = await import('../services/localLlmService');
+
+      await localLlmService.initModel(model.id, (progress: number, text: string) => {
+        setDownloadProgress((prev) => ({ ...prev, [model.id]: progress }));
+        console.log(`[Download] ${model.name}: ${progress}% — ${text}`);
+      });
+
+      // Mark as downloaded
+      setFormData((prev) => {
+        const updatedLocalModels = [...prev.localModels];
+        const existingIdx = updatedLocalModels.findIndex((m) => m.id === model.id);
+        const completedModel = { ...model, isDownloaded: true };
+        if (existingIdx >= 0) updatedLocalModels[existingIdx] = completedModel;
+        else updatedLocalModels.push(completedModel);
+        return {
+          ...prev,
+          localModels: updatedLocalModels,
+          activeLocalModelId: prev.activeLocalModelId || model.id,
+          modelProvider: prev.modelProvider === ModelProvider.LOCAL ? prev.modelProvider : ModelProvider.LOCAL,
+        };
+      });
+    } catch (error: any) {
+      console.error('Download failed:', error);
+      // Show the clean error message from localLlmService
+      alert(`❌ Download failed\n\n${error.message}`);
+    } finally {
+      setTimeout(() => {
+        setDownloadProgress((prev) => {
+          const next = { ...prev };
+          delete next[model.id];
+          return next;
+        });
+      }, 1500);
+    }
   };
 
   const handleDeleteModel = async (id: string) => {
@@ -800,41 +852,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                     <p className="text-sm text-pplx-muted leading-relaxed">
                                         Download highly optimized small language models (1B-7B) to run locally on your device without internet.
                                     </p>
-                                    {!(navigator as any).gpu && (
-                                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
-                                            <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
-                                            <p className="text-xs text-red-400 leading-relaxed">
-                                                <strong>WebGPU not supported.</strong> Your browser or device does not support WebGPU, which is required to run these models locally. Please try using Chrome or Edge on a compatible device.
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
 
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-bold text-pplx-muted uppercase tracking-widest opacity-60 ml-1">Available Models</h4>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {AVAILABLE_OFFLINE_MODELS.map((model) => {
-                                            const downloadedModel = formData.localModels.find(m => m.id === model.id);
-                                            const isDownloaded = !!downloadedModel;
-                                            const isActive = formData.activeLocalModelId === model.id;
-                                            const progress = downloadProgress[model.id] || 0;
+                                {(() => {
+                                    const support = checkLocalModelSupport();
 
-                                            return (
-                                                <OfflineModelCard 
-                                                    key={model.id}
-                                                    model={model}
-                                                    isDownloaded={isDownloaded}
-                                                    isActive={isActive}
-                                                    progress={progress}
-                                                    onDownload={() => handleDownloadModel(model)}
-                                                    onSelect={() => setFormData({ ...formData, activeLocalModelId: model.id, modelProvider: ModelProvider.LOCAL })}
-                                                    onDelete={() => handleDeleteModel(model.id)}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                                    return (
+                                        <>
+                                            {!support.supported && (
+                                                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5 mb-6">
+                                                    <div className="flex items-start gap-3">
+                                                        <AlertTriangle size={20} className="text-red-400 shrink-0 mt-0.5" />
+                                                        <div>
+                                                            <p className="text-sm font-bold text-red-400 mb-1">{support.reason}</p>
+                                                            <p className="text-xs text-red-300/80 leading-relaxed">{support.details}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-4">
+                                                <h4 className="text-xs font-bold text-pplx-muted uppercase tracking-widest opacity-60 ml-1">Available Models</h4>
+                                                
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {AVAILABLE_OFFLINE_MODELS.map((model) => {
+                                                        const downloadedModel = formData.localModels.find(m => m.id === model.id);
+                                                        const isDownloaded = !!downloadedModel;
+                                                        const isActive = formData.activeLocalModelId === model.id;
+                                                        const progress = downloadProgress[model.id] || 0;
+
+                                                        return (
+                                                            <OfflineModelCard 
+                                                                key={model.id}
+                                                                model={model}
+                                                                isDownloaded={isDownloaded}
+                                                                isActive={isActive}
+                                                                progress={progress}
+                                                                isSupported={support.supported}
+                                                                unsupportedReason={!support.supported ? support.reason : ''}
+                                                                onDownload={() => handleDownloadModel(model)}
+                                                                onSelect={() => setFormData({ ...formData, activeLocalModelId: model.id, modelProvider: ModelProvider.LOCAL })}
+                                                                onDelete={() => handleDeleteModel(model.id)}
+                                                            />
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
 
                                 {formData.localModels.length === 0 && (
                                     <div className="mt-8 text-center p-6 border-2 border-dashed border-pplx-border/50 rounded-2xl opacity-60">
