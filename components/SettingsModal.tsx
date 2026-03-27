@@ -373,7 +373,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     try {
       const { localLlmService } = await import('../services/localLlmService');
 
-      await localLlmService.initModel(model.id, (progress: number, text: string) => {
+      await localLlmService.initModel(model.modelId, (progress: number, text: string) => {
         setDownloadProgress((prev) => ({ ...prev, [model.id]: progress }));
         console.log(`[Download] ${model.name}: ${progress}% — ${text}`);
       });
@@ -411,7 +411,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       if (confirm('Are you sure you want to delete this model? You will need to download it again to use it offline.')) {
           try {
               const { localLlmService } = await import('../services/localLlmService');
-              await localLlmService.deleteModel(id);
+              
+              // Find the full modelId (WebLLM ID) from our constants
+              const modelDef = AVAILABLE_OFFLINE_MODELS.find(m => m.id === id);
+              if (modelDef) {
+                await localLlmService.deleteModel(modelDef.modelId);
+              } else {
+                await localLlmService.deleteModel(id); // Fallback
+              }
               
               const newModels = formData.localModels.filter(m => m.id !== id);
               let newActiveId = formData.activeLocalModelId;

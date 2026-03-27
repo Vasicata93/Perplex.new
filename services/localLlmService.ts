@@ -57,7 +57,7 @@ class LocalLLMService {
   private engine: any | null = null;
   private currentModelId: string | null = null;
   private isInitializing = false;
-
+  
   async initModel(
     modelId: string,
     onProgress?: (progress: number, text: string) => void

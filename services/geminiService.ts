@@ -1090,6 +1090,13 @@ export class LLMService {
     if (provider === ModelProvider.LOCAL) {
         if (!activeLocalModel) throw new Error("No local model configured.");
         const { localLlmService } = await import('./localLlmService');
+        
+        // Auto-initialize if needed
+        if (!localLlmService.isReady() || localLlmService.getLoadedModelId() !== activeLocalModel.modelId) {
+            if (onChunk) onChunk("Initializing local model... (this may take a moment if it's the first time)");
+            await localLlmService.initModel(activeLocalModel.modelId);
+        }
+
         const localResult = await localLlmService.generateResponse(
             history,
             prompt,
