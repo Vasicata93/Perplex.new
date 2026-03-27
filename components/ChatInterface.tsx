@@ -4,7 +4,7 @@ import { InputArea } from './InputArea';
 import { MessageRenderer } from './MessageRenderer';
 import { TornadoIndicator } from './TornadoIndicator';
 import { PerplexityLogo } from '../constants';
-import { User, BookOpen, Globe, Copy, Check, RefreshCw, Share2, Volume2, ImageIcon, FileText, Pencil } from 'lucide-react';
+import { User, BookOpen, Globe, Copy, Check, RefreshCw, Share2, Volume2, ImageIcon, FileText, Pencil, ArrowRight } from 'lucide-react';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -218,6 +218,26 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       <button onClick={() => onShare(msg.content)} className="flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors">
                         <Share2 size={12} /> <span>Share</span>
                       </button>
+                    </div>
+                  )}
+
+                  {/* Compact Related Questions */}
+                  {msg.role === Role.MODEL && msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
+                    <div className="mt-4 w-full pt-2">
+                      <div className="flex flex-col gap-1">
+                        {msg.relatedQuestions.map((q, i) => (
+                          <button 
+                            key={i}
+                            onClick={() => onSendMessage(q, [FocusMode.ALL], [])}
+                            className="flex items-center justify-between w-full py-1.5 px-1 text-left text-[13px] italic text-pplx-muted hover:text-pplx-text transition-colors group relative pl-3 border-l-2 border-transparent hover:border-pplx-accent/50"
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="truncate">{q}</span>
+                            </div>
+                            <ArrowRight size={14} className="text-pplx-muted opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-150" />
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

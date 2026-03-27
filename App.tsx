@@ -249,6 +249,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [spacesModalOpen, setSpacesModalOpen] = useState(false);
   const [spaceModalInitialId, setSpaceModalInitialId] = useState<string | null>(null);
+  const [spaceModalInitialParentId, setSpaceModalInitialParentId] = useState<string | null>(null);
 
   // Side Chat State
   const [isSideChatOpen, setIsSideChatOpen] = useState(false);
@@ -458,7 +459,26 @@ function App() {
   const handleNewThread = () => { setActiveView('chat'); setActiveThreadId(null); setActiveNoteId(null); setIsDashboardMode(false); stopAudio(); };
   const handleBackToNewThread = () => { handleNewThread(); };
 
-  const handleSaveSpace = (space: Space) => { setSpaces(prev => { const exists = prev.find(s => s.id === space.id); if (exists) return prev.map(s => s.id === space.id ? space : s); return [...prev, space]; }); };
+  const handleSaveSpace = (space: Space) => {
+    setSpaces(prev => {
+        const exists = prev.find(s => s.id === space.id);
+        if (exists) return prev.map(s => s.id === space.id ? space : s);
+        return [...prev, space];
+    });
+  };
+
+  const handleDuplicateSpace = (id: string) => {
+    const spaceToDuplicate = spaces.find(s => s.id === id);
+    if (spaceToDuplicate) {
+        const newSpace: Space = {
+            ...spaceToDuplicate,
+            id: Math.random().toString(36).substr(2, 9),
+            title: `${spaceToDuplicate.title} (Copy)`,
+            createdAt: Date.now()
+        };
+        handleSaveSpace(newSpace);
+    }
+  };
   const handleDeleteSpace = (id: string) => { setSpaces(prev => prev.filter(s => s.id !== id)); if (activeSpaceId === id) setActiveSpaceId(null); };
   const handleNewNote = (parentId?: string, initialContent: string = '', initialTags: string[] = []) => { 
       const newNote: Note = { 
@@ -1535,8 +1555,22 @@ function App() {
           onChangeView={(view) => { pushToHistory(); setActiveView(view); }} 
           onNewThread={handleNewThread} 
           onNewNote={handleNewNote} 
+          onNewSpace={(parentId?: string) => {
+            setSpaceModalInitialId('new');
+            setSpaceModalInitialParentId(parentId || null);
+            setSpacesModalOpen(true);
+          }}
+          onOpenSpaceFiles={(id) => {
+            setActiveSpaceId(id);
+            setIsSpaceFilesModalOpen(true);
+          }}
           onNewPortfolioTracker={handleNewPortfolioTracker}
-          onManageSpaces={() => setSpacesModalOpen(true)} 
+          onManageSpaces={(id?: string) => {
+            setSpaceModalInitialId(id || null);
+            setSpacesModalOpen(true);
+          }}
+          onDuplicateSpace={handleDuplicateSpace}
+          onDeleteSpace={handleDeleteSpace}
           openSettings={() => setSettingsOpen(true)}
           onDeleteThread={handleDeleteThread}
           onDuplicateNote={handleDuplicateNote}
@@ -2227,7 +2261,7 @@ function App() {
                                                          <button 
                                                             key={i}
                                                             onClick={() => handleSendMessage(q, [FocusMode.ALL], ProMode.STANDARD, [])}
-                                                            className="flex items-center justify-between w-full py-1.5 px-1 text-left text-sm text-pplx-muted hover:text-pplx-text transition-colors group relative pl-3 border-l-2 border-transparent hover:border-pplx-accent/50"
+                                                            className="flex items-center justify-between w-full py-1.5 px-1 text-left text-[13px] italic text-pplx-muted hover:text-pplx-text transition-colors group relative pl-3 border-l-2 border-transparent hover:border-pplx-accent/50"
                                                          >
                                                              <div className="flex items-center gap-2 truncate">
                                                                  <span className="truncate">{q}</span>
@@ -2346,11 +2380,13 @@ function App() {
         onClose={() => {
             setSpacesModalOpen(false);
             setSpaceModalInitialId(null);
+            setSpaceModalInitialParentId(null);
         }} 
         spaces={spaces} 
         onSaveSpace={handleSaveSpace} 
         onDeleteSpace={handleDeleteSpace} 
         initialSpaceId={spaceModalInitialId}
+        initialParentId={spaceModalInitialParentId}
       />
       
       <MobileDock 

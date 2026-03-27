@@ -37,7 +37,7 @@ export const AVAILABLE_OFFLINE_MODELS: LocalModelConfig[] = [
     {
         id: 'llama-3.2-1b',
         name: 'Llama 3.2 1B',
-        modelId: 'Llama-3.2-1B-Instruct-q4f16_1',
+        modelId: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
         fileSize: '1.2 GB',
         description: 'Ultra-lightweight, high speed. Best for simple tasks on mobile.',
         isDownloaded: false,
@@ -46,7 +46,7 @@ export const AVAILABLE_OFFLINE_MODELS: LocalModelConfig[] = [
     {
         id: 'llama-3.2-3b',
         name: 'Llama 3.2 3B',
-        modelId: 'Llama-3.2-3B-Instruct-q4f16_1',
+        modelId: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
         fileSize: '2.4 GB',
         description: 'Balanced performance and size. Good for general chat.',
         isDownloaded: false,
@@ -55,7 +55,7 @@ export const AVAILABLE_OFFLINE_MODELS: LocalModelConfig[] = [
     {
         id: 'gemma-2-2b',
         name: 'Gemma 2 2B',
-        modelId: 'gemma-2-2b-it-q4f16_1',
+        modelId: 'gemma-2-2b-it-q4f16_1-MLC',
         fileSize: '1.6 GB',
         description: 'Google efficient model. Strong reasoning for its size.',
         isDownloaded: false,
@@ -64,7 +64,7 @@ export const AVAILABLE_OFFLINE_MODELS: LocalModelConfig[] = [
     {
         id: 'qwen-2.5-1.5b',
         name: 'Qwen 2.5 1.5B',
-        modelId: 'Qwen2.5-1.5B-Instruct-q4f16_1',
+        modelId: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
         fileSize: '1.1 GB',
         description: 'Very capable small model. Good multilingual support.',
         isDownloaded: false,
@@ -73,7 +73,7 @@ export const AVAILABLE_OFFLINE_MODELS: LocalModelConfig[] = [
     {
         id: 'phi-3.5-mini',
         name: 'Phi-3.5 Mini (3.8B)',
-        modelId: 'Phi-3.5-mini-instruct-q4f16_1',
+        modelId: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
         fileSize: '2.8 GB',
         description: 'High reasoning capability. Microsoft research model.',
         isDownloaded: false,
@@ -82,7 +82,7 @@ export const AVAILABLE_OFFLINE_MODELS: LocalModelConfig[] = [
     {
         id: 'mistral-7b',
         name: 'Mistral 7B (Quantized)',
-        modelId: 'Mistral-7B-Instruct-v0.3-q4f16_1',
+        modelId: 'Mistral-7B-Instruct-v0.3-q4f16_1-MLC',
         fileSize: '4.1 GB',
         description: 'The standard for edge AI. Requires powerful device.',
         isDownloaded: false,
@@ -97,7 +97,6 @@ export const UI_STRINGS = {
     chat: "Chat",
     library: "Library",
     spaces: "Spaces",
-    manageSpaces: "Manage Spaces",
     settings: "Settings",
     general: "General",
     models: "AI Models",
@@ -117,7 +116,6 @@ export const UI_STRINGS = {
     chat: "Conversații",
     library: "Bibliotecă",
     spaces: "Spații",
-    manageSpaces: "Gestionează Spații",
     settings: "Setări",
     general: "General",
     models: "Modele AI",

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Library, 
-  Settings, Box,
+  Settings, 
   ChevronRight, ChevronDown, LayoutGrid, MessageSquareText, Plus,
   Trash2, MoreHorizontal, Copy, FolderInput, ChevronLeft, CalendarDays, Star
 } from 'lucide-react';
@@ -28,8 +28,12 @@ interface SidebarProps {
   onChangeView: (view: 'chat' | 'library' | 'calendar') => void;
   onNewThread: () => void;
   onNewNote: (parentId?: string) => void;
+  onNewSpace: (parentId?: string) => void;
+  onOpenSpaceFiles?: (id: string) => void;
   onNewPortfolioTracker?: () => void;
-  onManageSpaces: () => void;
+  onManageSpaces: (id?: string) => void;
+  onDuplicateSpace: (id: string) => void;
+  onDeleteSpace: (id: string) => void;
   openSettings: () => void;
   onDeleteThread: (id: string) => void;
   onDuplicateNote: (id: string) => void;
@@ -61,8 +65,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onChangeView,
   onNewThread,
   onNewNote,
+  onNewSpace,
+  onOpenSpaceFiles,
   onNewPortfolioTracker,
   onManageSpaces,
+  onDuplicateSpace,
+  onDeleteSpace,
   openSettings,
   onDeleteThread,
   onDuplicateNote,
@@ -80,7 +88,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   
   // State for Library Item Menu
   const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
+  const [activeMenuSpaceId, setActiveMenuSpaceId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const spaceMenuRef = useRef<HTMLDivElement>(null);
   
   // Swipe to Close Logic
   const touchStartX = useRef(0);
@@ -144,6 +154,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
         if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
             setActiveMenuNoteId(null);
+        }
+        if (spaceMenuRef.current && !spaceMenuRef.current.contains(event.target as Node)) {
+            setActiveMenuSpaceId(null);
         }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -331,46 +344,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
 
               {/* Spaces Accordion (Moved above Library) */}
-              <div className="flex flex-col">
-                  <NavItem 
-                      icon={<LayoutGrid size={22} />} 
-                      label={t.spaces}
-                      onClick={() => toggleSection('spaces')}
-                      hasChevron={!isCollapsed}
-                      isOpen={expandedSection === 'spaces'}
-                      active={!!activeSpaceId}
-                      isCollapsed={isCollapsed}
-                  />
+              <div className={`flex flex-col ${activeMenuSpaceId ? 'z-[110] relative pointer-events-none' : ''}`}>
+                  <div className="flex items-center w-full group relative">
+                      <NavItem 
+                          icon={<LayoutGrid size={22} />} 
+                          label={t.spaces}
+                          onClick={() => toggleSection('spaces')}
+                          hasChevron={!isCollapsed}
+                          isOpen={expandedSection === 'spaces'}
+                          active={!!activeSpaceId}
+                          isCollapsed={isCollapsed}
+                      />
+                      {/* Inline Plus Button for New Space */}
+                      {!isCollapsed && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onNewSpace(); if (expandedSection !== 'spaces') toggleSection('spaces'); }}
+                            className="p-2 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-md transition-colors opacity-0 group-hover:opacity-100 absolute right-8"
+                            title="New Space"
+                        >
+                            <Plus size={18} />
+                        </button>
+                      )}
+                  </div>
                   
                   {expandedSection === 'spaces' && !isCollapsed && (
-                      <div className="ml-4 pl-3 border-l border-pplx-border space-y-1 mt-1 animate-fadeIn duration-150">
-                          {spaces.map(space => (
-                              <button
-                                key={space.id}
-                                onClick={() => handleNavClick(() => { onChangeView('chat'); onSelectSpace(space.id); })}
-                                className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-sm transition-colors ${
-                                    activeSpaceId === space.id 
-                                    ? 'bg-pplx-hover text-pplx-text font-medium' 
-                                    : 'text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text'
-                                }`}
-                              >
-                                <span className="text-lg leading-none">{space.emoji}</span>
-                                <span className="truncate text-base">{space.title}</span>
-                              </button>
+                      <div className="ml-2 space-y-0.5 mt-1 animate-fadeIn duration-150 relative">
+                          {spaces.filter(s => !s.parentId).map(space => (
+                              <SpaceItem 
+                                  key={space.id} 
+                                  space={space} 
+                                  allSpaces={spaces} 
+                                  activeSpaceId={activeSpaceId}
+                                  onSelectSpace={(id: string | null) => handleNavClick(() => { onChangeView('chat'); onSelectSpace(id); })}
+                                  onDuplicateSpace={onDuplicateSpace}
+                                  onDeleteSpace={onDeleteSpace}
+                                  onEditSpace={onManageSpaces}
+                                  onOpenSpaceFiles={onOpenSpaceFiles}
+                                  activeMenuSpaceId={activeMenuSpaceId}
+                                  setActiveMenuSpaceId={setActiveMenuSpaceId}
+                                  menuRef={spaceMenuRef}
+                              />
                           ))}
-                          <button 
-                              onClick={() => { onManageSpaces(); }} 
-                              className="w-full flex items-center space-x-3 px-3 py-3 text-sm text-pplx-accent hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors"
-                          >
-                              <Box size={16} />
-                              <span className="text-base">{t.manageSpaces}</span>
-                          </button>
                       </div>
                   )}
               </div>
 
               {/* Library (Pages/Notes) */}
-              <div className="flex flex-col">
+              <div className={`flex flex-col ${activeMenuNoteId ? 'z-[110] relative pointer-events-none' : ''}`}>
                   <div className="flex items-center w-full group relative">
                       <NavItem 
                           icon={<Library size={22} />} 
@@ -622,6 +642,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
         </div>
       )}
+      {(activeMenuNoteId || activeMenuSpaceId) && (
+        <div 
+          className="fixed inset-0 z-[105] bg-black/40 backdrop-blur-sm" 
+          onClick={() => { setActiveMenuNoteId(null); setActiveMenuSpaceId(null); }}
+        />
+      )}
     </>
   );
 };
@@ -665,6 +691,139 @@ const NavItem = ({
   </div>
 );
 
+// Space Item Component for Sidebar
+const SpaceItem = ({ 
+    space, 
+    allSpaces, 
+    level = 0, 
+    activeSpaceId, 
+    onSelectSpace,
+    onDuplicateSpace,
+    onDeleteSpace,
+    onEditSpace,
+    onOpenSpaceFiles,
+    activeMenuSpaceId,
+    setActiveMenuSpaceId,
+    menuRef,
+    isMobile = false
+}: any) => {
+    const children = allSpaces.filter((s: Space) => s.parentId === space.id);
+    const hasChildren = children.length > 0;
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    return (
+        <div className="flex flex-col w-full">
+            <div className={`relative group flex items-center w-full ${activeMenuSpaceId === space.id ? 'z-[100]' : 'z-0'}`}>
+                {/* Chevron */}
+                <div className="w-6 flex justify-center shrink-0">
+                    {hasChildren ? (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} 
+                            className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary rounded transition-colors"
+                        >
+                            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        </button>
+                    ) : (
+                        <div className="w-6" /> 
+                    )}
+                </div>
+
+                <button
+                    onClick={() => onSelectSpace(space.id)}
+                    className={`flex-1 min-w-0 flex items-center space-x-2 py-2.5 pr-16 rounded-lg text-sm transition-colors text-left ${
+                        activeSpaceId === space.id 
+                        ? 'bg-pplx-hover text-pplx-text font-medium' 
+                        : 'text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text'
+                    }`}
+                >
+                    <span className="text-lg leading-none shrink-0">{space.emoji || '📁'}</span>
+                    <span className="truncate text-base flex-1">{space.title || 'Untitled'}</span>
+                </button>
+                
+                <div className={`absolute right-1 flex items-center ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                    {/* Plus Button for Uploading/Managing Files */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onOpenSpaceFiles) onOpenSpaceFiles(space.id);
+                        }}
+                        className="p-2 text-pplx-muted hover:text-pplx-text rounded-md hover:bg-pplx-hover shrink-0"
+                        title="Upload Files"
+                    >
+                        <Plus size={18} />
+                    </button>
+
+                    {/* Discrete More Options Button */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuSpaceId(activeMenuSpaceId === space.id ? null : space.id);
+                        }}
+                        className={`p-2 text-pplx-muted hover:text-pplx-text rounded-md hover:bg-pplx-hover shrink-0 ${activeMenuSpaceId === space.id ? 'bg-pplx-hover text-pplx-text' : ''}`}
+                    >
+                        <MoreHorizontal size={18} />
+                    </button>
+                </div>
+
+                {/* Popup Menu for Space Items */}
+                {activeMenuSpaceId === space.id && (
+                    <div 
+                        ref={menuRef}
+                        className="absolute right-8 top-8 z-[120] w-40 border border-pplx-border shadow-2xl rounded-lg overflow-hidden animate-fadeIn duration-150 bg-white dark:bg-[#191a1a] pointer-events-auto"
+                        style={{ opacity: 1 }}
+                    >
+                        <div className="flex flex-col py-1">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onEditSpace(space.id); setActiveMenuSpaceId(null); }}
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-pplx-text hover:bg-pplx-hover text-left"
+                            >
+                                <Settings size={12} /> Edit
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDuplicateSpace(space.id); setActiveMenuSpaceId(null); }}
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-pplx-text hover:bg-pplx-hover text-left"
+                            >
+                                <Copy size={12} /> Duplicate
+                            </button>
+                            <div className="h-px bg-pplx-border/50 my-1" />
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDeleteSpace(space.id); setActiveMenuSpaceId(null); }}
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-pplx-hover text-left"
+                            >
+                                <Trash2 size={12} /> Delete
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+            
+            {/* Render children if expanded */}
+            {isExpanded && hasChildren && (
+                <div className="ml-3 border-l border-pplx-border/50 pl-1 flex flex-col">
+                    {children.map((child: Space) => (
+                        <SpaceItem 
+                            key={child.id} 
+                            space={child} 
+                            allSpaces={allSpaces} 
+                            level={level + 1} 
+                            activeSpaceId={activeSpaceId}
+                            onSelectSpace={onSelectSpace}
+                            onDuplicateSpace={onDuplicateSpace}
+                            onDeleteSpace={onDeleteSpace}
+                            onEditSpace={onEditSpace}
+                            onOpenSpaceFiles={onOpenSpaceFiles}
+                            activeMenuSpaceId={activeMenuSpaceId}
+                            setActiveMenuSpaceId={setActiveMenuSpaceId}
+                            menuRef={menuRef}
+                            isMobile={isMobile}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const NoteItem = ({ 
     note, 
     allNotes, 
@@ -686,7 +845,7 @@ const NoteItem = ({
 
     return (
         <div className="flex flex-col w-full">
-            <div className="relative group flex items-center w-full">
+            <div className={`relative group flex items-center w-full ${activeMenuNoteId === note.id ? 'z-[100]' : 'z-0'}`}>
                 {/* Chevron */}
                 <div className="w-6 flex justify-center shrink-0">
                     {hasChildren ? (
@@ -742,7 +901,8 @@ const NoteItem = ({
                 {activeMenuNoteId === note.id && (
                     <div 
                         ref={menuRef}
-                        className="absolute right-8 top-8 z-50 w-36 bg-pplx-card border border-pplx-border shadow-xl rounded-lg overflow-hidden animate-fadeIn duration-150"
+                        className="absolute right-8 top-8 z-[120] w-40 border border-pplx-border shadow-2xl rounded-lg overflow-hidden animate-fadeIn duration-150 bg-white dark:bg-[#191a1a] pointer-events-auto"
+                        style={{ opacity: 1 }}
                     >
                         <div className="flex flex-col py-1">
                             <button 

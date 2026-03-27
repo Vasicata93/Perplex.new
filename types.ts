@@ -52,6 +52,7 @@ export interface Space {
   systemInstructions: string;
   files: Attachment[]; // Knowledge base
   createdAt: number;
+  parentId?: string;
 }
 
 // Updated Interface for Library/Notes (Notion Style)

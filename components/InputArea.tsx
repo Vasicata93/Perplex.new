@@ -431,7 +431,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   // Box Styles
   const boxClass = isMobile
-    ? "bg-gradient-to-t from-[#1a1a1a] from-20% via-[#222222] to-[#2a2a2a] border border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.08)] rounded-[32px] flex flex-col transition-all duration-150"
+    ? "bg-pplx-card dark:bg-gradient-to-t dark:from-[#1a1a1a] dark:from-20% dark:via-[#222222] dark:to-[#2a2a2a] border border-pplx-border dark:border-white/30 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.08)] rounded-[32px] flex flex-col transition-all duration-150"
     : (centered
         ? "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-150 md:rounded-3xl"
         : "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-150 md:rounded-3xl");
@@ -444,7 +444,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
   // Mobile: Dark circle/pill matching the image (Dark Grey/Black background, Light icon)
   // Desktop: transparent background, muted text, hover to text-primary
   const mobileButtonFixedBg = isMobile
-    ? "bg-[#2a2a2a] text-pplx-text border border-white/10 shadow-lg backdrop-blur-md hover:bg-[#3a3a3a] transition-all sm:bg-transparent dark:sm:bg-transparent sm:text-pplx-muted dark:sm:text-pplx-muted sm:hover:text-pplx-text sm:scale-100 sm:border-none sm:shadow-none sm:hover:bg-transparent"
+    ? "bg-pplx-secondary dark:bg-[#2a2a2a] text-pplx-text border border-pplx-border dark:border-white/10 shadow-lg backdrop-blur-md hover:bg-pplx-hover dark:hover:bg-[#3a3a3a] transition-all sm:bg-transparent dark:sm:bg-transparent sm:text-pplx-muted dark:sm:text-pplx-muted sm:hover:text-pplx-text sm:scale-100 sm:border-none sm:shadow-none sm:hover:bg-transparent"
     : "bg-pplx-hover text-pplx-text border border-pplx-border shadow-lg backdrop-blur-md hover:bg-pplx-hover/80 transition-all sm:bg-transparent dark:sm:bg-transparent sm:text-pplx-muted dark:sm:text-pplx-muted sm:hover:text-pplx-text sm:scale-100 sm:border-none sm:shadow-none sm:hover:bg-transparent";
 
   // -- Components --

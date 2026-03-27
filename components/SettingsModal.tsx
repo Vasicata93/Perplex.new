@@ -5,7 +5,7 @@ import {
     Globe, ChevronDown, Folder, Users, Activity, GraduationCap, Plane,
     Zap, Key, Utensils, Palette, Film, Code, Target, Calendar, Feather,
     Moon, Sun, Type, Laptop, Cloud, Sparkles, Camera,
-    ChevronRight, ArrowLeft, Flame, Download, Smartphone
+    ChevronRight, ArrowLeft, Flame, Download, Smartphone, AlertTriangle
 } from 'lucide-react';
 import { AppSettings, ModelProvider, LocalModelConfig, MemoryItem, MemoryCategory } from '../types';
 import { MemoryService } from '../services/memoryService';
@@ -313,57 +313,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   // --- Offline Model Logic ---
-  const handleDownloadModel = (model: LocalModelConfig) => {
-      // Simulate download
-      let progress = 0;
+  const handleDownloadModel = async (model: LocalModelConfig) => {
       setDownloadProgress(prev => ({ ...prev, [model.id]: 0 }));
       
-      const interval = setInterval(() => {
-          progress += Math.floor(Math.random() * 15) + 5;
-          if (progress >= 100) {
-              progress = 100;
-              clearInterval(interval);
-              
-              // Add to "downloaded" list in settings
-              const updatedLocalModels = [...formData.localModels];
-              const existingIdx = updatedLocalModels.findIndex(m => m.id === model.id);
-              
-              const completedModel = { ...model, isDownloaded: true };
-              
-              if (existingIdx >= 0) {
-                  updatedLocalModels[existingIdx] = completedModel;
-              } else {
-                  updatedLocalModels.push(completedModel);
-              }
-
-              setFormData(prev => ({ 
-                  ...prev, 
-                  localModels: updatedLocalModels,
-                  activeLocalModelId: prev.activeLocalModelId || model.id,
-                  modelProvider: prev.modelProvider === ModelProvider.LOCAL ? prev.modelProvider : ModelProvider.LOCAL
-              }));
-              
-              // Clear progress after short delay
-              setTimeout(() => {
-                 setDownloadProgress(prev => {
-                     const next = { ...prev };
-                     delete next[model.id];
-                     return next;
-                 });
-              }, 500);
-          } else {
+      try {
+          const { localLlmService } = await import('../services/localLlmService');
+          await localLlmService.initModel(model.id, (progress) => {
               setDownloadProgress(prev => ({ ...prev, [model.id]: progress }));
+          });
+          
+          // Add to "downloaded" list in settings
+          const updatedLocalModels = [...formData.localModels];
+          const existingIdx = updatedLocalModels.findIndex(m => m.id === model.id);
+          
+          const completedModel = { ...model, isDownloaded: true };
+          
+          if (existingIdx >= 0) {
+              updatedLocalModels[existingIdx] = completedModel;
+          } else {
+              updatedLocalModels.push(completedModel);
           }
-      }, 400);
+
+          setFormData(prev => ({ 
+              ...prev, 
+              localModels: updatedLocalModels,
+              activeLocalModelId: prev.activeLocalModelId || model.id,
+              modelProvider: prev.modelProvider === ModelProvider.LOCAL ? prev.modelProvider : ModelProvider.LOCAL
+          }));
+      } catch (error) {
+          console.error("Failed to download model:", error);
+          alert("Failed to download model. Please check your connection and try again.");
+      } finally {
+          // Clear progress after short delay
+          setTimeout(() => {
+             setDownloadProgress(prev => {
+                 const next = { ...prev };
+                 delete next[model.id];
+                 return next;
+             });
+          }, 2000);
+      }
   };
 
-  const handleDeleteModel = (id: string) => {
-      const newModels = formData.localModels.filter(m => m.id !== id);
-      let newActiveId = formData.activeLocalModelId;
-      if (id === formData.activeLocalModelId) {
-          newActiveId = newModels.length > 0 ? newModels[0].id : '';
+  const handleDeleteModel = async (id: string) => {
+      if (confirm('Are you sure you want to delete this model? You will need to download it again to use it offline.')) {
+          try {
+              const { localLlmService } = await import('../services/localLlmService');
+              await localLlmService.deleteModel(id);
+              
+              const newModels = formData.localModels.filter(m => m.id !== id);
+              let newActiveId = formData.activeLocalModelId;
+              if (id === formData.activeLocalModelId) {
+                  newActiveId = newModels.length > 0 ? newModels[0].id : '';
+              }
+              setFormData({ ...formData, localModels: newModels, activeLocalModelId: newActiveId });
+          } catch (error) {
+              console.error("Failed to delete model:", error);
+          }
       }
-      setFormData({ ...formData, localModels: newModels, activeLocalModelId: newActiveId });
   };
 
   const filteredMemories = memories.filter(m => {
@@ -793,6 +800,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                     <p className="text-sm text-pplx-muted leading-relaxed">
                                         Download highly optimized small language models (1B-7B) to run locally on your device without internet.
                                     </p>
+                                    {!(navigator as any).gpu && (
+                                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
+                                            <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+                                            <p className="text-xs text-red-400 leading-relaxed">
+                                                <strong>WebGPU not supported.</strong> Your browser or device does not support WebGPU, which is required to run these models locally. Please try using Chrome or Edge on a compatible device.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-4">

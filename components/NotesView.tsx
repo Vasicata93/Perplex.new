@@ -38,6 +38,7 @@ import {
     TableBlock, CalendarBlock, ChartBlock, TOCBlock, ButtonBlock, SyncedBlock, EquationBlock,
     MentionPageBlock, MentionPersonBlock, NewPageBlock 
 } from './BlockRenderers';
+import { MessageRenderer } from './MessageRenderer';
 
 interface NotesViewProps {
     activeNoteId: string | null;
@@ -242,7 +243,6 @@ const AddBlockMenu = ({
 
 const renderBlockContent = (
     block: Block, 
-    isPreviewMode: boolean, 
     onChange: (val: string) => void, 
     onCheck: (checked: boolean) => void, 
     onEnter: () => void, 
@@ -262,6 +262,8 @@ const renderBlockContent = (
         onPaste, autoFocus: isFocused, onFocus, readOnly, className: ""
     };
 
+    const isEditing = isFocused && !readOnly;
+
     switch (block.type) {
         case 'h1': return <div className="flex items-center mt-6 mb-2"><Heading1 size={24} className="mr-2 text-pplx-muted shrink-0 opacity-50" /><AutoResizeTextarea {...textProps} className="text-3xl font-bold text-pplx-text placeholder-pplx-muted/50" placeholder="Heading 1" /></div>;
         case 'h2': return <div className="flex items-center mt-5 mb-2"><Heading2 size={20} className="mr-2 text-pplx-muted shrink-0 opacity-50" /><AutoResizeTextarea {...textProps} className="text-2xl font-bold text-pplx-text placeholder-pplx-muted/50" placeholder="Heading 2" /></div>;
@@ -279,10 +281,17 @@ const renderBlockContent = (
             );
         case 'quote': return <div className="flex items-start my-2 pl-4 border-l-4 border-pplx-accent bg-pplx-secondary/20 rounded-r-lg p-2"><AutoResizeTextarea {...textProps} className="text-base italic text-pplx-text leading-relaxed" placeholder="Quote" /></div>;
         case 'code':
+            if (isEditing) {
+                return (
+                    <div className="my-2 bg-[#1e1e1e] border border-pplx-border rounded-lg overflow-hidden font-mono text-sm">
+                        <div className="bg-[#2d2d2d] px-3 py-1 text-xs text-gray-400 flex justify-between border-b border-white/10"><span>Code</span></div>
+                        <div className="p-3"><AutoResizeTextarea {...textProps} className="text-gray-200" placeholder="// Code snippet" /></div>
+                    </div>
+                );
+            }
             return (
-                <div className="my-2 bg-[#1e1e1e] border border-pplx-border rounded-lg overflow-hidden font-mono text-sm">
-                    <div className="bg-[#2d2d2d] px-3 py-1 text-xs text-gray-400 flex justify-between border-b border-white/10"><span>Code</span></div>
-                    <div className="p-3"><AutoResizeTextarea {...textProps} className="text-gray-200" placeholder="// Code snippet" /></div>
+                <div className="my-1 py-1">
+                    <MessageRenderer content={`\`\`\`${block.content}\`\`\``} />
                 </div>
             );
         case 'divider': return <div className="py-4 cursor-default" onClick={onFocus}><hr className="border-t border-pplx-border" /></div>;
@@ -313,7 +322,26 @@ const renderBlockContent = (
         case 'mention_person': return <MentionPersonBlock content={block.content} onChange={onChange} readOnly={readOnly} />;
         case 'mention_page': return <MentionPageBlock content={block.content} metadata={block.metadata} notes={allNotes || []} onUpdate={updateBlockMetadata || (() => {})} onNavigate={onNavigatePage} readOnly={readOnly} />;
         case 'block_synced': return <SyncedBlock content={block.content} onChange={onChange} readOnly={readOnly} />;
-        default: return <div className="my-1"><AutoResizeTextarea {...textProps} className="text-base text-pplx-text leading-relaxed" placeholder={(isFocused && !isPreviewMode) ? "Type '/' for commands" : ""} /></div>;
+        default: 
+            if (isEditing) {
+                return (
+                    <div className="my-1">
+                        <AutoResizeTextarea 
+                            {...textProps} 
+                            className="text-base text-pplx-text leading-relaxed" 
+                            placeholder="Type '/' for commands" 
+                        />
+                    </div>
+                );
+            }
+            if (!block.content.trim()) {
+                return <div className="my-1 h-6" />;
+            }
+            return (
+                <div className="my-1 py-1 min-h-[1.5rem] [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:leading-normal">
+                    <MessageRenderer content={block.content} />
+                </div>
+            );
     }
 };
 
@@ -352,7 +380,7 @@ const SortableBlockItem = ({ id, children }: SortableBlockItemProps) => {
 const BlockRow = ({
     block, activeNote, activeBlockId, setActiveBlockId,
     showAddMenu, setShowAddMenu, aiMenuBlockId, setAiMenuBlockId,
-    thinkingBlockId, isPreviewMode,
+    thinkingBlockId,
     updateBlock, addBlock, deleteBlock, handlePaste, onSelectNote, notes,
     handleAiAction, onDeleteNote, setIsTagInputOpen,
     dragHandleProps, isOverlay,
@@ -383,7 +411,7 @@ const BlockRow = ({
             )}
             {(showAddMenu === block.id || showBlockMenu === block.id) && <AddBlockMenu onSelectType={(type) => addBlock(block.id, type)} onClose={() => { setShowAddMenu(null); setShowBlockMenu(null); }} isMobile={showBlockMenu === block.id || window.innerWidth < 768} onDeletePage={() => onDeleteNote(activeNote.id)} onAddTag={() => setIsTagInputOpen(true)} onDeleteBlock={() => deleteBlock(block.id)} />}
             <div className={`flex-1 min-w-0 px-2 md:px-0 ${isWideBlock ? 'pr-0 w-full' : ((isFocused || showAddMenu === block.id || aiMenuBlockId === block.id) ? 'pr-[140px]' : 'pr-2')} md:pr-0 transition-all duration-150 ${thinkingBlockId === block.id ? 'opacity-50 pointer-events-none' : 'opacity-100'} ${isOverlay ? 'max-h-[60px] overflow-hidden mask-image-b-fade' : ''}`}>
-                {renderBlockContent(block, isPreviewMode, (content) => updateBlock(block.id, { content }), (checked) => updateBlock(block.id, { checked }), () => { if(activeNote.isLocked) return; const listTypes = ['bullet', 'number', 'todo']; const nextType = listTypes.includes(block.type) ? block.type : 'text'; addBlock(block.id, nextType); }, () => deleteBlock(block.id), (e) => handlePaste(e, block.id), isFocused, () => setActiveBlockId(block.id), (pageId) => onSelectNote(pageId), notes, activeNote.isLocked, (updates) => updateBlock(block.id, updates), notes)}
+                {renderBlockContent(block, (content) => updateBlock(block.id, { content }), (checked) => updateBlock(block.id, { checked }), () => { if(activeNote.isLocked) return; const listTypes = ['bullet', 'number', 'todo']; const nextType = listTypes.includes(block.type) ? block.type : 'text'; addBlock(block.id, nextType); }, () => deleteBlock(block.id), (e) => handlePaste(e, block.id), isFocused, () => setActiveBlockId(block.id), (pageId) => onSelectNote(pageId), notes, activeNote.isLocked, (updates) => updateBlock(block.id, updates), notes)}
             </div>
         </div>
     );
@@ -398,7 +426,6 @@ export const NotesView: React.FC<NotesViewProps> = ({
     onSelectNote
 }) => {
     const [blocks, setBlocks] = useState<Block[]>([]);
-    const [isPreviewMode] = useState(false);
     const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
     const [showBlockMenu, setShowBlockMenu] = useState<string | null>(null); 
     const [showAddMenu, setShowAddMenu] = useState<string | null>(null); 
@@ -464,7 +491,73 @@ export const NotesView: React.FC<NotesViewProps> = ({
             if (activeNote.id !== lastNoteIdRef.current || activeNote.content !== lastSavedContentRef.current) {
                 
                 const lines = activeNote.content ? activeNote.content.split('\n') : [''];
-                const parsedBlocks: Block[] = lines.map(line => {
+                const parsedBlocks: Block[] = [];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    let line = lines[i];
+                    
+                    // Multi-line code block parser
+                    if (line.startsWith('```')) {
+                        let content = line.slice(3);
+                        if (!line.endsWith('```') || line === '```') {
+                            i++;
+                            while (i < lines.length) {
+                                if (lines[i].endsWith('```')) {
+                                    content += '\n' + lines[i].slice(0, -3);
+                                    break;
+                                }
+                                content += '\n' + lines[i];
+                                i++;
+                            }
+                        } else {
+                            content = content.slice(0, -3);
+                        }
+                        parsedBlocks.push({ id: uid(), type: 'code', content, checked: false });
+                        continue;
+                    }
+
+                    // Multi-line widget parser
+                    if (line.startsWith(':::widget')) {
+                        let content = line;
+                        i++;
+                        while (i < lines.length) {
+                            content += '\n' + lines[i];
+                            if (lines[i].startsWith(':::') && !lines[i].startsWith(':::widget')) {
+                                break;
+                            }
+                            i++;
+                        }
+                        parsedBlocks.push({ id: uid(), type: 'text', content, checked: false });
+                        continue;
+                    }
+
+                    // Multi-line special blocks (JSON)
+                    const specialTags = ['[TABLE]', '[CALENDAR]', '[CHART_V]', '[CHART_H]', '[CHART_L]', '[CHART_D]', '[EQUATION]', '[SYNC]', '[BUTTON]'];
+                    const foundTag = specialTags.find(tag => line.startsWith(tag));
+                    if (foundTag) {
+                        let type: BlockType = foundTag === '[TABLE]' ? 'table' : 
+                                           foundTag === '[CALENDAR]' ? 'calendar' :
+                                           foundTag === '[CHART_V]' ? 'chart_bar_v' :
+                                           foundTag === '[CHART_H]' ? 'chart_bar_h' :
+                                           foundTag === '[CHART_L]' ? 'chart_line' :
+                                           foundTag === '[CHART_D]' ? 'chart_donut' :
+                                           foundTag === '[EQUATION]' ? 'equation' :
+                                           foundTag === '[SYNC]' ? 'block_synced' : 'button';
+                        
+                        let content = line.replace(foundTag, '');
+                        if (content.trim().startsWith('{') && !content.trim().endsWith('}')) {
+                            i++;
+                            while (i < lines.length) {
+                                content += '\n' + lines[i];
+                                if (lines[i].trim().endsWith('}')) break;
+                                i++;
+                            }
+                        }
+                        parsedBlocks.push({ id: uid(), type, content, checked: false });
+                        continue;
+                    }
+
+                    // Single line blocks
                     let type: BlockType = 'text';
                     let content = line;
                     let checked = false;
@@ -478,25 +571,15 @@ export const NotesView: React.FC<NotesViewProps> = ({
                     else if (line.startsWith('- ')) { type = 'bullet'; content = line.replace('- ', ''); }
                     else if (line.match(/^\d+\. /)) { type = 'number'; content = line.replace(/^\d+\. /, ''); }
                     else if (line.startsWith('> ')) { type = 'quote'; content = line.replace('> ', ''); }
-                    else if (line.startsWith('```')) { type = 'code'; content = line.replace(/```/g, ''); }
                     else if (line === '---') { type = 'divider'; content = ''; }
                     else if (line.startsWith('[FILE:')) { type = 'file'; content = line.replace('[FILE:', '').replace(']', ''); } 
                     else if (line.startsWith('[PAGE:')) { const parts = line.match(/\[PAGE:(.*?):(.*?)\]/); if (parts) { content = parts[2]; metadata = { pageId: parts[1] }; } else { content = "Untitled Page"; } type = 'newpage'; }
-                    else if (line.startsWith('[TABLE]')) { type = 'table'; content = line.replace('[TABLE]', ''); }
-                    else if (line.startsWith('[CALENDAR]')) { type = 'calendar'; content = line.replace('[CALENDAR]', ''); }
-                    else if (line.startsWith('[CHART_V]')) { type = 'chart_bar_v'; content = line.replace('[CHART_V]', ''); }
-                    else if (line.startsWith('[CHART_H]')) { type = 'chart_bar_h'; content = line.replace('[CHART_H]', ''); }
-                    else if (line.startsWith('[CHART_L]')) { type = 'chart_line'; content = line.replace('[CHART_L]', ''); }
-                    else if (line.startsWith('[CHART_D]')) { type = 'chart_donut'; content = line.replace('[CHART_D]', ''); }
                     else if (line.startsWith('[TOC]')) { type = 'toc'; content = ''; }
-                    else if (line.startsWith('[BUTTON]')) { type = 'button'; content = line.replace('[BUTTON]', ''); }
-                    else if (line.startsWith('[EQUATION]')) { type = 'equation'; content = line.replace('[EQUATION]', ''); }
-                    else if (line.startsWith('[SYNC]')) { type = 'block_synced'; content = line.replace('[SYNC]', ''); }
                     else if (line.startsWith('[MENTION_P]')) { type = 'mention_person'; content = line.replace('[MENTION_P]', ''); }
                     else if (line.startsWith('[MENTION_D]')) { type = 'mention_page'; const complexMatch = line.match(/\[MENTION_D:(.*?)\](.*)/); if (complexMatch) { metadata = { pageId: complexMatch[1] }; content = complexMatch[2]; } else { content = line.replace('[MENTION_D]', ''); } }
                     
-                    return { id: uid(), type, content, checked, metadata };
-                });
+                    parsedBlocks.push({ id: uid(), type, content, checked, metadata });
+                }
                 
                 if (parsedBlocks.length === 0) parsedBlocks.push({ id: uid(), type: 'text', content: '' });
                 
@@ -552,7 +635,14 @@ export const NotesView: React.FC<NotesViewProps> = ({
     const handlePaste = (e: React.ClipboardEvent, currentBlockId: string) => {
         if (activeNote?.isLocked) return;
         const text = e.clipboardData.getData('text/plain');
-        if (text.includes('\n') || text.includes('\r')) {
+        
+        // If it contains a widget or code block, don't split it into multiple blocks
+        // This allows the whole widget to stay in one block and render correctly
+        const hasWidget = text.includes(':::widget');
+        const hasCodeBlock = text.includes('```');
+        const hasSpecialTag = text.startsWith('[TABLE]') || text.startsWith('[CALENDAR]') || text.startsWith('[CHART_') || text.startsWith('[EQUATION]') || text.startsWith('[SYNC]') || text.startsWith('[BUTTON]');
+
+        if ((text.includes('\n') || text.includes('\r')) && !hasWidget && !hasCodeBlock && !hasSpecialTag) {
             e.preventDefault();
             const lines = text.split(/\r?\n/);
             const newBlocks: Block[] = lines.map(line => {
@@ -786,7 +876,6 @@ export const NotesView: React.FC<NotesViewProps> = ({
                                                 aiMenuBlockId={aiMenuBlockId}
                                                 setAiMenuBlockId={setAiMenuBlockId}
                                                 thinkingBlockId={thinkingBlockId}
-                                                isPreviewMode={isPreviewMode}
                                                 updateBlock={updateBlock}
                                                 addBlock={addBlock}
                                                 deleteBlock={deleteBlock}
@@ -817,7 +906,6 @@ export const NotesView: React.FC<NotesViewProps> = ({
                                         aiMenuBlockId={aiMenuBlockId}
                                         setAiMenuBlockId={setAiMenuBlockId}
                                         thinkingBlockId={thinkingBlockId}
-                                        isPreviewMode={isPreviewMode}
                                         updateBlock={updateBlock}
                                         addBlock={addBlock}
                                         deleteBlock={deleteBlock}

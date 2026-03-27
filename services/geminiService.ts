@@ -1087,7 +1087,22 @@ export class LLMService {
     let result: { text: string; citations: Citation[]; relatedQuestions: string[]; searchImages: string[]; pendingAction?: PendingAction; reasoning?: string } = { text: "", citations: [] as Citation[], relatedQuestions: [] as string[], searchImages: [] as string[] };
 
     // 4. Route to Provider
-    if (provider === ModelProvider.GEMINI) {
+    if (provider === ModelProvider.LOCAL) {
+        if (!activeLocalModel) throw new Error("No local model configured.");
+        const { localLlmService } = await import('./localLlmService');
+        const localResult = await localLlmService.generateResponse(
+            history,
+            prompt,
+            systemInstruction,
+            onChunk
+        );
+        result = {
+            text: localResult.text,
+            citations: [],
+            relatedQuestions: [],
+            searchImages: []
+        };
+    } else if (provider === ModelProvider.GEMINI) {
         result = await this.generateGeminiResponse(
             history,
             prompt, 
@@ -1102,7 +1117,7 @@ export class LLMService {
             virtualFiles.length > 0 // Enable readFiles tool
         );
     } else {
-        // Generic Providers (OpenAI, OpenRouter, Local)
+        // Generic Providers (OpenAI, OpenRouter)
         let endpoint = "";
         let apiKey = "";
         let modelName = "";
@@ -1115,12 +1130,6 @@ export class LLMService {
             endpoint = "https://openrouter.ai/api/v1/chat/completions";
             apiKey = openRouterKey;
             modelName = openRouterModel || "openai/gpt-4o"; 
-        } else {
-            if (!activeLocalModel) throw new Error("No local model configured.");
-            // Default to standard Ollama port if not specified
-            endpoint = "http://localhost:11434/v1/chat/completions";
-            modelName = activeLocalModel.modelId;
-            apiKey = "not-needed"; 
         }
 
         // Determine correct search key

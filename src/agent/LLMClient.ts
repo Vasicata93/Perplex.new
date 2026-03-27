@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { ModelProvider, LocalModelConfig } from '../../types';
+import { ModelProvider, LocalModelConfig, Role } from '../../types';
 
 export interface LLMResponse {
     text: string;
@@ -185,6 +185,31 @@ export class LLMClient {
     }
 
     private async generateGeneric(messages: any[], tools: any[], systemInstruction?: string): Promise<LLMResponse> {
+        if (this.config.provider === ModelProvider.LOCAL) {
+            const { localLlmService } = await import('../../services/localLlmService');
+            
+            // Convert messages to the format expected by localLlmService
+            const history = messages.map(m => ({
+                id: m.id || Date.now().toString(),
+                role: m.role === 'assistant' ? Role.MODEL : Role.USER,
+                content: m.content || "",
+                timestamp: Date.now()
+            }));
+
+            const prompt = history.pop()?.content || "";
+            
+            const result = await localLlmService.generateResponse(
+                history,
+                prompt,
+                systemInstruction || ""
+            );
+
+            return {
+                text: result.text,
+                toolCalls: [] // WebLLM doesn't natively support tool calls in the same way, so we return empty for now
+            };
+        }
+
         let endpoint = "";
         let apiKey = "";
         let modelName = this.config.modelId;
@@ -195,10 +220,6 @@ export class LLMClient {
         } else if (this.config.provider === ModelProvider.OPENROUTER) {
             endpoint = "https://openrouter.ai/api/v1/chat/completions";
             apiKey = this.config.openRouterKey || "";
-        } else if (this.config.provider === ModelProvider.LOCAL) {
-            endpoint = "http://localhost:11434/v1/chat/completions";
-            modelName = this.config.localModel?.modelId || "";
-            apiKey = "not-needed";
         } else {
             throw new Error(`Unsupported provider: ${this.config.provider}`);
         }

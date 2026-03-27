@@ -59,7 +59,7 @@ interface MessageRendererProps {
     content: string;
 }
 
-export const MessageRenderer: React.FC<MessageRendererProps> = ({ content }) => {
+export const MessageRenderer = React.memo<MessageRendererProps>(({ content }) => {
     return (
         <ReactMarkdown 
             remarkPlugins={[remarkGfm, remarkDirective, remarkWidgetPlugin]}
@@ -87,12 +87,13 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({ content }) => 
                     const match = /language-(\w+)/.exec(props.className || '')
                     // @ts-ignore
                     const isInline = !match && !String(props.children).includes('\n');
+                    const lang = match?.[1] || '';
                     
-                    if (!isInline && match && (match[1] === 'chart' || match[1] === 'widget')) {
-                        return <WidgetRenderer type="chart" configStr={String(props.children)} />;
+                    if (!isInline && (lang === 'chart' || lang === 'widget' || lang === 'mermaid' || lang === 'diagram')) {
+                        return <WidgetRenderer type={lang === 'mermaid' || lang === 'diagram' ? 'mermaid' : 'chart'} configStr={String(props.children)} />;
                     }
 
-                    return isInline ? <code className="bg-pplx-secondary text-pplx-accent px-1.5 py-0.5 rounded text-sm font-mono border border-pplx-border" {...props} /> : <div className="relative my-6 rounded-lg overflow-hidden border border-pplx-border bg-pplx-card shadow-sm"><div className="flex items-center justify-between px-4 py-2 bg-pplx-hover/40 border-b border-pplx-border"><span className="text-xs text-pplx-muted font-mono lowercase">{match?.[1] || 'code'}</span><button onClick={() => navigator.clipboard.writeText(String(props.children))} className="flex items-center gap-1.5 text-xs text-pplx-muted hover:text-pplx-text transition-colors"><Copy size={12} /> Copy</button></div><pre className="p-4 overflow-x-auto text-sm text-pplx-text font-mono leading-relaxed custom-scrollbar"><code className={props.className} {...props} /></pre></div>
+                    return isInline ? <code className="bg-pplx-secondary text-pplx-accent px-1.5 py-0.5 rounded text-sm font-mono border border-pplx-border" {...props} /> : <div className="relative my-6 rounded-lg overflow-hidden border border-pplx-border bg-pplx-card shadow-sm"><div className="flex items-center justify-between px-4 py-2 bg-pplx-hover/40 border-b border-pplx-border"><span className="text-xs text-pplx-muted font-mono lowercase">{lang || 'code'}</span><button onClick={() => navigator.clipboard.writeText(String(props.children))} className="flex items-center gap-1.5 text-xs text-pplx-muted hover:text-pplx-text transition-colors"><Copy size={12} /> Copy</button></div><pre className="p-4 overflow-x-auto text-sm text-pplx-text font-mono leading-relaxed custom-scrollbar"><code className={props.className} {...props} /></pre></div>
                 },
                 table: ({node, ...props}) => (<div className="my-6 w-full overflow-hidden rounded-lg border border-pplx-border shadow-sm"><div className="overflow-x-auto"><table className="w-full border-collapse text-sm text-left" {...props} /></div></div>),
                 thead: ({node, ...props}) => <thead className="bg-pplx-secondary text-pplx-text font-semibold uppercase tracking-wider text-xs" {...props} />,
@@ -105,4 +106,4 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({ content }) => 
             {content}
         </ReactMarkdown>
     );
-};
+});

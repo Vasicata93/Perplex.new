@@ -10,24 +10,29 @@ interface SpacesModalProps {
   onSaveSpace: (space: Space) => void;
   onDeleteSpace: (id: string) => void;
   initialSpaceId?: string | null;
+  initialParentId?: string | null;
 }
 
-export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, spaces, onSaveSpace, onDeleteSpace, initialSpaceId }) => {
+export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, spaces, onSaveSpace, onDeleteSpace, initialSpaceId, initialParentId }) => {
   const [editingSpace, setEditingSpace] = useState<Partial<Space> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize editing space from prop when modal opens
   useEffect(() => {
-    if (isOpen && initialSpaceId) {
-        const spaceToEdit = spaces.find(s => s.id === initialSpaceId);
-        if (spaceToEdit) {
-            setEditingSpace({ ...spaceToEdit });
+    if (isOpen) {
+        if (initialSpaceId === 'new') {
+            handleCreateNew(initialParentId || undefined);
+        } else if (initialSpaceId) {
+            const spaceToEdit = spaces.find(s => s.id === initialSpaceId);
+            if (spaceToEdit) {
+                setEditingSpace({ ...spaceToEdit });
+            }
         }
     } else if (!isOpen) {
         setEditingSpace(null);
     }
-  }, [isOpen, initialSpaceId, spaces]);
+  }, [isOpen, initialSpaceId, initialParentId, spaces]);
 
   // Auto-focus title when entering edit mode or switching spaces
   useEffect(() => {
@@ -38,7 +43,7 @@ export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, space
 
   if (!isOpen) return null;
 
-  const handleCreateNew = () => {
+  const handleCreateNew = (parentId?: string) => {
     setEditingSpace({
         id: Math.random().toString(36).substr(2, 9),
         title: '',
@@ -46,7 +51,8 @@ export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, space
         description: '',
         systemInstructions: '',
         files: [],
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        parentId
     });
   };
 
@@ -104,7 +110,7 @@ export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, space
             
             <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                 <button 
-                    onClick={handleCreateNew}
+                    onClick={() => handleCreateNew()}
                     className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-sm text-pplx-accent hover:bg-pplx-hover transition-colors border border-dashed border-pplx-border mb-2"
                 >
                     <Plus size={16} />
