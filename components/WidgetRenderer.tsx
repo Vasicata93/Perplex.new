@@ -11,9 +11,23 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
     const [blobUrl, setBlobUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isDark, setIsDark] = useState(false);
+    const [height, setHeight] = useState<number>(400); // Default height
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const lastHtmlRef = useRef<string | null>(null);
     const blobUrlRef = useRef<string | null>(null);
+
+    // Listen for resize messages from the iframe
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data && event.data.type === 'WIDGET_RESIZE' && typeof event.data.height === 'number') {
+                // Add a small buffer to prevent scrollbars
+                setHeight(event.data.height + 10);
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     // Detect theme
     useEffect(() => {
@@ -112,8 +126,17 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
 
             // 4. Stack-based JSON extractor
             const extractJson = (str: string) => {
-                const firstBrace = str.indexOf('{');
-                const firstBracket = str.indexOf('[');
+                let s = str.trim();
+                // Skip :::widget[...] prefix if present (fallback for malformed blocks)
+                if (s.startsWith(':::widget')) {
+                    const closingBracket = s.indexOf(']');
+                    if (closingBracket !== -1) {
+                        s = s.substring(closingBracket + 1);
+                    }
+                }
+
+                const firstBrace = s.indexOf('{');
+                const firstBracket = s.indexOf('[');
                 let start = -1;
                 
                 if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
@@ -129,8 +152,8 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
                 let escape = false;
                 let quoteChar = '';
                 
-                for (let i = start; i < str.length; i++) {
-                    const c = str[i];
+                for (let i = start; i < s.length; i++) {
+                    const c = s[i];
                     if (escape) { escape = false; continue; }
                     if (c === '\\') { escape = true; continue; }
                     if (inString) {
@@ -145,10 +168,10 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
                     if (c === '{' || c === '[') stack++;
                     else if (c === '}' || c === ']') {
                         stack--;
-                        if (stack === 0) return str.substring(start, i + 1);
+                        if (stack === 0) return s.substring(start, i + 1);
                     }
                 }
-                return str.substring(start); // Return truncated if not balanced
+                return s.substring(start); // Return truncated if not balanced
             };
 
             let config;
@@ -264,7 +287,8 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
                 ref={iframeRef}
                 src={blobUrl}
                 sandbox="allow-scripts"
-                className={`w-full h-80 md:h-96 border-0 ${isDark ? 'bg-[#191919]' : 'bg-white'}`}
+                style={{ height: `${height}px` }}
+                className={`w-full border-0 ${isDark ? 'bg-[#191919]' : 'bg-white'}`}
                 title="Interactive Widget"
                 loading="lazy"
             />

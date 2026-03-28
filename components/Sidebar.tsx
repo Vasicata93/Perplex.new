@@ -31,6 +31,7 @@ interface SidebarProps {
   onNewSpace: (parentId?: string) => void;
   onOpenSpaceFiles?: (id: string) => void;
   onNewPortfolioTracker?: () => void;
+  onNewProjectDashboard?: () => void;
   onManageSpaces: (id?: string) => void;
   onDuplicateSpace: (id: string) => void;
   onDeleteSpace: (id: string) => void;
@@ -68,6 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewSpace,
   onOpenSpaceFiles,
   onNewPortfolioTracker,
+  onNewProjectDashboard,
   onManageSpaces,
   onDuplicateSpace,
   onDeleteSpace,
@@ -89,6 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // State for Library Item Menu
   const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
   const [activeMenuSpaceId, setActiveMenuSpaceId] = useState<string | null>(null);
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const spaceMenuRef = useRef<HTMLDivElement>(null);
   
@@ -470,13 +473,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           ))}
                           {onNewPortfolioTracker && (
                               <div className="mt-4 mb-2 px-3">
-                                  <div className="text-[10px] font-bold text-pplx-muted uppercase tracking-wider mb-2">Templates</div>
                                   <button 
-                                      onClick={(e) => { e.stopPropagation(); onNewPortfolioTracker(); toggleSection('library'); }}
-                                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
+                                      onClick={(e) => { e.stopPropagation(); setIsTemplatesOpen(!isTemplatesOpen); }}
+                                      className="w-full flex items-center justify-between px-2 py-1.5 text-[10px] font-bold text-pplx-muted uppercase tracking-wider hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left group/templates"
                                   >
-                                      <Plus size={14} /> Portfolio Tracker
+                                      <div className="flex items-center gap-2">
+                                          <LayoutGrid size={12} className="text-pplx-accent" />
+                                          <span>Templates</span>
+                                      </div>
+                                      {isTemplatesOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                                   </button>
+                                  
+                                  {isTemplatesOpen && (
+                                      <div className="mt-1 ml-1 space-y-0.5 animate-fadeIn duration-150">
+                                          <button 
+                                              onClick={(e) => { e.stopPropagation(); onNewPortfolioTracker(); toggleSection('library'); }}
+                                              className="w-full flex items-center gap-2 px-2 py-2 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
+                                          >
+                                              <Plus size={14} /> Portfolio Tracker
+                                          </button>
+                                          {onNewProjectDashboard && (
+                                              <button 
+                                                  onClick={(e) => { e.stopPropagation(); onNewProjectDashboard(); toggleSection('library'); }}
+                                                  className="w-full flex items-center gap-2 px-2 py-2 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
+                                              >
+                                                  <Plus size={14} /> Project Dashboard
+                                              </button>
+                                          )}
+                                          {/* Future templates can be added here */}
+                                      </div>
+                                  )}
                               </div>
                           )}
                       </div>
@@ -628,13 +654,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         ))}
                         {onNewPortfolioTracker && (
                             <div className="mt-6 mb-4 px-3">
-                                <div className="text-xs font-bold text-pplx-muted uppercase tracking-wider mb-2">Templates</div>
                                 <button 
-                                    onClick={() => { onNewPortfolioTracker(); setIsMobileLibraryOpen(false); }}
-                                    className="w-full flex items-center gap-3 px-3 py-3 text-sm text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-xl transition-colors text-left border border-pplx-border/50"
+                                    onClick={() => setIsTemplatesOpen(!isTemplatesOpen)}
+                                    className="w-full flex items-center justify-between px-3 py-3 text-xs font-bold text-pplx-muted uppercase tracking-wider mb-2 hover:bg-pplx-hover rounded-xl transition-colors"
                                 >
-                                    <Plus size={16} /> Portfolio Tracker
+                                    <div className="flex items-center gap-2">
+                                        <LayoutGrid size={14} className="text-pplx-accent" />
+                                        <span>Templates</span>
+                                    </div>
+                                    {isTemplatesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </button>
+                                
+                                {isTemplatesOpen && (
+                                    <div className="space-y-2 animate-fadeIn duration-150">
+                                        <button 
+                                            onClick={() => { onNewPortfolioTracker(); setIsMobileLibraryOpen(false); }}
+                                            className="w-full flex items-center gap-3 px-3 py-3 text-sm text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-xl transition-colors text-left border border-pplx-border/50"
+                                        >
+                                            <Plus size={16} /> Portfolio Tracker
+                                        </button>
+                                        {onNewProjectDashboard && (
+                                            <button 
+                                                onClick={() => { onNewProjectDashboard(); setIsMobileLibraryOpen(false); }}
+                                                className="w-full flex items-center gap-3 px-3 py-3 text-sm text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-xl transition-colors text-left border border-pplx-border/50"
+                                            >
+                                                <Plus size={16} /> Project Dashboard
+                                            </button>
+                                        )}
+                                        {/* Future templates can be added here */}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

@@ -27,7 +27,7 @@ import {
     Quote, GripVertical, CheckSquare, List, Minus, Code,
     Sparkles, Wand2, Smile, AlignLeft, Upload, Palette,
     Table as TableIcon, BarChart, TrendingUp,
-    ListChecks, ArrowUpRight, Briefcase,
+    ListChecks, ArrowUpRight, Briefcase, Edit3,
     CalendarDays, PieChart, MousePointerClick, Sigma, AtSign, Layers,
     ListOrdered
 } from 'lucide-react';
@@ -36,7 +36,7 @@ import { EMOJI_LIST } from '../constants';
 import { 
     Block, BlockType, AutoResizeTextarea, 
     TableBlock, CalendarBlock, ChartBlock, TOCBlock, ButtonBlock, SyncedBlock, EquationBlock,
-    MentionPageBlock, MentionPersonBlock, NewPageBlock 
+    MentionPageBlock, MentionPersonBlock, NewPageBlock, WidgetBlock 
 } from './BlockRenderers';
 import { MessageRenderer } from './MessageRenderer';
 
@@ -74,14 +74,14 @@ const TableOfContents = ({ blocks }: { blocks: Block[] }) => {
     };
 
     return (
-        <div className="absolute top-1/2 -translate-y-1/2 right-2 z-40 hidden md:flex flex-col gap-1 group/toc hover:bg-pplx-card hover:border hover:border-pplx-border hover:shadow-xl hover:py-8 hover:px-4 rounded-xl transition-all duration-150 max-h-[85vh] overflow-y-auto no-scrollbar w-8 hover:w-72 items-end">
-            <div className="absolute right-0 top-0 bottom-0 flex flex-col items-center justify-center gap-4 pointer-events-none opacity-40 group-hover/toc:opacity-0 transition-opacity duration-150 py-8 w-full">
+        <div className="absolute top-1/2 -translate-y-1/2 right-2 z-40 hidden md:flex flex-col gap-1 group/toc bg-transparent hover:bg-pplx-card hover:border hover:border-pplx-border hover:shadow-xl hover:py-8 hover:px-4 rounded-xl transition-all duration-500 delay-0 hover:delay-[500ms] max-h-[85vh] overflow-y-auto no-scrollbar w-8 hover:w-[170px] items-end border border-transparent overflow-hidden">
+            <div className="absolute right-0 top-0 bottom-0 flex flex-col items-center justify-center gap-4 pointer-events-none opacity-40 group-hover/toc:opacity-0 transition-opacity duration-500 delay-0 group-hover/toc:delay-[500ms] py-8 w-8">
                 {headings.map((h) => (
-                    <div key={h.id + '_line'} className={`bg-pplx-text rounded-full transition-all duration-150 ${h.type === 'h1' ? 'w-4 h-0.5' : h.type === 'h2' ? 'w-3 h-0.5 opacity-70' : 'w-2 h-0.5 opacity-50'}`} />
+                    <div key={h.id + '_line'} className={`bg-pplx-text rounded-full transition-all duration-500 ${h.type === 'h1' ? 'w-4 h-0.5' : h.type === 'h2' ? 'w-3 h-0.5 opacity-70' : 'w-2 h-0.5 opacity-50'}`} />
                 ))}
             </div>
-            <div className="w-full opacity-0 group-hover/toc:opacity-100 transition-opacity duration-150 delay-0 flex flex-col gap-2">
-                 <div className="text-[10px] font-bold text-pplx-muted uppercase tracking-wider mb-3 px-1 pb-2 border-b border-pplx-border/50">Table of Contents</div>
+            <div className="w-[138px] opacity-0 group-hover/toc:opacity-100 transition-opacity duration-500 delay-0 group-hover/toc:delay-[500ms] flex flex-col gap-2">
+                 <div className="text-[10px] font-bold text-pplx-muted uppercase tracking-wider mb-3 px-1 pb-2 border-b border-pplx-border/50 whitespace-nowrap">Table of Contents</div>
                  {headings.map((h) => (
                     <button 
                         key={h.id} 
@@ -92,7 +92,7 @@ const TableOfContents = ({ blocks }: { blocks: Block[] }) => {
                             'text-pplx-muted pl-7'
                         }`}
                     >
-                        <span className="line-clamp-2">{h.content}</span>
+                        <span className="line-clamp-2 break-words">{h.content}</span>
                     </button>
                  ))}
             </div>
@@ -281,17 +281,28 @@ const renderBlockContent = (
             );
         case 'quote': return <div className="flex items-start my-2 pl-4 border-l-4 border-pplx-accent bg-pplx-secondary/20 rounded-r-lg p-2"><AutoResizeTextarea {...textProps} className="text-base italic text-pplx-text leading-relaxed" placeholder="Quote" /></div>;
         case 'code':
-            if (isEditing) {
-                return (
-                    <div className="my-2 bg-[#1e1e1e] border border-pplx-border rounded-lg overflow-hidden font-mono text-sm">
-                        <div className="bg-[#2d2d2d] px-3 py-1 text-xs text-gray-400 flex justify-between border-b border-white/10"><span>Code</span></div>
-                        <div className="p-3"><AutoResizeTextarea {...textProps} className="text-gray-200" placeholder="// Code snippet" /></div>
-                    </div>
-                );
-            }
             return (
-                <div className="my-1 py-1">
-                    <MessageRenderer content={`\`\`\`${block.content}\`\`\``} />
+                <div className="my-2 relative group/code">
+                    {!readOnly && (
+                        <div className="absolute top-[12px] right-2 z-20 opacity-0 group-hover/code:opacity-100 transition-opacity">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onFocus(); }} 
+                                className="p-1.5 bg-pplx-secondary/80 backdrop-blur hover:bg-pplx-hover rounded-lg border border-pplx-border text-[10px] flex items-center gap-1.5 font-bold uppercase tracking-wider shadow-sm"
+                            >
+                                <Edit3 size={10} /> {isEditing ? 'Done' : 'Edit Code'}
+                            </button>
+                        </div>
+                    )}
+                    {isEditing ? (
+                        <div className="bg-[#1e1e1e] border border-pplx-border rounded-lg overflow-hidden font-mono text-sm">
+                            <div className="bg-[#2d2d2d] px-3 py-1 text-xs text-gray-400 flex justify-between border-b border-white/10"><span>Code</span></div>
+                            <div className="p-3"><AutoResizeTextarea {...textProps} className="text-gray-200" placeholder="// Code snippet" /></div>
+                        </div>
+                    ) : (
+                        <div className="py-1">
+                            <MessageRenderer content={`\`\`\`${block.content}\`\`\``} />
+                        </div>
+                    )}
                 </div>
             );
         case 'divider': return <div className="py-4 cursor-default" onClick={onFocus}><hr className="border-t border-pplx-border" /></div>;
@@ -312,6 +323,7 @@ const renderBlockContent = (
         case 'newpage': return <NewPageBlock content={block.content} metadata={block.metadata} onNavigate={onNavigatePage} notes={allNotes} />;
         case 'table': return <TableBlock content={block.content} onChange={onChange} readOnly={readOnly} />;
         case 'calendar': return <CalendarBlock content={block.content} onChange={onChange} readOnly={readOnly} />;
+        case 'widget': return <WidgetBlock content={block.content} onChange={onChange} readOnly={readOnly} />;
         case 'chart_bar_v':
         case 'chart_bar_h':
         case 'chart_line':
@@ -387,32 +399,54 @@ const BlockRow = ({
     showBlockMenu, setShowBlockMenu
 }: any) => {
     const isFocused = activeBlockId === block.id;
-    const isWideBlock = ['table', 'chart_bar_v', 'chart_bar_h', 'chart_line', 'chart_donut', 'calendar', 'db_list', 'db_gallery'].includes(block.type);
+    const isWideBlock = ['table', 'chart_bar_v', 'chart_bar_h', 'chart_line', 'chart_donut', 'calendar', 'db_list', 'db_gallery', 'widget'].includes(block.type);
     
+    // Helper for precise vertical alignment on desktop
+    const getTopClass = () => {
+        if (block.type === 'h1') return 'top-[30px]';
+        if (block.type === 'h2') return 'top-[24px]';
+        if (block.type === 'h3') return 'top-[18px]';
+        if (block.type === 'quote' || block.type === 'code') return 'top-[12px]';
+        if (block.type === 'divider') return 'top-[16px]';
+        if (['image', 'file', 'table', 'calendar', 'widget', 'chart_bar_v', 'chart_bar_h', 'chart_line', 'chart_donut'].includes(block.type)) return 'top-[12px]';
+        return 'top-[4px]'; // default text, bullet, todo, number
+    };
+
+    const topClass = getTopClass();
+
     return (
-        <div data-block-id={block.id} className={`group relative flex -mx-2 md:mx-0 group/row touch-manipulation min-h-[1.5rem] ${isWideBlock ? 'flex-col items-stretch' : 'items-start'} md:flex-row md:items-start ${isOverlay ? 'bg-pplx-card shadow-2xl border border-pplx-accent/50 rounded-lg opacity-90 scale-105' : ''}`} onMouseEnter={() => !isOverlay && setActiveBlockId(block.id)}>
+        <div 
+            data-block-id={block.id} 
+            className={`group relative flex flex-col md:flex-row -mx-2 md:mx-0 group/row touch-manipulation min-h-[1.5rem] ${isOverlay ? 'bg-pplx-card shadow-2xl border border-pplx-accent/50 rounded-lg opacity-90 scale-105' : ''}`}
+            onClick={() => !isOverlay && setActiveBlockId(block.id)}
+        >
             {!activeNote.isLocked && !isOverlay && (
-                <div className="hidden md:flex items-center gap-1 pr-3 pt-1 opacity-0 group-hover/row:opacity-100 transition-opacity absolute -left-24 top-0.5 select-none h-6 justify-end w-24">
+                <div className={`hidden md:flex items-center gap-1 pr-3 opacity-0 group-hover/row:opacity-100 transition-opacity absolute -left-24 ${topClass} select-none h-6 justify-end w-24`}>
                     <div className="relative">
-                        <button onClick={() => setAiMenuBlockId(aiMenuBlockId === block.id ? null : block.id)} className={`p-0.5 text-pplx-accent hover:text-white hover:bg-pplx-hover rounded transition-colors ${thinkingBlockId === block.id ? 'animate-pulse' : ''}`} title="AI Assist"><Sparkles size={16} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setAiMenuBlockId(aiMenuBlockId === block.id ? null : block.id); }} className={`p-0.5 text-pplx-accent hover:text-white hover:bg-pplx-hover rounded transition-colors ${thinkingBlockId === block.id ? 'animate-pulse' : ''}`} title="AI Assist"><Sparkles size={16} /></button>
                         {aiMenuBlockId === block.id && <AddBlockMenu onSelectType={() => {}} onClose={() => setAiMenuBlockId(null)} isMobile={false} onAiAction={(action) => handleAiAction(block.id, action)} showAiOnly={true} />}
                     </div>
-                    <div className="relative"><button onClick={() => setShowAddMenu(block.id)} className="p-0.5 text-gray-400 hover:text-white hover:bg-pplx-hover rounded transition-colors"><Plus size={16} /></button></div>
+                    <div className="relative"><button onClick={(e) => { e.stopPropagation(); setShowAddMenu(block.id); }} className="p-0.5 text-gray-400 hover:text-white hover:bg-pplx-hover rounded transition-colors"><Plus size={16} /></button></div>
                     <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing p-0.5 text-gray-400 hover:text-white hover:bg-pplx-hover rounded transition-colors"><GripVertical size={16} /></div>
                 </div>
             )}
+            
+            <div className={`flex-1 min-w-0 px-2 md:px-0 ${isWideBlock ? 'pr-0 w-full' : 'pr-2'} md:pr-0 transition-all duration-150 ${thinkingBlockId === block.id ? 'opacity-50 pointer-events-none' : 'opacity-100'} ${isOverlay ? 'max-h-[60px] overflow-hidden mask-image-b-fade' : ''}`}>
+                {renderBlockContent(block, (content) => updateBlock(block.id, { content }), (checked) => updateBlock(block.id, { checked }), () => { if(activeNote.isLocked) return; const listTypes = ['bullet', 'number', 'todo']; const nextType = listTypes.includes(block.type) ? block.type : 'text'; addBlock(block.id, nextType); }, () => deleteBlock(block.id), (e) => handlePaste(e, block.id), isFocused, () => setActiveBlockId(block.id), (pageId) => onSelectNote(pageId), notes, activeNote.isLocked, (updates) => updateBlock(block.id, updates), notes)}
+            </div>
+
             {!activeNote.isLocked && !isOverlay && (
-                <div className={`md:hidden absolute right-0 top-0 z-20 flex items-center pl-4 bg-gradient-to-l from-pplx-primary via-pplx-primary/80 to-transparent transition-all duration-150 ${isWideBlock ? 'h-10 rounded-bl-xl pr-1' : 'h-full'} ${(isFocused || showAddMenu === block.id || aiMenuBlockId === block.id) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-                    <button onClick={() => setAiMenuBlockId(aiMenuBlockId === block.id ? null : block.id)} className={`p-2 rounded hover:bg-pplx-hover mr-1 ${block.content.length > 0 ? 'text-pplx-accent' : 'text-pplx-muted opacity-50'}`}><Sparkles size={18} /></button>
-                    <button onClick={() => setShowAddMenu(block.id)} className="p-2 text-pplx-muted hover:text-pplx-text rounded hover:bg-pplx-hover mr-1"><Plus size={20} /></button>
-                    <div {...dragHandleProps} className="p-3 text-pplx-muted hover:text-pplx-text cursor-grab active:cursor-grabbing touch-none"><GripVertical size={22} /></div>
+                <div className={`md:hidden flex items-center justify-end gap-1 px-2 transition-all duration-200 overflow-hidden ${isFocused || showAddMenu === block.id || aiMenuBlockId === block.id ? 'h-10 opacity-100 mt-1 mb-2' : 'h-0 opacity-0'}`}>
+                    <div className="flex items-center bg-pplx-secondary/30 rounded-full px-2 py-1 gap-1 border border-pplx-border/50 shadow-sm">
+                        <button onClick={(e) => { e.stopPropagation(); setAiMenuBlockId(aiMenuBlockId === block.id ? null : block.id); }} className={`p-1.5 rounded-full hover:bg-pplx-hover ${block.content.length > 0 ? 'text-pplx-accent' : 'text-pplx-muted opacity-50'}`}><Sparkles size={16} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setShowAddMenu(block.id); }} className="p-1.5 text-pplx-muted hover:text-pplx-text rounded-full hover:bg-pplx-hover"><Plus size={18} /></button>
+                        <div {...dragHandleProps} className="p-1.5 text-pplx-muted hover:text-pplx-text cursor-grab active:cursor-grabbing touch-none"><GripVertical size={18} /></div>
+                    </div>
                     {aiMenuBlockId === block.id && <AddBlockMenu onSelectType={() => {}} onClose={() => setAiMenuBlockId(null)} isMobile={true} onAiAction={(action) => handleAiAction(block.id, action)} showAiOnly={true} />}
                 </div>
             )}
+
             {(showAddMenu === block.id || showBlockMenu === block.id) && <AddBlockMenu onSelectType={(type) => addBlock(block.id, type)} onClose={() => { setShowAddMenu(null); setShowBlockMenu(null); }} isMobile={showBlockMenu === block.id || window.innerWidth < 768} onDeletePage={() => onDeleteNote(activeNote.id)} onAddTag={() => setIsTagInputOpen(true)} onDeleteBlock={() => deleteBlock(block.id)} />}
-            <div className={`flex-1 min-w-0 px-2 md:px-0 ${isWideBlock ? 'pr-0 w-full' : ((isFocused || showAddMenu === block.id || aiMenuBlockId === block.id) ? 'pr-[140px]' : 'pr-2')} md:pr-0 transition-all duration-150 ${thinkingBlockId === block.id ? 'opacity-50 pointer-events-none' : 'opacity-100'} ${isOverlay ? 'max-h-[60px] overflow-hidden mask-image-b-fade' : ''}`}>
-                {renderBlockContent(block, (content) => updateBlock(block.id, { content }), (checked) => updateBlock(block.id, { checked }), () => { if(activeNote.isLocked) return; const listTypes = ['bullet', 'number', 'todo']; const nextType = listTypes.includes(block.type) ? block.type : 'text'; addBlock(block.id, nextType); }, () => deleteBlock(block.id), (e) => handlePaste(e, block.id), isFocused, () => setActiveBlockId(block.id), (pageId) => onSelectNote(pageId), notes, activeNote.isLocked, (updates) => updateBlock(block.id, updates), notes)}
-            </div>
         </div>
     );
 };
@@ -527,7 +561,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
                             }
                             i++;
                         }
-                        parsedBlocks.push({ id: uid(), type: 'text', content, checked: false });
+                        parsedBlocks.push({ id: uid(), type: 'widget', content, checked: false });
                         continue;
                     }
 
@@ -611,6 +645,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
                 case 'newpage': return `[PAGE:${b.metadata?.pageId || ''}:${b.content}]`;
                 case 'table': return `[TABLE]${b.content}`;
                 case 'calendar': return `[CALENDAR]${b.content}`;
+                case 'widget': return b.content;
                 case 'chart_bar_v': return `[CHART_V]${b.content}`;
                 case 'chart_bar_h': return `[CHART_H]${b.content}`;
                 case 'chart_line': return `[CHART_L]${b.content}`;
@@ -638,20 +673,65 @@ export const NotesView: React.FC<NotesViewProps> = ({
         
         // If it contains a widget or code block, don't split it into multiple blocks
         // This allows the whole widget to stay in one block and render correctly
-        const hasWidget = text.includes(':::widget');
-        const hasCodeBlock = text.includes('```');
         const hasSpecialTag = text.startsWith('[TABLE]') || text.startsWith('[CALENDAR]') || text.startsWith('[CHART_') || text.startsWith('[EQUATION]') || text.startsWith('[SYNC]') || text.startsWith('[BUTTON]');
 
-        if ((text.includes('\n') || text.includes('\r')) && !hasWidget && !hasCodeBlock && !hasSpecialTag) {
+        if ((text.includes('\n') || text.includes('\r')) && !hasSpecialTag) {
             e.preventDefault();
+            
+            // Advanced parser for mixed content
             const lines = text.split(/\r?\n/);
-            const newBlocks: Block[] = lines.map(line => {
-                 let type: BlockType = 'text';
-                 let content = line.trim();
-                 if (line.startsWith('# ')) { type = 'h1'; content = line.replace('# ', ''); }
-                 else if (line.startsWith('- ')) { type = 'bullet'; content = line.replace('- ', ''); }
-                 return { id: uid(), type, content, checked: false };
-            });
+            const newBlocks: Block[] = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i];
+                if (!line.trim() && i === lines.length - 1) continue;
+
+                // Widget parser in paste
+                if (line.trim().startsWith(':::widget')) {
+                    let widgetContent = line;
+                    let j = i + 1;
+                    while (j < lines.length) {
+                        widgetContent += '\n' + lines[j];
+                        if (lines[j].trim() === ':::') {
+                            i = j;
+                            break;
+                        }
+                        j++;
+                    }
+                    newBlocks.push({ id: uid(), type: 'widget', content: widgetContent, checked: false });
+                    continue;
+                }
+
+                // Code block parser in paste
+                if (line.trim().startsWith('```')) {
+                    let codeContent = line;
+                    let j = i + 1;
+                    while (j < lines.length) {
+                        codeContent += '\n' + lines[j];
+                        if (lines[j].trim().endsWith('```')) {
+                            i = j;
+                            break;
+                        }
+                        j++;
+                    }
+                    // If it's a chart code block, we can keep it as code or convert to widget
+                    // MessageRenderer handles it either way, but 'code' block type is fine
+                    newBlocks.push({ id: uid(), type: 'code', content: codeContent.slice(3).replace(/\n?```$/, ''), checked: false });
+                    continue;
+                }
+
+                // Basic blocks
+                let type: BlockType = 'text';
+                let content = line;
+                if (line.startsWith('# ')) { type = 'h1'; content = line.replace('# ', ''); }
+                else if (line.startsWith('## ')) { type = 'h2'; content = line.replace('## ', ''); }
+                else if (line.startsWith('### ')) { type = 'h3'; content = line.replace('### ', ''); }
+                else if (line.startsWith('- [ ] ')) { type = 'todo'; content = line.replace('- [ ] ', ''); }
+                else if (line.startsWith('- [x] ')) { type = 'todo'; content = line.replace('- [x] ', ''); }
+                else if (line.startsWith('- ')) { type = 'bullet'; content = line.replace('- ', ''); }
+                
+                newBlocks.push({ id: uid(), type, content, checked: false });
+            }
 
              setBlocks(prev => {
                  const index = prev.findIndex(b => b.id === currentBlockId);
@@ -659,7 +739,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
                  const currentBlock = prev[index];
                  if (currentBlock && currentBlock.content.trim() === '') finalBlocks.splice(index, 1, ...newBlocks);
                  else finalBlocks.splice(index + 1, 0, ...newBlocks);
-                 saveBlocks(finalBlocks, true); // Force snapshot for big pastes
+                 saveBlocks(finalBlocks, true); 
                  return finalBlocks;
              });
         }

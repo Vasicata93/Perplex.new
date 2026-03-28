@@ -496,28 +496,9 @@ function App() {
   };
 
   const handleNewPortfolioTracker = () => {
-      const initialContent = `# The Digital Curator | Dashboard Consolidat
----
-> Total Value: €1,420,500 | YTD Returns: +12.4% | Last Month: +4.2% | Volatility: 8.4%
----
-## Active Allocation Strategy
-[CHART_D]AAPL,10;MSFT,7;VUSA,14.8;GOLD,8;OTHER,47.2
----
-## PERIODIC PERFORMANCE (12 M)
-[CHART_V]Jan,2;Feb,3;Mar,-1;Apr,4;May,5;Jun,-2;Jul,6;Aug,2;Sep,-3;Oct,4;Nov,5;Dec,8
----
-## ACTIVE STRATEGIES
-- **Momentum Alpha** (ACTIVE)
-- **Yield Guardian** (DEFENSIVE)
----
-## PORTOFOLIU COMPOZIT
-[TABLE][["Asset","Value","Change"],["AAPL","€142,050","+12.4%"],["MSFT","€99,435","+8.2%"],["VUSA","€210,234","+15.1%"],["GOLD","€113,640","+2.1%"],["BTC","€71,025","+45.2%"],["O","€42,615","-1.2%"],["NSRGY","€28,410","+0.5%"],["TSLA","€56,820","-15.4%"],["NVDA","€85,230","+112.4%"]]
----
-## WATCHLIST
-- [ ] **PLTR** - Monitor for entry below $20
-- [ ] **AMD** - Check upcoming earnings report
-- [ ] **ETH** - Wait for consolidation
-`;
+      const initialContent = `:::widget[portfolio-dashboard]
+{}
+:::`;
 
       const newNote: Note = {
           id: generateId(),
@@ -528,6 +509,45 @@ function App() {
           tags: ['portfolio', 'finance', 'tracker'],
           emoji: '📈',
           cover: 'linear-gradient(to right, #0f2027, #203a43, #2c5364)'
+      };
+      setNotes(prev => [newNote, ...prev]);
+      navigateToNote(newNote.id);
+      setExpandedSidebarSection('library');
+  };
+
+  const handleNewProjectDashboard = () => {
+      const initialContent = `# 🚀 PROJECT PHOENIX | Strategic Roadmap
+---
+> **Status:** ON TRACK | **Phase:** Execution | **Completion:** 65%
+---
+## 📈 Project Velocity
+*Weekly task completion vs. planned velocity.*
+
+[CHART_V]Week 1,12;Week 2,15;Week 3,10;Week 4,18;Week 5,22;Week 6,19;Week 7,25;Week 8,28
+---
+## 👥 Resource Allocation
+*Distribution of effort across core workstreams.*
+
+[CHART_D]Frontend,35;Backend,25;Design,15;QA,15;DevOps,10
+---
+## 📋 Key Milestones
+[TABLE][["Milestone","Due Date","Status","Owner"],["MVP Launch","Apr 15, 2026","In Progress","Alice"],["Beta Testing","May 01, 2026","Pending","Bob"],["Security Audit","May 15, 2026","Pending","Charlie"],["Public Release","Jun 01, 2026","Pending","Alice"]]
+---
+## ⚡ Critical Risks
+- **Dependency Delay:** Third-party API integration is behind schedule.
+- **Scope Creep:** New feature requests impacting Q2 timeline.
+- **Resource Bottleneck:** Senior backend engineer on leave next week.
+`;
+
+      const newNote: Note = {
+          id: generateId(),
+          title: 'Project Management Dashboard',
+          content: initialContent,
+          updatedAt: Date.now(),
+          status: 'In Progress',
+          tags: ['project', 'management', 'dashboard'],
+          emoji: '🚀',
+          cover: 'linear-gradient(to right, #1e3c72, #2a5298)'
       };
       setNotes(prev => [newNote, ...prev]);
       navigateToNote(newNote.id);
@@ -1565,6 +1585,7 @@ function App() {
             setIsSpaceFilesModalOpen(true);
           }}
           onNewPortfolioTracker={handleNewPortfolioTracker}
+          onNewProjectDashboard={handleNewProjectDashboard}
           onManageSpaces={(id?: string) => {
             setSpaceModalInitialId(id || null);
             setSpacesModalOpen(true);

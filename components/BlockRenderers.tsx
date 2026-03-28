@@ -6,13 +6,14 @@ import {
     ChevronLeft, ChevronRight, BarChart3,
     ListOrdered, Sigma
 } from 'lucide-react';
+import { WidgetRenderer } from './WidgetRenderer';
 import { Note } from '../types';
 
 // --- Types needed for blocks ---
 export type BlockType = 
     | 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'todo' | 'quote' | 'code' | 'divider' 
     | 'image' | 'video' | 'audio' | 'file' | 'newpage'
-    | 'table' | 'calendar' 
+    | 'table' | 'calendar' | 'widget'
     | 'chart_bar_v' | 'chart_bar_h' | 'chart_line' | 'chart_donut'
     | 'toc' | 'button' | 'block_synced' | 'equation' 
     | 'mention_person' | 'mention_page'
@@ -61,7 +62,9 @@ export const AutoResizeTextarea = ({
             for (const entry of entries) {
                 if (entry.contentRect.width !== previousWidth.current) {
                     previousWidth.current = entry.contentRect.width;
-                    adjustHeight();
+                    requestAnimationFrame(() => {
+                        adjustHeight();
+                    });
                 }
             }
         });
@@ -403,7 +406,7 @@ export const ChartBlock = ({ type, content, onChange, readOnly }: { type: 'chart
                     <textarea className="w-full h-32 bg-pplx-input border border-pplx-border rounded-lg p-3 text-sm font-mono outline-none resize-none" value={content} onChange={(e) => onChange(e.target.value)} />
                 </div>
             ) : (
-                <div className="h-64 w-full flex items-center justify-center relative">
+                <div className="min-h-[256px] h-auto w-full flex items-center justify-center relative">
                     {/* Visualizations simplified for brevity but functional */}
                     {type === 'chart_bar_v' && (
                         <div className="flex items-end gap-3 h-full w-full pl-8 pb-6 pr-2 pt-4 relative z-10">
@@ -497,6 +500,44 @@ export const ButtonBlock = ({ content, onChange, onAction, readOnly }: { content
                 {isEditing ? <input className="bg-transparent border-none outline-none w-24 text-center" value={content} onChange={(e) => onChange(e.target.value)} onBlur={() => setIsEditing(false)} autoFocus /> : <span>{content || "Click Me"}</span>}
             </button>
             {!readOnly && <button onClick={() => setIsEditing(true)} className="p-1.5 text-pplx-muted hover:text-pplx-text opacity-0 group-hover/btn:opacity-100 transition-opacity"><Edit3 size={14} /></button>}
+        </div>
+    );
+};
+
+export const WidgetBlock = ({ content, onChange, readOnly }: { content: string, onChange: (val: string) => void, readOnly?: boolean }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    
+    // Extract type and config from :::widget[type]config:::
+    const trimmedContent = content.trim();
+    const match = trimmedContent.match(/^:::widget\[(.*?)\]\s*([\s\S]*?)\s*:::$/);
+    const widgetType = match ? match[1] : 'chart';
+    const configStr = match ? match[2] : content;
+
+    return (
+        <div className="my-4 group/widget relative">
+            {!readOnly && (
+                <div className="absolute top-2 right-2 z-20 opacity-0 group-hover/widget:opacity-100 transition-opacity">
+                    <button 
+                        onClick={() => setIsEditing(!isEditing)} 
+                        className="p-1.5 bg-pplx-secondary/80 backdrop-blur hover:bg-pplx-hover rounded-lg border border-pplx-border text-xs flex items-center gap-1.5 font-medium shadow-sm"
+                    >
+                        <Edit3 size={12} /> {isEditing ? 'Done' : 'Edit Config'}
+                    </button>
+                </div>
+            )}
+            {isEditing ? (
+                <div className="p-4 bg-pplx-card border border-pplx-border rounded-xl">
+                    <div className="text-[10px] font-bold text-pplx-muted uppercase tracking-wider mb-2">Widget Configuration (JSON)</div>
+                    <textarea 
+                        className="w-full h-64 bg-pplx-input border border-pplx-border rounded-lg p-3 text-sm font-mono outline-none resize-none custom-scrollbar" 
+                        value={content} 
+                        onChange={(e) => onChange(e.target.value)} 
+                        placeholder=":::widget[type]...:::"
+                    />
+                </div>
+            ) : (
+                <WidgetRenderer type={widgetType} configStr={configStr} />
+            )}
         </div>
     );
 };
