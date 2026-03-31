@@ -5,7 +5,6 @@ export interface LLMResponse {
     text: string;
     toolCalls?: { id?: string; name: string; args: any }[];
     usage?: any;
-    reasoning?: string;
 }
 
 export class LLMClient {
@@ -27,16 +26,18 @@ export class LLMClient {
     public async generateCompletion(
         messages: any[], 
         tools: any[], 
-        systemInstruction?: string
+        systemInstruction?: string,
+        onChunk?: (text: string, reasoning?: string) => void
     ): Promise<LLMResponse> {
         if (this.config.provider === ModelProvider.GEMINI) {
-            return this.generateGemini(messages, tools, systemInstruction);
+            return this.generateGemini(messages, tools, systemInstruction, onChunk);
         } else {
-            return this.generateGeneric(messages, tools, systemInstruction);
+            return this.generateGeneric(messages, tools, systemInstruction, onChunk);
         }
     }
 
-    private async generateGemini(messages: any[], tools: any[], systemInstruction?: string): Promise<LLMResponse> {
+    private async generateGemini(messages: any[], tools: any[], systemInstruction?: string, onChunk?: (text: string, reasoning?: string) => void): Promise<LLMResponse> {
+        console.error('[LLMClient] Starting Gemini generation');
         if (!this.geminiClient) throw new Error("Gemini Client not initialized");
         
         // Extract system message if present
@@ -167,24 +168,36 @@ export class LLMClient {
             messageContent = parts;
         }
 
-        const result = await chat.sendMessage(messageContent);
-        const response = result;
+        const result = await chat.sendMessageStream(messageContent);
         
-        // Extract tool calls
-        const functionCalls = response.functionCalls;
-        const toolCalls = functionCalls ? functionCalls.map((fc: any) => ({
-            id: `call_${Math.random().toString(36).substring(2, 9)}`,
-            name: fc.name,
-            args: fc.args
-        })) : undefined;
+        let fullText = "";
+        let toolCalls: any[] | undefined = undefined;
+
+        for await (const chunk of result) {
+            const textChunk = chunk.text || "";
+            fullText += textChunk;
+            
+            if (onChunk) {
+                onChunk(textChunk);
+            }
+
+            // Extract tool calls from the last chunk
+            if (chunk.functionCalls && chunk.functionCalls.length > 0) {
+                toolCalls = chunk.functionCalls.map((fc: any) => ({
+                    id: `call_${Math.random().toString(36).substring(2, 9)}`,
+                    name: fc.name,
+                    args: fc.args
+                }));
+            }
+        }
         
         return {
-            text: response.text || "",
+            text: fullText,
             toolCalls: toolCalls
         };
     }
 
-    private async generateGeneric(messages: any[], tools: any[], systemInstruction?: string): Promise<LLMResponse> {
+    private async generateGeneric(messages: any[], tools: any[], systemInstruction?: string, _onChunk?: (text: string, reasoning?: string) => void): Promise<LLMResponse> {
         if (this.config.provider === ModelProvider.LOCAL) {
             const { localLlmService } = await import('../../services/localLlmService');
             
@@ -213,6 +226,14 @@ export class LLMClient {
         let endpoint = "";
         let apiKey = "";
         let modelName = this.config.modelId;
+        
+        // Safety fallback if modelId is just the provider name
+        if (modelName === 'openrouter') modelName = 'deepseek/deepseek-chat';
+        if (modelName === 'openai') modelName = 'gpt-4o';
+        if (!modelName) {
+            if (this.config.provider === ModelProvider.OPENROUTER) modelName = 'deepseek/deepseek-chat';
+            else if (this.config.provider === ModelProvider.OPENAI) modelName = 'gpt-4o';
+        }
 
         if (this.config.provider === ModelProvider.OPENAI) {
             endpoint = "https://api.openai.com/v1/chat/completions";

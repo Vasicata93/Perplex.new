@@ -10,6 +10,7 @@ export interface AgentContext {
     aiProfile: AiProfile;
     config: AgentConfig;
     memory: MemorySnapshot;
+    attachments: import('../../types').Attachment[];
 }
 
 export interface AgentConfig {
@@ -95,6 +96,7 @@ export interface ToolResult {
 
 export type AgentEvent = 
     | { type: 'thinking', content: string }
+    | { type: 'step_progress', step: import('../../types').StepProgress }
     | { type: 'tool_start', tool: string, args: any }
     | { type: 'tool_end', tool: string, result: any }
     | { type: 'chunk', content: string }
@@ -108,4 +110,5 @@ export interface AgentResult {
     searchImages: string[];
     pendingAction?: PendingAction;
     reasoning?: string;
+    reasoningSteps?: import('../../types').StepProgress[];
 }

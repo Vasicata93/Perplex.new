@@ -93,7 +93,7 @@ export const AVAILABLE_OFFLINE_MODELS: LocalModelConfig[] = [
 export const UI_STRINGS = {
   en: {
     newThread: "New Thread",
-    home: "Home",
+    home: "Search",
     chat: "Chat",
     library: "Library",
     spaces: "Spaces",
@@ -112,7 +112,7 @@ export const UI_STRINGS = {
   },
   ro: {
     newThread: "Conversație Nouă",
-    home: "Acasă",
+    home: "Search",
     chat: "Conversații",
     library: "Bibliotecă",
     spaces: "Spații",

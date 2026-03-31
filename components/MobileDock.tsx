@@ -113,6 +113,7 @@ export const MobileDock: React.FC<MobileDockProps> = ({
       if (backDestination === 'chat') return <MessageSquareText size={20} strokeWidth={2.5} fill={activeView === 'chat' ? 'black' : 'none'} />;
       if (backDestination === 'library') return <Library size={20} strokeWidth={2.5} />;
       if (backDestination === 'calendar') return <Calendar size={20} strokeWidth={2.5} />;
+      if (activeView === 'search') return <Search size={20} strokeWidth={2.5} fill="black" />;
       return <Home size={20} strokeWidth={2.5} fill={activeView === 'home' ? 'black' : 'none'} />;
   };
 
@@ -248,11 +249,11 @@ export const MobileDock: React.FC<MobileDockProps> = ({
             {/* Subtle Dock Shine */}
             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none" />
             
-            {/* Home / Back Button */}
+            {/* Home / Back / Search Button */}
             <button
-              onClick={() => onNavigate('home')}
+              onClick={() => onNavigate(activeView === 'search' ? 'chat' : 'search')}
               className={`relative flex items-center justify-center w-[43px] h-[43px] rounded-full transition-all duration-150 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ${
-                activeView === 'home' || isHomeBackActive
+                activeView === 'search' || activeView === 'home' || isHomeBackActive
                   ? 'bg-[#e8dcc4] text-black' 
                   : 'bg-[#2a2a2a] text-white/70 hover:text-white'
               }`}

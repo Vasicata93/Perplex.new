@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Headphones, Eye, MoreHorizontal, Share2, Copy, Square, FolderPlus } from 'lucide-react';
 import { SidebarToggle } from './SidebarToggle';
+import { Tooltip } from './Tooltip';
 
 import { Space } from '../types';
 
@@ -35,6 +36,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   isSidebarOpen
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
 
   const actionButtonClass = "p-2 rounded-full transition-all duration-300 text-pplx-text bg-pplx-secondary/80 backdrop-blur-md md:bg-transparent border-transparent shadow-sm md:shadow-none hover:bg-pplx-hover md:hover:bg-pplx-hover";
 
@@ -54,10 +56,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         {/* Back Button - Always visible, acts as Home on mobile. First on mobile. */}
         <button 
           onClick={onBack}
-          className={`${actionButtonClass} mr-2`}
-          title="Back to Home"
+          onMouseEnter={() => setHoveredTooltip('back')}
+          onMouseLeave={() => setHoveredTooltip(null)}
+          className={`${actionButtonClass} mr-2 relative`}
         >
           <ChevronLeft size={20} className="md:stroke-[2.2]" />
+          {hoveredTooltip === 'back' && <Tooltip text="Back to Home" position="bottom" />}
         </button>
         
         {title && !activeSpace && (
@@ -98,24 +102,31 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           <>
             <button 
                 onClick={onTTS}
-                className={`${actionButtonClass} ${isPlayingAudio ? '!text-red-500 !bg-red-500/10' : ''}`}
-                title="Read Aloud"
+                onMouseEnter={() => setHoveredTooltip('tts')}
+                onMouseLeave={() => setHoveredTooltip(null)}
+                className={`${actionButtonClass} ${isPlayingAudio ? '!text-red-500 !bg-red-500/10' : ''} relative`}
             >
                 {isPlayingAudio ? <Square size={20} fill="currentColor" className="md:stroke-[2.2]" /> : <Headphones size={20} className="md:stroke-[2.2]" />}
+                {hoveredTooltip === 'tts' && <Tooltip text="Read Aloud" position="bottom" />}
             </button>
             <button 
                 onClick={onDashboard}
-                className={actionButtonClass}
-                title="View Dashboard"
+                onMouseEnter={() => setHoveredTooltip('dashboard')}
+                onMouseLeave={() => setHoveredTooltip(null)}
+                className={`${actionButtonClass} relative`}
             >
                 <Eye size={20} className="md:stroke-[2.2]" />
+                {hoveredTooltip === 'dashboard' && <Tooltip text="View Dashboard" position="bottom" />}
             </button>
             <div className="relative">
                 <button 
                     onClick={() => setShowMenu(!showMenu)}
-                    className={actionButtonClass}
+                    onMouseEnter={() => setHoveredTooltip('more')}
+                    onMouseLeave={() => setHoveredTooltip(null)}
+                    className={`${actionButtonClass} relative`}
                 >
                     <MoreHorizontal size={20} className="md:stroke-[2.2]" />
+                    {hoveredTooltip === 'more' && !showMenu && <Tooltip text="More Actions" position="bottom" />}
                 </button>
                 {showMenu && (
                     <>

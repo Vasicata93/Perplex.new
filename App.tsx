@@ -9,6 +9,7 @@ import { NotesView } from './components/NotesView';
 import { ChatHeader } from './components/ChatHeader';
 import { DashboardView } from './components/DashboardView';
 import { CalendarView } from './components/CalendarView';
+import { SearchView } from './components/SearchView';
 import { ActionConfirmation } from './components/ActionConfirmation';
 import { SideChatPanel } from './components/SideChatPanel';
 import { MobileDock } from './components/MobileDock';
@@ -89,9 +90,12 @@ function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   
   // UI State - Initialize from SessionStorage to persist on refresh
-  const [activeView, setActiveView] = useState<'chat' | 'library' | 'calendar'>(() => 
-    (sessionStorage.getItem('pplx_activeView') as 'chat' | 'library' | 'calendar') || 'chat'
+  const [activeView, setActiveView] = useState<'chat' | 'library' | 'calendar' | 'search'>(() => 
+    (sessionStorage.getItem('pplx_activeView') as 'chat' | 'library' | 'calendar' | 'search') || 'chat'
   );
+  const [previousViewBeforeSearch, setPreviousViewBeforeSearch] = useState<'chat' | 'library' | 'calendar' | 'search'>('chat');
+  
+  const viewToRender = activeView === 'search' ? previousViewBeforeSearch : activeView;
   
   const [activeThreadId, setActiveThreadId] = useState<string | null>(() => 
     sessionStorage.getItem('pplx_activeThreadId') || null
@@ -877,6 +881,16 @@ function App() {
           setIsHomeBackActive(false);
           lastNavAction.current = null;
       }
+    } else if (view === 'search') {
+      if (activeView !== 'search') setPreviousViewBeforeSearch(activeView);
+      pushToHistory();
+      setActiveView('search');
+      setIsHomeBackActive(false);
+    } else if (view === 'chat') {
+      pushToHistory();
+      setActiveView('chat');
+      setActiveThreadId(null);
+      setIsHomeBackActive(false);
     } else if (view === 'favorites') {
       pushToHistory();
       setActiveView('library');
@@ -1149,22 +1163,16 @@ function App() {
       const msgIndex = thread.messages.findIndex(m => m.id === messageId);
       if (msgIndex === -1) return;
 
-      // We need to regenerate the response for the *previous* user message
-      // If the current message is AI, we act on the user message before it.
-      // If we are regenerating a specific AI message, we effectively delete it and everything after, then re-trigger.
-      
       const previousUserMsg = thread.messages[msgIndex - 1];
       if (!previousUserMsg || previousUserMsg.role !== Role.USER) return;
 
-      // Slice thread up to the user message (exclusive of the current AI response)
       const newMessages = thread.messages.slice(0, msgIndex);
       
-      // Update thread state immediately
       const updatedThread = { ...thread, messages: newMessages };
       setThreads(prev => prev.map(t => t.id === thread.id ? updatedThread : t));
 
       // Trigger Generation
-      await triggerGeneration(updatedThread.id, previousUserMsg.content, previousUserMsg.attachments || [], newMessages);
+      await triggerGeneration(updatedThread.id, previousUserMsg.content, previousUserMsg.attachments || [], newMessages, inputIsAgentMode);
   };
 
   const handleEditUserMessage = async (messageId: string, newContent: string, threadIdOverride?: string) => {
@@ -1188,10 +1196,10 @@ function App() {
 
       // Re-trigger AI response based on new context
       const attachments = prunedMessages[msgIndex].attachments || [];
-      await triggerGeneration(updatedThread.id, newContent, attachments, prunedMessages);
+      await triggerGeneration(updatedThread.id, newContent, attachments, prunedMessages, inputIsAgentMode);
   };
 
-  const triggerGeneration = async (threadId: string, prompt: string, attachments: Attachment[], history: Message[]) => {
+  const triggerGeneration = async (threadId: string, prompt: string, attachments: Attachment[], history: Message[], isAgentMode: boolean = false) => {
       setIsThinking(true);
       const tempBotId = generateId();
       const placeholderMsg: Message = { id: tempBotId, role: Role.MODEL, content: '', timestamp: Date.now(), isThinking: true };
@@ -1244,7 +1252,8 @@ function App() {
             settings.aiProfile, customSystemInstructions, 
             settings.tavilyApiKey, settings.geminiApiKey, 
             settings.searchProvider, settings.braveApiKey,
-            onChunk
+            onChunk,
+            isAgentMode
         );
 
         if (response.pendingAction) {
@@ -1569,10 +1578,18 @@ function App() {
           activeSpaceId={activeSpaceId} 
           activeNoteId={activeNoteId} 
           activeView={activeView} 
+          events={events}
           onSelectThread={handleSelectThread} 
           onSelectSpace={handleSelectSpace} 
           onSelectNote={handleSelectNote} 
-          onChangeView={(view) => { pushToHistory(); setActiveView(view); }} 
+          onSelectEvent={() => { setActiveView('calendar'); }}
+          onChangeView={(view) => { 
+            if (view === 'search' && activeView !== 'search') {
+              setPreviousViewBeforeSearch(activeView);
+            }
+            pushToHistory(); 
+            setActiveView(view); 
+          }} 
           onNewThread={handleNewThread} 
           onNewNote={handleNewNote} 
           onNewSpace={(parentId?: string) => {
@@ -1613,7 +1630,7 @@ function App() {
         }}
       >
         {/* Premium Dark Background Effect for Home Page */}
-        {!activeThreadId && activeView === 'chat' && (
+        {!activeThreadId && viewToRender === 'chat' && (
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-center bg-pplx-primary transition-colors duration-150">
                 
                 {/* MOBILE BACKGROUND: Golden Glow Top-Left */}
@@ -1657,7 +1674,7 @@ function App() {
              />
         )}
 
-        {activeView === 'library' && (
+        {viewToRender === 'library' && (
              <>
                 <div className="flex items-center h-10 px-3 select-none bg-pplx-primary border-none z-50 w-full relative border-b border-pplx-border/50 md:border-none">
                      <div className="flex-1 flex items-center min-w-0">
@@ -1746,7 +1763,7 @@ function App() {
         )}
 
         {/* Home Header */}
-        {!activeThreadId && activeView === 'chat' && !activeSpaceId && (
+        {!activeThreadId && viewToRender === 'chat' && !activeSpaceId && (
             <div className="absolute top-0 left-0 right-0 z-20 p-6 pt-12 md:p-2 md:pt-4 flex flex-col items-start gap-6 md:gap-4 pointer-events-none">
                 {/* Profile Section (Click to Open Settings) */}
                 <div 
@@ -1796,7 +1813,7 @@ function App() {
         )}
 
         {/* Space Header Toggle */}
-        {!activeThreadId && activeView === 'chat' && activeSpaceId && (
+        {!activeThreadId && viewToRender === 'chat' && activeSpaceId && (
             <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none">
                  {!sidebarOpen && (
                     <SidebarToggle 
@@ -1808,7 +1825,7 @@ function App() {
             </div>
         )}
 
-        {activeThreadId && activeView === 'chat' && (
+        {activeThreadId && viewToRender === 'chat' && (
             <>
                 {/* TOP GRADIENT MASK */}
                 <div className="fixed top-0 left-0 right-0 h-32 bg-gradient-to-b from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-30" />
@@ -1841,7 +1858,7 @@ function App() {
             </>
         )}
 
-{activeView === 'library' ? (
+{viewToRender === 'library' ? (
     <div className="flex-1 flex flex-col overflow-hidden bg-pplx-secondary/30">
        <NotesView 
           activeNoteId={activeNoteId}
@@ -1854,7 +1871,20 @@ function App() {
           isSideChatOpen={isSideChatOpen}
        />
     </div>
-) : activeView === 'calendar' ? (
+) : viewToRender === 'search' ? (
+    <div className="flex-1 overflow-hidden">
+        <SearchView 
+            threads={threads}
+            notes={notes}
+            events={events}
+            spaces={spaces}
+            onSelectThread={(id) => { setActiveView('chat'); setActiveThreadId(id); }}
+            onSelectNote={(id) => { setActiveView('library'); setActiveNoteId(id); if(!openNoteIds.includes(id)) setOpenNoteIds([...openNoteIds, id]); }}
+            onSelectEvent={() => { setActiveView('calendar'); }}
+            onSelectSpace={(id) => { setActiveView('chat'); setActiveSpaceId(id); setActiveThreadId(null); }}
+        />
+    </div>
+) : viewToRender === 'calendar' ? (
     <div className="flex-1 overflow-hidden bg-pplx-secondary/30">
         <CalendarView 
             events={events}
@@ -1870,7 +1900,7 @@ function App() {
             <div 
                 ref={chatContainerRef}
                 onScroll={handleScroll}
-                className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-2 md:p-0 scroll-smooth pt-24 pb-28 ${activeView === 'chat' && !activeThreadId ? 'md:pb-0' : 'md:pb-64'}`} // Reduced padding-bottom on mobile
+                className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-2 md:p-0 scroll-smooth pt-24 pb-28 ${viewToRender === 'chat' && !activeThreadId ? 'md:pb-0' : 'md:pb-64'}`} // Reduced padding-bottom on mobile
             >
             {!activeThreadId || !activeThread ? (
                 <div className="flex flex-col min-h-full relative z-10">
@@ -2039,7 +2069,7 @@ function App() {
                             </div>
                         </div>
                     ) : (
-                        <div className={`flex flex-col h-full items-center justify-center relative z-10 ${activeView === 'chat' && !activeThreadId ? 'md:mt-24 -mt-10' : '-mt-10'}`}>
+                        <div className={`flex flex-col h-full items-center justify-center relative z-10 ${viewToRender === 'chat' && !activeThreadId ? 'md:mt-24 -mt-10' : '-mt-10'}`}>
                             {/* ... existing default home view ... */}
                         <div className="hidden md:flex flex-col items-center">
                                 <PerplexityLogo className="w-16 h-16 text-pplx-text mb-8 drop-shadow-xl dark:drop-shadow-2xl" />
@@ -2057,13 +2087,7 @@ function App() {
                 // ... existing active thread view ...
                 isDashboardMode ? (
                     // ... existing dashboard view ...
-                    <DashboardView 
-                        message={
-                            (activeThread.messages.find(m => m.id === focusedMessageId) || 
-                            activeThread.messages.filter(m => m.role === Role.MODEL).slice(-1)[0]) 
-                        } 
-                        onClose={() => setIsDashboardMode(false)}
-                    />
+                    <DashboardView />
                 ) : (
                     <div className="max-w-3xl mx-auto w-full py-4 space-y-6 px-4 md:px-0 mt-4 md:mt-0 relative z-0 bg-pplx-secondary/5 rounded-2xl">
                         
@@ -2331,7 +2355,7 @@ function App() {
                     }}
                 />
 
-                <div className={`w-full bg-pplx-primary pt-2 px-4 z-30 shrink-0 border-t border-transparent transition-all duration-150 ${settings.enableMobileDock ? 'sm:pb-6' : 'pb-0'} ${activeView === 'chat' && !activeThreadId && !activeSpace ? 'md:pb-[35vh]' : 'md:pb-0'}`}>
+                <div className={`w-full bg-pplx-primary pt-2 px-4 z-30 shrink-0 border-t border-transparent transition-all duration-150 ${settings.enableMobileDock ? 'sm:pb-6' : 'pb-0'} ${viewToRender === 'chat' && !activeThreadId && !activeSpace ? 'md:pb-[35vh]' : 'md:pb-0'}`}>
                     <div className="pointer-events-auto">
                           <InputArea 
                             key={activeThreadId || 'home'} 
@@ -2356,6 +2380,20 @@ function App() {
             </>
         )}
 
+        <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} onSave={setSettings} />
+        <SpacesModal 
+          isOpen={spacesModalOpen} 
+          onClose={() => {
+              setSpacesModalOpen(false);
+              setSpaceModalInitialId(null);
+              setSpaceModalInitialParentId(null);
+          }} 
+          spaces={spaces} 
+          onSaveSpace={handleSaveSpace} 
+          onDeleteSpace={handleDeleteSpace} 
+          initialSpaceId={spaceModalInitialId}
+          initialParentId={spaceModalInitialParentId}
+        />
       </main>
 
       {/* Side Chat Panel */}
@@ -2380,7 +2418,7 @@ function App() {
       />
 
       {/* Floating Action Button for Side Chat (Only in Library Mode) */}
-      {activeView === 'library' && activeNoteId && !isSideChatOpen && (
+      {viewToRender === 'library' && activeNoteId && !isSideChatOpen && (
         <button
           onClick={handleSideChatToggle}
           className="fixed right-6 z-40 p-3 rounded-full bg-pplx-secondary border border-pplx-border text-pplx-muted shadow-md hover:bg-pplx-hover hover:text-pplx-text transition-all duration-150 animate-in zoom-in"
@@ -2395,21 +2433,6 @@ function App() {
         </button>
       )}
 
-      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} onSave={setSettings} />
-      <SpacesModal 
-        isOpen={spacesModalOpen} 
-        onClose={() => {
-            setSpacesModalOpen(false);
-            setSpaceModalInitialId(null);
-            setSpaceModalInitialParentId(null);
-        }} 
-        spaces={spaces} 
-        onSaveSpace={handleSaveSpace} 
-        onDeleteSpace={handleDeleteSpace} 
-        initialSpaceId={spaceModalInitialId}
-        initialParentId={spaceModalInitialParentId}
-      />
-      
       <MobileDock 
         visible={settings.enableMobileDock}
         onNavigate={handleMobileNavigate}
@@ -2418,9 +2441,10 @@ function App() {
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
         activeView={
-          activeView === 'chat' && !activeThreadId ? 'home' : 
-          activeView === 'library' && !activeNoteId ? 'favorites' : 
-          activeView === 'calendar' ? 'calendar' : 
+          viewToRender === 'search' ? 'search' :
+          viewToRender === 'chat' && !activeThreadId ? 'home' : 
+          viewToRender === 'library' && !activeNoteId ? 'favorites' : 
+          viewToRender === 'calendar' ? 'calendar' : 
           activeNoteId || ''
         }
         backDestination={backDestination}

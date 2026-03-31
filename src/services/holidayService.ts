@@ -56,15 +56,17 @@ export function getOrthodoxEaster(year: number): Date {
   return date;
 }
 
-export function getHolidays(year: number): Holiday[] {
+export function getHolidays(year: number, country?: string): Holiday[] {
   const holidays: Holiday[] = [];
 
   const formatDate = (date: Date) => {
     return date.toISOString().split('T')[0];
   };
 
-  const addHoliday = (date: string, name: string, country: 'RO' | 'DE' | 'BOTH' | 'INT', isPublic: boolean, type: 'religious' | 'national' | 'cultural', description?: string) => {
-    holidays.push({ date, name, country, isPublic, type, description });
+  const addHoliday = (date: string, name: string, countryCode: 'RO' | 'DE' | 'BOTH' | 'INT', isPublic: boolean, type: 'religious' | 'national' | 'cultural', description?: string) => {
+    if (!country || country === 'ALL' || countryCode === 'BOTH' || countryCode === 'INT' || countryCode === country) {
+      holidays.push({ date, name, country: countryCode, isPublic, type, description });
+    }
   };
 
   // --- ROMANIA FIXED ---

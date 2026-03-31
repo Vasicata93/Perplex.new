@@ -1203,7 +1203,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
       {/* Holiday Detail Modal */}
       {isHolidayModalOpen && selectedHoliday && (
-        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4">
+        <div className="absolute inset-0 z-[200] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4">
           <div className="bg-pplx-card border border-pplx-border rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
             <div className={`h-32 relative flex items-end p-8 ${selectedHoliday.isPublic ? 'bg-gradient-to-br from-red-500/40 to-red-900/60' : 'bg-gradient-to-br from-emerald-500/40 to-emerald-900/60'}`}>
               <button 
@@ -1264,7 +1264,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
       {/* Event Modal */}
       {isEventModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-center justify-center p-2 md:p-4">
+        <div className="absolute inset-0 z-[200] bg-black/60 backdrop-blur-xl flex items-center justify-center p-2 md:p-4">
             <div className="bg-pplx-card border border-pplx-border rounded-[32px] shadow-2xl w-full max-w-md max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
                 <div className="p-5 md:p-6 border-b border-pplx-border flex justify-between items-center bg-pplx-hover/5 shrink-0">
                     <h3 className="font-serif font-bold text-xl md:text-2xl text-pplx-text">{selectedEventId ? 'Edit Event' : 'New Event'}</h3>

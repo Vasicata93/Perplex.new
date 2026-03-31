@@ -98,7 +98,7 @@ export const SpacesModal: React.FC<SpacesModalProps> = ({ isOpen, onClose, space
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 md:p-0">
+    <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 md:p-0">
       <div className="bg-pplx-sidebar w-full max-w-4xl rounded-xl shadow-2xl border border-pplx-border overflow-hidden flex flex-col md:flex-row h-full max-h-[90vh] md:h-[85vh]">
         
         {/* Left Sidebar: List of Spaces (Hidden on mobile if editing) */}

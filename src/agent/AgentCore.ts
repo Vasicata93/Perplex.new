@@ -12,13 +12,17 @@ export class AgentCore {
     private llm: LLMClient;
     private orchestrator: Orchestrator;
 
-    constructor(config: AgentConfig, userProfile: UserProfile, aiProfile: AiProfile) {
+    private onEvent?: (event: AgentEvent) => void;
+
+    constructor(config: AgentConfig, userProfile: UserProfile, aiProfile: AiProfile, attachments: any[] = [], onEvent?: (event: AgentEvent) => void) {
+        this.onEvent = onEvent;
         this.context = {
             sessionId: crypto.randomUUID(),
             turnCount: 0,
             history: [],
             userProfile,
             aiProfile,
+            attachments,
             config,
             memory: {
                 working: { toolOutputs: {}, intermediateResults: [], scratchpad: '' },
@@ -49,13 +53,16 @@ export class AgentCore {
 
     private handleEvent(event: AgentEvent) {
         console.log(`[Agent Event] ${event.type}:`, event);
-        // Dispatch to UI listeners if needed
+        if (this.onEvent) {
+            this.onEvent(event);
+        }
     }
 
-    public async sendMessage(message: string, history: Message[]): Promise<AgentResult> {
+    public async sendMessage(message: string, history: Message[], attachments: any[] = [], onChunk?: (text: string, reasoning?: string) => void): Promise<AgentResult> {
         this.context.history = history;
+        this.context.attachments = attachments;
         this.context.turnCount++;
         
-        return await this.orchestrator.run(message);
+        return await this.orchestrator.run(message, onChunk);
     }
 }

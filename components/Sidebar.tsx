@@ -2,12 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Library, 
-  Settings, 
+  Settings, X,
   ChevronRight, ChevronDown, LayoutGrid, MessageSquareText, Plus,
   Trash2, MoreHorizontal, Copy, FolderInput, ChevronLeft, CalendarDays, Star
 } from 'lucide-react';
 import { PerplexityLogo, UI_STRINGS } from '../constants';
-import { Thread, Space, Note, UserProfile } from '../types';
+import { Thread, Space, Note, UserProfile, CalendarEvent } from '../types';
+import { CompactSearchView } from './CompactSearchView';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,15 +18,17 @@ interface SidebarProps {
   threads: Thread[];
   spaces: Space[];
   notes: Note[];
+  events: CalendarEvent[];
   userProfile: UserProfile;
   activeThreadId: string | null;
   activeSpaceId: string | null;
   activeNoteId: string | null;
-  activeView: 'chat' | 'library' | 'calendar';
+  activeView: 'chat' | 'library' | 'calendar' | 'search';
   onSelectThread: (id: string) => void;
   onSelectSpace: (id: string | null) => void; // null = home/default
   onSelectNote: (id: string) => void;
-  onChangeView: (view: 'chat' | 'library' | 'calendar') => void;
+  onSelectEvent: (id: string) => void;
+  onChangeView: (view: 'chat' | 'library' | 'calendar' | 'search') => void;
   onNewThread: () => void;
   onNewNote: (parentId?: string) => void;
   onNewSpace: (parentId?: string) => void;
@@ -55,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   threads,
   spaces,
   notes,
+  events,
   userProfile,
   activeThreadId,
   activeSpaceId,
@@ -63,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectThread,
   onSelectSpace,
   onSelectNote,
+  onSelectEvent,
   onChangeView,
   onNewThread,
   onNewNote,
@@ -92,7 +97,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
   const [activeMenuSpaceId, setActiveMenuSpaceId] = useState<string | null>(null);
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus search input when active
+  useEffect(() => {
+    if (activeView === 'search' && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [activeView]);
   const spaceMenuRef = useRef<HTMLDivElement>(null);
   
   // Swipe to Close Logic
@@ -231,6 +245,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleNavClick = (action?: () => void) => {
     if (action) action();
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
   };
 
   // Generate User Initials
@@ -291,14 +308,67 @@ export const Sidebar: React.FC<SidebarProps> = ({
               style={{ WebkitOverflowScrolling: 'touch' }}
           >
               
-              {/* Home */}
-              <NavItem 
-                icon={<Search size={22} />} 
-                label={t.home} 
-                active={activeView === 'chat' && !activeThreadId && !activeSpaceId} 
-                onClick={() => handleNavClick(() => { onChangeView('chat'); onSelectSpace(null); })} 
-                isCollapsed={isCollapsed}
-              />
+              {/* Search */}
+              <div className="flex flex-col relative z-[60]">
+                <div className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-2'} py-1 rounded-lg text-sm transition-colors group relative ${
+                    activeView === 'search' 
+                      ? 'bg-pplx-hover' 
+                      : 'hover:bg-pplx-hover'
+                  }`}>
+                  <div 
+                    onClick={() => { if (isCollapsed) handleNavClick(() => { onChangeView('search'); }); }}
+                    className={`flex items-center ${isCollapsed ? 'justify-center w-full cursor-pointer' : 'space-x-3 px-1'} flex-1 text-left py-2.5`}
+                  >
+                      <span className={`${activeView === 'search' ? 'text-pplx-accent' : 'text-pplx-muted group-hover:text-pplx-text'} flex items-center justify-center w-9 shrink-0`}>
+                        <Search size={22} />
+                      </span>
+                      {!isCollapsed && (
+                        <input
+                          ref={searchInputRef}
+                          type="text"
+                          value={searchQuery}
+                          onFocus={() => { if (activeView !== 'search') onChangeView('search'); }}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder={t.home}
+                          className={`flex-1 text-base bg-transparent border-none outline-none ${activeView === 'search' ? 'text-pplx-text font-medium' : 'text-pplx-muted group-hover:text-pplx-text'} placeholder-pplx-muted/50 w-full`}
+                        />
+                      )}
+                  </div>
+                  {activeView === 'search' && !isCollapsed && (
+                    <button 
+                      onClick={() => {
+                        if (searchQuery) {
+                          setSearchQuery('');
+                        } else {
+                          onChangeView('chat'); // Go back to chat if empty and clicked X
+                        }
+                      }}
+                      className="text-pplx-muted transition-opacity p-2 hover:bg-pplx-secondary rounded-md"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+                
+                {activeView === 'search' && !isCollapsed && searchQuery.trim() !== '' && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-pplx-sidebar border border-pplx-border rounded-xl shadow-2xl z-[70] max-h-[70vh] overflow-y-auto no-scrollbar animate-fadeIn duration-150">
+                    <CompactSearchView 
+                      threads={threads}
+                      notes={notes}
+                      events={events}
+                      spaces={spaces}
+                      onSelectThread={(id) => { onChangeView('chat'); onSelectThread(id); if (window.innerWidth < 768) setSidebarOpen(false); }}
+                      onSelectNote={(id) => { onChangeView('library'); onSelectNote(id); if (window.innerWidth < 768) setSidebarOpen(false); }}
+                      onSelectEvent={(id) => { onChangeView('calendar'); onSelectEvent(id); if (window.innerWidth < 768) setSidebarOpen(false); }}
+                      onSelectSpace={(id) => { onChangeView('chat'); onSelectSpace(id); if (window.innerWidth < 768) setSidebarOpen(false); }}
+                      isCollapsed={isCollapsed}
+                      externalQuery={searchQuery}
+                      onQueryChange={setSearchQuery}
+                      hideInput={true}
+                    />
+                  </div>
+                )}
+              </div>
               
               {/* Chat (History) */}
               <div className="flex flex-col">
@@ -490,7 +560,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                               onClick={(e) => { e.stopPropagation(); onNewPortfolioTracker(); toggleSection('library'); }}
                                               className="w-full flex items-center gap-2 px-2 py-2 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
                                           >
-                                              <Plus size={14} /> Portfolio Tracker
+                                              <Plus size={14} /> Portfolio Manager Tracker
                                           </button>
                                           {onNewProjectDashboard && (
                                               <button 

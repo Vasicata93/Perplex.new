@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PortfolioDashboard } from './PortfolioDashboard';
 import { PortfolioData } from '../types';
@@ -42,6 +43,6 @@ const mockData: PortfolioData = {
     ]
 };
 
-export const DashboardView: React.FC = () => {
+export const PortfolioView: React.FC = () => {
     return <PortfolioDashboard data={mockData} />;
 };

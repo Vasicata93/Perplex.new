@@ -454,7 +454,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-6 transition-opacity duration-150">
+    <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-6 transition-opacity duration-150">
       <div className="bg-pplx-primary w-full max-w-5xl md:rounded-3xl shadow-2xl border-none md:border border-pplx-border/50 overflow-hidden flex flex-col md:flex-row h-[100dvh] md:h-[85vh] max-h-[900px] text-pplx-text relative">
         
         {/* --- MOBILE ROOT MENU --- */}

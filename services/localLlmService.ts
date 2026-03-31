@@ -147,7 +147,7 @@ class LocalLLMService {
     history: Message[],
     prompt: string,
     systemInstruction: string,
-    onChunk?: (text: string) => void
+    onChunk?: (text: string, reasoning?: string) => void
   ): Promise<{ text: string }> {
     if (!this.engine) {
       throw new Error(

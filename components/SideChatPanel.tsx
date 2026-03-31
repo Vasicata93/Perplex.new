@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatInterface } from './ChatInterface';
+import { Tooltip } from './Tooltip';
 import { Message, Attachment, Note, FocusMode } from '../types';
 import { 
   SquarePen, 
@@ -58,6 +59,7 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
 
   const [floatSize, setFloatSize] = useState({ width: 450, height: 600 });
   const [floatPos, setFloatPos] = useState({ x: window.innerWidth - 500, y: 100 });
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   
   const isResizing = useRef(false);
   const isResizingMobile = useRef(false);
@@ -161,24 +163,30 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
         <div className="flex items-center gap-0.5">
             <button 
                 onClick={onNewChat} 
-                className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-full transition-colors" 
-                title="New Chat"
+                onMouseEnter={() => setHoveredTooltip('new')}
+                onMouseLeave={() => setHoveredTooltip(null)}
+                className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-full transition-colors relative" 
             >
                 <SquarePen size={18} className="md:stroke-[2.2]" />
+                {hoveredTooltip === 'new' && <Tooltip text="New Chat" position="bottom" />}
             </button>
             <button 
                 onClick={() => setMode(mode === 'sidebar' ? 'floating' : 'sidebar')} 
-                className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-full transition-colors" 
-                title={mode === 'sidebar' ? "Switch to Floating" : "Switch to Sidebar"}
+                onMouseEnter={() => setHoveredTooltip('mode')}
+                onMouseLeave={() => setHoveredTooltip(null)}
+                className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-full transition-colors relative" 
             >
                 {mode === 'sidebar' ? <PanelRight size={18} className="md:stroke-[2.2]" /> : <Maximize2 size={18} className="md:stroke-[2.2]" />}
+                {hoveredTooltip === 'mode' && <Tooltip text={mode === 'sidebar' ? "Switch to Floating" : "Switch to Sidebar"} position="bottom" />}
             </button>
             <button 
                 onClick={onClose} 
-                className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-full transition-colors" 
-                title="Hide Chat"
+                onMouseEnter={() => setHoveredTooltip('hide')}
+                onMouseLeave={() => setHoveredTooltip(null)}
+                className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-full transition-colors relative" 
             >
                 <ChevronsRight size={18} className="md:stroke-[2.2]" />
+                {hoveredTooltip === 'hide' && <Tooltip text="Hide Chat" position="bottom" />}
             </button>
         </div>
     </div>

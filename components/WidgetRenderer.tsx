@@ -20,8 +20,8 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data && event.data.type === 'WIDGET_RESIZE' && typeof event.data.height === 'number') {
-                // Add a small buffer to prevent scrollbars
-                setHeight(event.data.height + 10);
+                // Reduce height by 5% as requested
+                setHeight(Math.floor(event.data.height * 0.95));
             }
         };
 
@@ -76,7 +76,6 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
                 s = s.replace(/\/\*[\s\S]*?\*\//g, '');
                 
                 // 3. Fix literal newlines/tabs inside string literals
-                // This regex matches "..." and '...' including those spanning multiple lines
                 s = s.replace(/(["'])([\s\S]*?)(?<!\\)\1/g, (_, quote, content) => {
                     return quote + content
                         .replace(/\n/g, '\\n')
@@ -84,23 +83,20 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
                         .replace(/\t/g, '\\t') + quote;
                 });
 
-                // 4. Fix unquoted keys
+                // 4. Fix unquoted keys (more robustly)
                 // Matches keys that are not quoted: { key: ... } or { key : ... }
-                s = s.replace(/([{,]\s*)([a-zA-Z0-9_\-\s]+)(\s*:)/g, (match, p1, p2, p3) => {
-                    const trimmedKey = p2.trim();
-                    // If it's already quoted, don't double quote it
-                    if ((trimmedKey.startsWith('"') && trimmedKey.endsWith('"')) || 
-                        (trimmedKey.startsWith("'") && trimmedKey.endsWith("'"))) {
-                        return match;
-                    }
-                    return p1 + '"' + trimmedKey + '"' + p3;
-                });
+                // We look for alphanumeric characters followed by a colon
+                s = s.replace(/([{,]\s*)([a-zA-Z0-9_\-]+)(\s*:)/g, '$1"$2"$3');
                 
-                // 5. Fix single quotes on keys/values (if they are used as delimiters)
+                // 5. Fix single quotes on keys/values
                 s = s.replace(/([{,]\s*)'([^']*)'(\s*:)/g, '$1"$2"$3'); // Keys
                 s = s.replace(/(:\s*)'([^']*)'(\s*[,}\]])/g, '$1"$2"$3'); // Values
                 
-                // 6. Handle truncated JSON
+                // 6. Fix missing commas between key-value pairs or array elements
+                // This looks for "value" "key": or 123 456 or { ... } { ... }
+                s = s.replace(/(["\d\}\]]|true|false|null)\s*\n?\s*(["\{\[\d]|true|false|null)/g, '$1, $2');
+
+                // 7. Handle truncated JSON
                 const quoteCount = (s.match(/"/g) || []).length;
                 if (quoteCount % 2 !== 0) {
                     s += '"';
@@ -118,8 +114,16 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
                     s += ']'.repeat(openBrackets - closeBrackets);
                 }
 
-                // 7. Remove trailing commas
+                // 8. Remove trailing commas
                 s = s.replace(/,\s*([\}\]])/g, '$1');
+
+                // 9. Fix non-JSON values
+                s = s.replace(/\bundefined\b/g, 'null');
+                s = s.replace(/\bNaN\b/g, 'null');
+                s = s.replace(/\bInfinity\b/g, 'null');
+
+                // 10. Fix functions
+                s = s.replace(/function\s*\([^\)]*\)\s*\{[^}]*\}/g, 'null');
 
                 return s;
             };

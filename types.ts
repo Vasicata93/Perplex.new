@@ -1,5 +1,38 @@
 
 
+export interface PortfolioAsset {
+  id: string;
+  name: string;
+  ticker: string;
+  type: 'stock' | 'crypto' | 'etf' | 'commodity' | 'cash';
+  value: number;
+  change: number; // percentage
+  quantity?: number;
+  purchasePrice?: number;
+  allocation?: number; // percentage of total
+  riskLevel?: 'low' | 'medium' | 'high';
+}
+
+export interface PortfolioStrategy {
+  id: string;
+  name: string;
+  status: 'active' | 'defensive' | 'aggressive';
+  description: string;
+  targetReturn?: number;
+}
+
+export interface PortfolioData {
+  totalValue: number;
+  ytdReturns: number;
+  lastMonthReturns: number;
+  volatility: number;
+  riskScore: number; // 0-100
+  assets: PortfolioAsset[];
+  strategies: PortfolioStrategy[];
+  performance: { month: string; value: number }[];
+  riskProfile: { category: string; value: number }[];
+}
+
 export enum Role {
   USER = 'user',
   MODEL = 'model',
@@ -18,6 +51,13 @@ export interface Attachment {
   name: string;
 }
 
+export interface StepProgress {
+  id: string;
+  name: string;
+  status: 'running' | 'done' | 'error';
+  summary?: string;
+}
+
 export interface Message {
   id: string;
   role: Role;
@@ -29,6 +69,7 @@ export interface Message {
   timestamp: number;
   isThinking?: boolean; // UI State: Is currently generating?
   reasoning?: string;   // Content: The internal thought process
+  reasoningSteps?: StepProgress[]; // The structured chain of thoughts
 }
 
 export interface Thread {
@@ -232,7 +273,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   modelProvider: ModelProvider.GEMINI,
   geminiApiKey: '',
   openRouterApiKey: '',
-  openRouterModelId: 'openai/gpt-4o', 
+  openRouterModelId: 'deepseek/deepseek-chat', 
   openAiApiKey: '',
   openAiModelId: 'gpt-4o', 
   

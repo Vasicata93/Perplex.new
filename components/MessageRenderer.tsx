@@ -61,20 +61,22 @@ interface MessageRendererProps {
 
 export const MessageRenderer = React.memo<MessageRendererProps>(({ content }) => {
     return (
-        <ReactMarkdown 
-            remarkPlugins={[remarkGfm, remarkDirective, remarkWidgetPlugin]}
+        <>
+            <ReactMarkdown 
+                remarkPlugins={[remarkGfm, remarkDirective, remarkWidgetPlugin]}
             components={{
                 // @ts-ignore
                 'custom-widget': ({ node, widgetType, configStr, ...props }) => {
                     return <WidgetRenderer type={widgetType as string} configStr={configStr as string} />;
                 },
-                p: ({node, ...props}) => {
+                p: ({node, children, ...props}) => {
                     // Check if paragraph contains a custom-widget to avoid validateDOMNesting warning
+                    // @ts-ignore
                     const hasWidget = node?.children?.some((child: any) => child.tagName === 'custom-widget');
                     if (hasWidget) {
-                        return <div className="mb-6 leading-7 md:leading-8 text-pplx-text font-normal text-[15px] md:text-[16px]" {...props} />;
+                        return <div className="mb-6 leading-7 md:leading-8 text-pplx-text font-normal text-[15px] md:text-[16px]" {...props}>{children}</div>;
                     }
-                    return <p className="mb-6 leading-7 md:leading-8 text-pplx-text font-normal text-[15px] md:text-[16px]" {...props} />;
+                    return <p className="mb-6 leading-7 md:leading-8 text-pplx-text font-normal text-[15px] md:text-[16px]" {...props}>{children}</p>;
                 },
                 ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-6 space-y-2 text-pplx-text" {...props} />,
                 ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-6 space-y-2 text-pplx-text" {...props} />,
@@ -105,5 +107,6 @@ export const MessageRenderer = React.memo<MessageRendererProps>(({ content }) =>
         >
             {content}
         </ReactMarkdown>
+        </>
     );
 });

@@ -3,6 +3,7 @@ import { Message, Role, Attachment, Note, FocusMode } from '../types';
 import { InputArea } from './InputArea';
 import { MessageRenderer } from './MessageRenderer';
 import { TornadoIndicator } from './TornadoIndicator';
+import { Tooltip } from './Tooltip';
 import { PerplexityLogo } from '../constants';
 import { User, BookOpen, Globe, Copy, Check, RefreshCw, Share2, Volume2, ImageIcon, FileText, Pencil, ArrowRight } from 'lucide-react';
 
@@ -37,7 +38,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isSidePanel = false,
   activeNote
 }) => {
+  console.log('ChatInterface isSidePanel:', isSidePanel);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
@@ -79,7 +82,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     <div className="w-8 h-8 rounded-full bg-pplx-accent/10 flex items-center justify-center border border-transparent shrink-0">
                       <PerplexityLogo className={`w-5 h-5 text-pplx-accent ${msg.isThinking ? 'animate-spin-y' : ''}`} />
                     </div>
-                    <TornadoIndicator isThinking={!!msg.isThinking} reasoning={msg.reasoning} />
+                    <TornadoIndicator 
+                        isThinking={!!msg.isThinking} 
+                        reasoning={msg.reasoning} 
+                        currentStep={msg.reasoning ? msg.reasoning.split('\n').filter(Boolean).pop() : undefined}
+                    />
                   </div>
                 )}
 
@@ -176,7 +183,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         ? 'bg-pplx-card border border-pplx-border/60 px-4 py-3 rounded-3xl rounded-tr-sm text-pplx-text text-right whitespace-pre-wrap shadow-md backdrop-blur-md' 
                         : 'w-full text-pplx-text'
                     }`}>
-                      {msg.role === Role.MODEL && msg.reasoning && (
+                      {msg.role === Role.MODEL && msg.reasoning && !isSidePanel && (
                         <div className="mb-4 p-4 bg-pplx-secondary rounded-lg border border-pplx-border text-sm text-pplx-text/80 font-mono whitespace-pre-wrap">
                           <div className="font-bold text-pplx-accent mb-2">Reasoning Process:</div>
                           {msg.reasoning}
@@ -206,17 +213,41 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   {/* Actions */}
                   {msg.role === Role.MODEL && !msg.isThinking && (
                     <div className="flex items-center gap-1 mt-4 border-t border-pplx-border/30 pt-2 w-full flex-wrap">
-                      <button onClick={() => onRegenerate(msg.id)} className="flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors">
+                      <button 
+                        onClick={() => onRegenerate(msg.id)} 
+                        onMouseEnter={() => setHoveredTooltip('rewrite')}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                        className="relative flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors"
+                      >
                         <RefreshCw size={12} /> <span>Rewrite</span>
+                        {hoveredTooltip === 'rewrite' && <Tooltip text="Rewrite" position="bottom" />}
                       </button>
-                      <button onClick={() => onCopyText(msg.id, msg.content)} className="flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors">
+                      <button 
+                        onClick={() => onCopyText(msg.id, msg.content)} 
+                        onMouseEnter={() => setHoveredTooltip('copy')}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                        className="relative flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors"
+                      >
                         {copiedId === msg.id ? <Check size={12} className="text-green-400" /> : <Copy size={12} />} <span>Copy</span>
+                        {hoveredTooltip === 'copy' && <Tooltip text="Copy" position="bottom" />}
                       </button>
-                      <button onClick={() => onTTS(msg.content)} className={`flex items-center gap-1.5 px-2 py-1.5 text-[10px] rounded-lg transition-colors ${isPlayingAudio ? 'text-pplx-accent bg-pplx-accent/10' : 'text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover'}`}>
+                      <button 
+                        onClick={() => onTTS(msg.content)} 
+                        onMouseEnter={() => setHoveredTooltip('read')}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                        className={`relative flex items-center gap-1.5 px-2 py-1.5 text-[10px] rounded-lg transition-colors ${isPlayingAudio ? 'text-pplx-accent bg-pplx-accent/10' : 'text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover'}`}
+                      >
                         <Volume2 size={12} /> <span>Read</span>
+                        {hoveredTooltip === 'read' && <Tooltip text="Read" position="bottom" />}
                       </button>
-                      <button onClick={() => onShare(msg.content)} className="flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors">
+                      <button 
+                        onClick={() => onShare(msg.content)} 
+                        onMouseEnter={() => setHoveredTooltip('share')}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                        className="relative flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors"
+                      >
                         <Share2 size={12} /> <span>Share</span>
+                        {hoveredTooltip === 'share' && <Tooltip text="Share" position="bottom" />}
                       </button>
                     </div>
                   )}

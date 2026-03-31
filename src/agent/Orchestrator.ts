@@ -24,21 +24,31 @@ export class Orchestrator {
         this.eventEmitter = eventEmitter;
     }
 
-    public async run(prompt: string): Promise<AgentResult> {
+    public async run(prompt: string, onChunk?: (text: string, reasoning?: string) => void): Promise<AgentResult> {
+        console.error('[Orchestrator] Starting run with prompt:', prompt);
         let finalResult: AgentResult = { text: '', citations: [], relatedQuestions: [], searchImages: [] };
         let accumulatedReasoning = "";
 
+        const emitStep = (id: string, name: string, status: 'running' | 'done' | 'error', summary?: string) => {
+            const step = { id, name, status, summary };
+            console.error('[Orchestrator] Emitting step:', id, name, status, summary);
+            this.eventEmitter({ type: 'step_progress', step });
+        };
+
         try {
             // Step 1: Analyze Request (Intent)
-            this.eventEmitter({ type: 'thinking', content: `Analyzing intent...` });
+            emitStep('intent', 'Analyzing intent', 'running');
             const intent = await this.analyzeIntent(prompt);
             this.memory.updateWorkingMemory('activeSubtask', intent);
             accumulatedReasoning += `Intent: ${intent}\n`;
+            emitStep('intent', 'Analyzing intent', 'done', intent);
 
             // Step 2: Plan Actions (Planner Engine)
-            this.eventEmitter({ type: 'thinking', content: `Creating execution plan...` });
+            emitStep('plan', 'Creating execution plan', 'running');
             const plan = await this.createPlan(intent, prompt);
-            accumulatedReasoning += `Plan: ${plan.tasks.map(t => t.description).join(' -> ')}\n`;
+            const planSummary = plan.tasks.map(t => t.description).join(' -> ');
+            accumulatedReasoning += `Plan: ${planSummary}\n`;
+            emitStep('plan', 'Creating execution plan', 'done', planSummary);
 
             // Step 3: ReAct (Reasoning Loop)
             let turns = 0;
@@ -47,13 +57,69 @@ export class Orchestrator {
             let rawResponseText = "";
 
             while (turns < maxTurns) {
-                this.eventEmitter({ type: 'thinking', content: `Executing step ${turns + 1}/${maxTurns}...` });
+                const stepId = `react_${turns}`;
+                emitStep(stepId, `Executing step ${turns + 1}/${maxTurns}`, 'running');
                 
-                const response = await this.llm.generateCompletion(currentContext, this.tooling.getAllTools());
+                let currentThinkingStepId: string | null = null;
+                let currentThinkingStepContent = "";
+                let chunkBuffer = "";
+
+                const response = await this.llm.generateCompletion(currentContext, this.tooling.getAllTools(), undefined, (chunk) => {
+                    chunkBuffer += chunk;
+                    
+                    // Check for start tag
+                    if (!currentThinkingStepId && chunkBuffer.includes('<thinking_step')) {
+                        const startTagMatch = chunkBuffer.match(/<thinking_step(?:\s+name="([^"]+)")?>/);
+                        if (startTagMatch) {
+                            const stepName = startTagMatch[1] || "Thinking";
+                            currentThinkingStepId = `react_${turns}_${stepName.toLowerCase().replace(/\s+/g, '_')}`;
+                            currentThinkingStepContent = "";
+                            emitStep(currentThinkingStepId, stepName, 'running', "");
+                            
+                            // Remove the tag from buffer
+                            chunkBuffer = chunkBuffer.substring(startTagMatch.index! + startTagMatch[0].length);
+                        }
+                    } 
+                    
+                    // Check for end tag
+                    if (currentThinkingStepId && chunkBuffer.includes('</thinking_step>')) {
+                        const endTagIdx = chunkBuffer.indexOf('</thinking_step>');
+                        const content = chunkBuffer.substring(0, endTagIdx);
+                        currentThinkingStepContent += content;
+                        
+                        emitStep(currentThinkingStepId, "Thinking", 'done', currentThinkingStepContent);
+                        
+                        currentThinkingStepId = null;
+                        currentThinkingStepContent = "";
+                        // Keep the rest of the buffer
+                        chunkBuffer = chunkBuffer.substring(endTagIdx + '</thinking_step>'.length);
+                    } else if (currentThinkingStepId) {
+                        // If we are inside a thinking step, everything in the buffer is content
+                        currentThinkingStepContent += chunkBuffer;
+                        emitStep(currentThinkingStepId, "Thinking", 'running', currentThinkingStepContent);
+                        chunkBuffer = "";
+                    } else if (!chunkBuffer.includes('<')) {
+                        // If we are not inside a thinking step and no start tag is pending, send to UI
+                        if (onChunk) onChunk(chunkBuffer);
+                        chunkBuffer = "";
+                    }
+                });
                 
-                if (response.reasoning) {
-                    accumulatedReasoning += `\nThought: ${response.reasoning}\n`;
+                let stepSummary = "";
+                
+                // Extract thinking steps from <thinking_step> tags
+                const thinkingRegex = /<thinking_step(?:\s+name="([^"]+)")?>([\s\S]*?)<\/thinking_step>/g;
+                let match;
+                while ((match = thinkingRegex.exec(response.text)) !== null) {
+                    const stepName = match[1] || "Thinking";
+                    const stepContent = match[2].trim();
+                    accumulatedReasoning += `\nThought (${stepName}): ${stepContent}\n`;
+                    stepSummary += `Thought (${stepName}): ${stepContent}\n`;
                 }
+
+                // Remove thinking steps from the final text response to avoid cluttering the chat
+                const cleanText = response.text.replace(/<thinking_step(?:\s+name="[^"]+")?>[\s\S]*?<\/thinking_step>/g, '').trim();
+                response.text = cleanText;
 
                 // Tool Decision Router
                 if (response.toolCalls && response.toolCalls.length > 0) {
@@ -70,19 +136,27 @@ export class Orchestrator {
                         this.memory.addToBuffer('tool', observation);
                         this.eventEmitter({ type: 'tool_end', tool: call.name, result: result.output });
 
+                        stepSummary += `Used tool: ${call.name}\n`;
+
                         // Handle Pending Actions (e.g., Save to Library requires user confirmation)
                         if (result.output && result.output.pendingAction) {
                             finalResult.pendingAction = result.output.pendingAction;
                             finalResult.text = "I have prepared the action. Please confirm to proceed.";
-                            finalResult.reasoning = accumulatedReasoning;
+                            emitStep(stepId, `Executing step ${turns + 1}/${maxTurns}`, 'done', stepSummary + "Action pending confirmation.");
                             return finalResult;
                         }
 
                         currentContext.push({ role: 'tool', tool_call_id: call.id, name: call.name, content: observation });
                     }
+                    if (stepSummary) {
+                        emitStep(stepId, `Executing step ${turns + 1}/${maxTurns}`, 'done', stepSummary);
+                    } else {
+                        emitStep(stepId, `Executing step ${turns + 1}/${maxTurns}`, 'done');
+                    }
                 } else {
                     // No more tools needed, we have a final text
                     rawResponseText = response.text;
+                    emitStep(stepId, `Executing step ${turns + 1}/${maxTurns}`, 'done', "Generated final response.");
                     break;
                 }
 
@@ -90,11 +164,11 @@ export class Orchestrator {
             }
 
             if (turns >= maxTurns) {
-                this.eventEmitter({ type: 'thinking', content: `Reached maximum reasoning turns.` });
+                console.warn('[Orchestrator] Reached maximum reasoning turns.');
             }
 
             // Step 4: Self-check (Evaluate Completion)
-            this.eventEmitter({ type: 'thinking', content: `Self-checking response...` });
+            emitStep('self_check', 'Self-checking response', 'running');
             const isSufficient = await this.selfCheck(prompt, rawResponseText);
             if (!isSufficient) {
                 accumulatedReasoning += `\nSelf-check failed. Refining response...\n`;
@@ -104,11 +178,15 @@ export class Orchestrator {
                 ];
                 const refinedResponse = await this.llm.generateCompletion(refinementContext, []);
                 rawResponseText = refinedResponse.text;
+                emitStep('self_check', 'Self-checking response', 'done', 'Refined response after self-check.');
+            } else {
+                emitStep('self_check', 'Self-checking response', 'done', 'Response is sufficient.');
             }
 
             // Step 5: Format (Result Aggregator)
-            this.eventEmitter({ type: 'thinking', content: `Formatting final output...` });
-            finalResult = await this.formatResult(rawResponseText, accumulatedReasoning);
+            emitStep('format', 'Formatting final output', 'running');
+            finalResult = await this.formatResult(rawResponseText);
+            emitStep('format', 'Formatting final output', 'done', 'Formatting complete.');
 
         } catch (error: any) {
             this.eventEmitter({ type: 'error', message: error.message });
@@ -165,15 +243,14 @@ export class Orchestrator {
         return true;
     }
 
-    private async formatResult(rawText: string, reasoning: string): Promise<AgentResult> {
+    private async formatResult(rawText: string): Promise<AgentResult> {
         // Extract citations and related questions if present
-        // For now, just return the raw text and reasoning
+        // For now, just return the raw text
         return {
             text: rawText,
             citations: [],
             relatedQuestions: [],
-            searchImages: [],
-            reasoning: reasoning
+            searchImages: []
         };
     }
 
@@ -184,6 +261,12 @@ Plan:
 ${plan.tasks.map((t, i) => `${i + 1}. ${t.description}`).join('\n')}
 
 IMPORTANT: You have access to tools. You MUST use the appropriate tools to execute the steps in the plan. Do not try to answer from your own knowledge if a tool can provide accurate, up-to-date information (e.g., use the search tool for current events or facts).
+
+CRITICAL: You MUST output your reasoning process explicitly using <thinking_step> tags before providing your final answer or calling a tool.
+Format your reasoning like this:
+<thinking_step name="Step Name">Your detailed reasoning here...</thinking_step>
+
+You can have multiple thinking steps. The "name" attribute should be a short, descriptive title for the step (e.g., "Analyzing Request", "Searching Web", "Formulating Answer").
 
 You have the ability to render interactive charts directly in the chat using Chart.js.
 When the user asks for a chart, graph, or visualization, DO NOT try to draw it with text/ascii.

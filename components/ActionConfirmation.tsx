@@ -52,7 +52,7 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({ action, 
       const Icon = opType === 'delete' ? Trash2 : (opType === 'add' ? Calendar : Edit3);
 
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             
             {/* Header */}
@@ -183,7 +183,7 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({ action, 
       const Icon = opType === 'delete_block' ? Trash2 : (opType === 'insert_block' ? FolderPlus : (opType === 'update_table_cell' ? Table : Edit3));
 
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             
             {/* Header */}
@@ -249,7 +249,7 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({ action, 
 
   // --- DEFAULT PAGE CONFIRMATION ---
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
       <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
         
         {/* Header - Structured Info */}

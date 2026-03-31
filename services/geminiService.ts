@@ -662,13 +662,22 @@ export class LLMService {
       openAiKey: string,
       openAiModel: string,
       activeLocalModel: LocalModelConfig | undefined,
-      geminiApiKey?: string
+      geminiApiKey?: string,
+      history: Message[] = []
   ): Promise<any> {
       if (provider === ModelProvider.GEMINI) {
           const client = new GoogleGenAI({ apiKey: geminiApiKey || this.apiKey || '' });
+          
+          // Map history for Gemini
+          const contents: any[] = history.map(msg => ({
+              role: msg.role === Role.USER ? 'user' : 'model',
+              parts: [{ text: msg.content }]
+          }));
+          contents.push({ role: 'user', parts: [{ text: prompt }] });
+
           const response = await client.models.generateContent({
               model: "gemini-3-flash-preview", 
-              contents: prompt,
+              contents: contents,
               config: {
                   systemInstruction: systemInstruction,
                   responseMimeType: "application/json"
@@ -684,7 +693,9 @@ export class LLMService {
                   }
               }
           }
-          return this.extractJson(jsonText || "{}");
+          const result = this.extractJson(jsonText || "{}");
+          if (!result) return { type: "direct" }; // Fallback
+          return result;
       } else {
           let endpoint = ""; let apiKey = ""; let modelName = "";
           if (provider === ModelProvider.OPENAI) { endpoint = "https://api.openai.com/v1/chat/completions"; apiKey = openAiKey; modelName = openAiModel || "gpt-4o-mini"; }
@@ -694,18 +705,31 @@ export class LLMService {
           const headers: any = { 'Content-Type': 'application/json' };
           if (apiKey !== "not-needed") headers['Authorization'] = `Bearer ${apiKey}`;
 
+          // Map history for Generic
+          const messages: any[] = [{ role: "system", content: systemInstruction }];
+          history.forEach(msg => {
+              messages.push({ role: msg.role === Role.USER ? "user" : "assistant", content: msg.content });
+          });
+          messages.push({ role: "user", content: prompt });
+
           const body = {
               model: modelName,
-              messages: [
-                  { role: "system", content: systemInstruction },
-                  { role: "user", content: prompt }
-              ],
+              messages: messages,
               response_format: { type: "json_object" }
           };
 
           const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
+          if (!res.ok) {
+              const err = await res.text();
+              throw new Error(`API Error ${res.status}: ${err}`);
+          }
           const data = await res.json();
-          return this.extractJson(data.choices[0].message.content);
+          const content = data.choices?.[0]?.message?.content;
+          if (!content) throw new Error("Model returned empty or null content. This might be due to safety filters.");
+          
+          const result = this.extractJson(content);
+          if (!result) return { type: "direct" }; // Fallback
+          return result;
       }
   }
 
@@ -772,6 +796,8 @@ export class LLMService {
       // Stage 1: Planner
       if (onChunk) customOnChunk("", "🧠 Etapa 1: Analizez cererea...\n");
       
+      const agentBaseContext = await this.buildSystemContext(prompt, "", enableMemory, userProfile, aiProfile, spaceSystemInstruction, false, true);
+      
       const now = new Date();
       const timeStr = now.toLocaleString('en-US', { 
           weekday: 'long', 
@@ -783,7 +809,7 @@ export class LLMService {
           timeZoneName: 'short'
       });
 
-      const plannerSys = `You are the Chief Researcher Agent expert in strategic planning. Analyze the user's request.
+      const plannerSys = `${agentBaseContext}\n\nYou are the Chief Researcher Agent expert in strategic planning. Analyze the user's request.
       CURRENT SYSTEM TIME: ${timeStr}
 
       If it is a simple greeting, casual conversation, or a direct question that does NOT require searching the internet, output: {"type": "direct"}
@@ -800,8 +826,10 @@ export class LLMService {
       
       let plan;
       try {
-          plan = await this.callLLMJson(prompt, plannerSys, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey);
+          plan = await this.callLLMJson(prompt, plannerSys, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey, shortTermHistory);
+          if (!plan) plan = { type: "direct" };
       } catch (e) {
+          console.warn("Planner failed, falling back to direct response:", e);
           plan = { type: "direct" };
       }
 
@@ -827,7 +855,7 @@ export class LLMService {
               const currentStep = plan.steps[i];
               if (onChunk) customOnChunk("", `🔍 Etapa 2: Execut pasul ${i + 1} din ${totalSteps}...\n`);
 
-              const researcherSys = `You are the Researcher Agent. Your current task is ONLY to execute this specific research step:
+              const researcherSys = `${agentBaseContext}\n\nYou are the Researcher Agent. Your current task is ONLY to execute this specific research step:
               "${currentStep}"
               
               Use your search tools to gather information. Formulate optimized search queries based on the detailed description provided in the step.
@@ -860,7 +888,7 @@ export class LLMService {
       if (!this.abortController.signal.aborted) {
           if (onChunk) customOnChunk("", `\n⚖️ Etapa 3: Validez informațiile adunate...\n`);
           
-          const validatorSys = `You are the Gap Analyst Agent. You have just completed the research phases.
+          const validatorSys = `${agentBaseContext}\n\nYou are the Gap Analyst Agent. You have just completed the research phases.
           Review the Original User Request and the Gathered Info.
           User Request: ${prompt}
           Gathered Info: ${researchContext}
@@ -872,15 +900,17 @@ export class LLMService {
 
           let validation;
           try {
-              validation = await this.callLLMJson(prompt, validatorSys, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey);
+              validation = await this.callLLMJson(prompt, validatorSys, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey, shortTermHistory);
+              if (!validation) validation = { status: "sufficient" };
           } catch(e) {
+              console.warn("Validator failed, assuming sufficient:", e);
               validation = { status: "sufficient" };
           }
 
           if (validation.status === 'insufficient' && validation.missing_query) {
               if (onChunk) customOnChunk("", `⚠️ Lipsesc informații. Caut date suplimentare: ${validation.missing_query}...\n`);
               
-              const researcherSys = `You are the Researcher Agent. Your task is to find this missing information: "${validation.missing_query}".
+              const researcherSys = `${agentBaseContext}\n\nYou are the Researcher Agent. Your task is to find this missing information: "${validation.missing_query}".
               Use optimized keywords for searching.
               Return a detailed summary of your findings. Focus purely on facts.`;
 
@@ -1165,8 +1195,10 @@ export class LLMService {
 
   // --- Helper: Extract JSON content ---
   private extractJson(text: string): any {
+    if (!text || text === "null") return null;
     try {
-        return JSON.parse(text);
+        const parsed = JSON.parse(text);
+        return parsed;
     } catch (e) {
         let clean = text.trim();
         clean = clean.replace(/^```[a-z]*\s*/i, '');
@@ -1180,7 +1212,7 @@ export class LLMService {
                const candidate = text.substring(firstOpen, lastClose + 1);
                try { return JSON.parse(candidate); } catch (e3) {}
            }
-           throw e;
+           return null; // Return null instead of throwing to allow fallback logic
         }
     }
   }

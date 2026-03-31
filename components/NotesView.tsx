@@ -902,12 +902,12 @@ export const NotesView: React.FC<NotesViewProps> = ({
                                 {!activeNote.isLocked && <button onClick={(e) => { e.stopPropagation(); onSaveNote({ ...activeNote, emoji: '' }, true, true); }} className="absolute -top-1 -right-1 bg-pplx-card rounded-full p-1 text-pplx-muted hover:text-red-500 border border-pplx-border opacity-0 group-hover/icon:opacity-100 transition-opacity shadow-sm"><X size={10} /></button>}
                                 {showIconPicker && (
                                     <>
-                                        <div className="absolute top-full left-0 mt-2 p-3 bg-pplx-card border border-pplx-border rounded-xl shadow-2xl z-50 w-72 h-64 overflow-y-auto custom-scrollbar">
+                                        <div className="absolute top-full left-0 mt-2 p-3 bg-pplx-card border border-pplx-border rounded-xl shadow-2xl z-[200] w-72 h-64 overflow-y-auto custom-scrollbar">
                                             <div className="grid grid-cols-6 gap-2">
                                                 {EMOJI_LIST.map(emoji => <button key={emoji} onClick={() => { onSaveNote({ ...activeNote, emoji }, true, true); setShowIconPicker(false); }} className="w-9 h-9 flex items-center justify-center hover:bg-pplx-hover rounded text-xl">{emoji}</button>)}
                                             </div>
                                         </div>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowIconPicker(false)} />
+                                        <div className="absolute inset-0 z-[190]" onClick={() => setShowIconPicker(false)} />
                                     </>
                                 )}
                             </div>

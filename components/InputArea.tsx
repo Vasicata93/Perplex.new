@@ -2,9 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUp, Plus, Mic, X, Camera, Image as ImageIcon, File, Cpu, Monitor, Square, Globe, Zap, Search, CheckCircle2, ChevronRight, Bot, Brain, FolderPlus, Plug } from 'lucide-react';
-import { motion, AnimatePresence, useDragControls } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { FocusMode, Attachment, AppSettings, ModelProvider, ProMode, Note, Space } from '../types';
 import { FOCUS_MODES, PRO_MODES } from '../constants';
+import { Tooltip } from './Tooltip';
 
 interface InputAreaProps {
   onSendMessage: (text: string, focusModes: FocusMode[], proMode: ProMode, attachments: Attachment[], modelId?: string, isAgentMode?: boolean) => void;
@@ -447,13 +448,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
     ? "bg-pplx-secondary dark:bg-[#2a2a2a] text-pplx-text border border-pplx-border dark:border-white/10 shadow-lg backdrop-blur-md hover:bg-pplx-hover dark:hover:bg-[#3a3a3a] transition-all sm:bg-transparent dark:sm:bg-transparent sm:text-pplx-muted dark:sm:text-pplx-muted sm:hover:text-pplx-text sm:scale-100 sm:border-none sm:shadow-none sm:hover:bg-transparent"
     : "bg-pplx-hover text-pplx-text border border-pplx-border shadow-lg backdrop-blur-md hover:bg-pplx-hover/80 transition-all sm:bg-transparent dark:sm:bg-transparent sm:text-pplx-muted dark:sm:text-pplx-muted sm:hover:text-pplx-text sm:scale-100 sm:border-none sm:shadow-none sm:hover:bg-transparent";
 
-  // -- Components --
-  const Tooltip = ({ text }: { text: string }) => (
-    <div className="hidden md:block absolute -top-10 left-1/2 transform -translate-x-1/2 bg-pplx-card text-pplx-text text-[11px] font-medium py-1 px-2.5 rounded shadow-lg whitespace-nowrap z-50 animate-fadeIn pointer-events-none border border-pplx-border">
-        {text}
-        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-pplx-border" />
-    </div>
-  );
 
   return (
     <div className={containerClass}>
@@ -525,7 +519,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     <div>
                         <Plus size={mobileSidePanel ? 16 : iconSize} />
                     </div>
-                    {hoveredTooltip === 'attach' && !showAttachMenu && <Tooltip text="Attach File" />}
+                    {hoveredTooltip === 'attach' && !showAttachMenu && <Tooltip text="Attach File" position="top" />}
                  </button>
 
                  {/* Active Mode Badges (Minimalist) */}
@@ -533,21 +527,27 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     {isAgentMode && (
                         <button 
                             onClick={() => setIsAgentMode(false)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-pplx-accent/10 border border-pplx-accent/20 text-[10px] font-medium text-pplx-accent whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-pplx-accent/20 transition-colors group"
+                            onMouseEnter={() => setHoveredTooltip('agent')}
+                            onMouseLeave={() => setHoveredTooltip(null)}
+                            className="relative flex items-center gap-1 px-2 py-1 rounded-full bg-pplx-accent/10 border border-pplx-accent/20 text-[10px] font-medium text-pplx-accent whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-pplx-accent/20 transition-colors group"
                         >
                             <Bot size={10} />
                             <span>Agent</span>
                             <X size={8} className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {hoveredTooltip === 'agent' && <Tooltip text="Agent Mode" position="top" />}
                         </button>
                     )}
                     {isLongThinking && (
                         <button 
                             onClick={() => setIsLongThinking(false)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-medium text-indigo-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-indigo-500/20 transition-colors group"
+                            onMouseEnter={() => setHoveredTooltip('thinking')}
+                            onMouseLeave={() => setHoveredTooltip(null)}
+                            className="relative flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-medium text-indigo-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-indigo-500/20 transition-colors group"
                         >
                             <Brain size={10} />
                             <span>Thinking</span>
                             <X size={8} className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {hoveredTooltip === 'thinking' && <Tooltip text="Thinking Mode" position="top" />}
                         </button>
                     )}
                     {proMode !== ProMode.STANDARD && proMode !== ProMode.THINKING && (
@@ -558,11 +558,14 @@ export const InputArea: React.FC<InputAreaProps> = ({
                             return (
                                 <button 
                                     onClick={() => setProMode(ProMode.STANDARD)}
-                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[10px] font-medium text-orange-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-orange-500/20 transition-colors group"
+                                    onMouseEnter={() => setHoveredTooltip('pro')}
+                                    onMouseLeave={() => setHoveredTooltip(null)}
+                                    className="relative flex items-center gap-1 px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[10px] font-medium text-orange-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-orange-500/20 transition-colors group"
                                 >
                                     <Icon size={10} />
                                     <span>{mode.label}</span>
                                     <X size={8} className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    {hoveredTooltip === 'pro' && <Tooltip text="Pro Mode" position="top" />}
                                 </button>
                             );
                          })()
@@ -573,11 +576,14 @@ export const InputArea: React.FC<InputAreaProps> = ({
                             return (
                                 <button 
                                     onClick={() => onSelectSpace?.(null)}
-                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-medium text-blue-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-blue-500/20 transition-colors group"
+                                    onMouseEnter={() => setHoveredTooltip('space')}
+                                    onMouseLeave={() => setHoveredTooltip(null)}
+                                    className="relative flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-medium text-blue-400 whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-blue-500/20 transition-colors group"
                                 >
                                     <span>{space?.emoji || '📁'}</span>
                                     <span className="max-w-[80px] truncate">{space?.title}</span>
                                     <X size={8} className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    {hoveredTooltip === 'space' && <Tooltip text="Active Space" position="top" />}
                                 </button>
                             );
                         })()
@@ -892,6 +898,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         )}
                         <FocusIcon size={mobileSidePanel ? 16 : iconSize} /> 
                     </div>
+                    {hoveredTooltip === 'focus' && !showFocusMenu && <Tooltip text="Focus Mode" position="top" />}
                 </button>
                 
                 {/* Focus Menu */}
@@ -1042,7 +1049,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                         className={`relative flex items-center justify-center gap-0.5 rounded-full hover:text-pplx-text transition-colors ${roundButtonPadding} ${mobileButtonFixedBg}`}
                     >
                         <Cpu size={iconSize} />
-                        {hoveredTooltip === 'model' && !showModelMenu && <Tooltip text="AI Model" />}
+                        {hoveredTooltip === 'model' && !showModelMenu && <Tooltip text="AI Model" position="top" />}
                     </button>
                     {showModelMenu && (
                         <div className="absolute bottom-12 right-0 w-56 bg-pplx-card border border-pplx-border rounded-xl shadow-xl p-1 z-50 animate-fadeIn">
@@ -1094,7 +1101,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                 <div>
                     <Monitor size={iconSize} />
                 </div>
-                {hoveredTooltip === 'screen' && <Tooltip text="Share Screen" />}
+                {hoveredTooltip === 'screen' && <Tooltip text="Share Screen" position="top" />}
              </button>
 
              {/* Voice Input (Enhanced) */}
@@ -1125,7 +1132,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                          <Mic size={mobileSidePanel ? 16 : iconSize} />
                     </div>
                  )}
-                 {hoveredTooltip === 'voice' && !isListening && <Tooltip text="Voice Input (Auto-Detect)" />}
+                 {hoveredTooltip === 'voice' && !isListening && <Tooltip text="Voice Input (Auto-Detect)" position="top" />}
              </button>
             
              {/* Send / Stop Button - Hidden when listening to allow voice bar to expand right */}
