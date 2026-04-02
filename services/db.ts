@@ -1,6 +1,6 @@
 
 const DB_NAME = 'PerplexityCloneDB';
-const DB_VERSION = 3; // Incremented version for schema update
+const DB_VERSION = 5; // Incremented version to fix mismatch (existing was 4)
 
 export const STORES = {
   THREADS: 'threads',

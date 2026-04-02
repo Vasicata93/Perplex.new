@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, Brain, Sparkles } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 interface TornadoIndicatorProps {
     isThinking: boolean;
@@ -26,28 +26,19 @@ export const TornadoIndicator: React.FC<TornadoIndicatorProps> = ({ isThinking, 
             return clean;
         }
 
-        // Truncate at 80 chars for a better balance of information and clean UI
-        return clean.length > 80 ? `${clean.substring(0, 80)}...` : clean;
+        // Truncate at 40 chars for a better balance of information and clean UI
+        return clean.length > 40 ? `${clean.substring(0, 40)}...` : clean;
     };
 
     const displayStep = currentStep ? simplifyStep(currentStep) : 'Thinking...';
 
     return (
-        <div className="flex flex-col my-3">
+        <div className="flex flex-col my-1">
             <button 
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-3 group cursor-pointer transition-all w-fit py-2 px-4 rounded-full border border-pplx-border/20 bg-pplx-secondary/10 hover:bg-pplx-secondary/30 hover:border-pplx-border/40 shadow-sm backdrop-blur-sm"
+                className="flex items-center gap-1.5 group cursor-pointer transition-all w-fit py-1 px-0 hover:opacity-80"
             >
-                {isThinking ? (
-                    <div className="relative flex items-center justify-center w-3 h-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pplx-accent opacity-30"></span>
-                        <Sparkles size={12} className="text-pplx-accent animate-pulse" />
-                    </div>
-                ) : (
-                    <Brain size={13} className="text-pplx-muted group-hover:text-pplx-accent transition-colors" />
-                )}
-
-                <span className={`text-[12px] font-medium tracking-tight ${isThinking ? 'text-pplx-accent' : 'text-pplx-muted group-hover:text-pplx-text'}`}>
+                <span className={`text-[11px] font-medium tracking-tight ${isThinking ? 'text-pplx-accent' : 'text-pplx-muted group-hover:text-pplx-text'}`}>
                     {isThinking ? displayStep : 'Thought Process'}
                 </span>
                 
@@ -58,11 +49,11 @@ export const TornadoIndicator: React.FC<TornadoIndicatorProps> = ({ isThinking, 
             </button>
 
             {isExpanded && reasoning && (
-                <div className="mt-3 border-l-2 border-pplx-accent/30 animate-in fade-in slide-in-from-top-2 duration-500 w-full max-w-2xl">
-                    <div className="bg-pplx-secondary/5 rounded-r-2xl p-5 text-[13px] text-pplx-text/90 leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto custom-scrollbar ml-4 backdrop-blur-md border border-pplx-border/10 shadow-inner">
+                <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-500 w-full max-w-2xl">
+                    <div className="p-0 text-[11px] italic text-pplx-text/80 leading-relaxed whitespace-pre-wrap max-h-[600px] overflow-y-auto custom-scrollbar ml-0">
                         {reasoning.split('\n').filter(Boolean).map((step, i) => (
-                            <div key={i} className="mb-3 last:mb-0 flex gap-4 items-start group/step">
-                                <span className="text-[10px] font-mono opacity-20 mt-1.5 shrink-0 group-hover/step:opacity-50 transition-opacity">{String(i + 1).padStart(2, '0')}</span>
+                            <div key={i} className="mb-2 last:mb-0 flex gap-3 items-start group/step">
+                                <span className="text-[9px] font-mono opacity-20 mt-1 shrink-0 group-hover/step:opacity-50 transition-opacity">{String(i + 1).padStart(2, '0')}</span>
                                 <span className="flex-1 border-b border-transparent group-hover/step:border-pplx-border/10 transition-all pb-1">{step}</span>
                             </div>
                         ))}

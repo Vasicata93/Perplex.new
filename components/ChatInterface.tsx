@@ -78,7 +78,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 
                 {/* Model Header */}
                 {msg.role === Role.MODEL && (
-                  <div className="flex items-center gap-3 mb-2 select-none">
+                  <div className="flex items-center gap-2 mb-1 select-none">
                     <div className="w-8 h-8 rounded-full bg-pplx-accent/10 flex items-center justify-center border border-transparent shrink-0">
                       <PerplexityLogo className={`w-5 h-5 text-pplx-accent ${msg.isThinking ? 'animate-spin-y' : ''}`} />
                     </div>

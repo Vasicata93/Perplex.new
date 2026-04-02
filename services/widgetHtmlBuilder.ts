@@ -6,10 +6,44 @@ export function buildWidgetHtml(widgetType: string, config: any, theme: 'light' 
     const resizeScript = `
         <script>
             function sendHeight() {
-                const height = document.documentElement.scrollHeight;
-                window.parent.postMessage({ type: 'WIDGET_RESIZE', height: height }, '*');
+                const body = document.body;
+                const html = document.documentElement;
+                
+                // Get the maximum of various height properties to ensure we capture everything
+                // Adding a small internal buffer of 10px here as well
+                const height = Math.max(
+                    body.scrollHeight, 
+                    body.offsetHeight, 
+                    html.clientHeight, 
+                    html.scrollHeight, 
+                    html.offsetHeight
+                ) + 10;
+                
+                if (height > 0) {
+                    window.parent.postMessage({ type: 'WIDGET_RESIZE', height: height }, '*');
+                }
             }
-            window.addEventListener('load', sendHeight);
+            
+            // Send height on load and at multiple intervals for dynamic content
+            window.addEventListener('load', () => {
+                sendHeight();
+                setTimeout(sendHeight, 100);
+                setTimeout(sendHeight, 500);
+                setTimeout(sendHeight, 1500);
+                setTimeout(sendHeight, 3000);
+            });
+            
+            // Also send on window resize
+            window.addEventListener('resize', sendHeight);
+            
+            // Use ResizeObserver if available for even better accuracy
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => {
+                    // Use requestAnimationFrame to avoid "ResizeObserver loop limit exceeded"
+                    requestAnimationFrame(sendHeight);
+                });
+                ro.observe(document.body);
+            }
         </script>
     `;
 
@@ -63,12 +97,11 @@ export function buildWidgetHtml(widgetType: string, config: any, theme: 'light' 
         body {
             margin: 0;
             padding: 0;
+            padding-bottom: 60px;
             background-color: transparent;
             font-family: 'Inter', system-ui, sans-serif;
             color: ${isDark ? '#EBEBEB' : '#1a1a1a'};
-            transform: scale(0.95);
-            transform-origin: top center;
-            width: 105.3%;
+            width: 100%;
         }
         .premium-card {
             background: ${isDark ? '#1f1f1f' : '#ffffff'};
@@ -293,15 +326,14 @@ export function buildWidgetHtml(widgetType: string, config: any, theme: 'light' 
         body {
             margin: 0;
             padding: 24px;
+            padding-bottom: 80px;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            min-height: 300px;
             background-color: ${isDark ? '#191919' : 'transparent'};
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden;
-            transform: scale(0.95);
-            transform-origin: center center;
         }
         canvas {
             max-width: 100%;
@@ -382,13 +414,13 @@ export function buildWidgetHtml(widgetType: string, config: any, theme: 'light' 
         body { 
             margin: 0; 
             padding: 24px; 
+            padding-bottom: 80px;
             display: flex; 
-            justify-content: center; 
+            flex-direction: column;
+            align-items: center;
             background-color: ${isDark ? '#191919' : 'transparent'};
             color: ${textColor};
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            transform: scale(0.95);
-            transform-origin: top center;
         }
         .mermaid {
             background-color: ${isDark ? '#191919' : 'transparent'};

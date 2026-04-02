@@ -4,7 +4,8 @@ import {
   Search, Library, 
   Settings, X,
   ChevronRight, ChevronDown, LayoutGrid, MessageSquareText, Plus,
-  Trash2, MoreHorizontal, Copy, FolderInput, ChevronLeft, CalendarDays, Star
+  Trash2, MoreHorizontal, Copy, FolderInput, ChevronLeft, CalendarDays, Star,
+  BarChart3, Layout
 } from 'lucide-react';
 import { PerplexityLogo, UI_STRINGS } from '../constants';
 import { Thread, Space, Note, UserProfile, CalendarEvent } from '../types';
@@ -33,8 +34,6 @@ interface SidebarProps {
   onNewNote: (parentId?: string) => void;
   onNewSpace: (parentId?: string) => void;
   onOpenSpaceFiles?: (id: string) => void;
-  onNewPortfolioTracker?: () => void;
-  onNewProjectDashboard?: () => void;
   onManageSpaces: (id?: string) => void;
   onDuplicateSpace: (id: string) => void;
   onDeleteSpace: (id: string) => void;
@@ -73,8 +72,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewNote,
   onNewSpace,
   onOpenSpaceFiles,
-  onNewPortfolioTracker,
-  onNewProjectDashboard,
   onManageSpaces,
   onDuplicateSpace,
   onDeleteSpace,
@@ -97,8 +94,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
   const [activeMenuSpaceId, setActiveMenuSpaceId] = useState<string | null>(null);
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+  const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Focus search input when active
@@ -174,6 +173,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }
         if (spaceMenuRef.current && !spaceMenuRef.current.contains(event.target as Node)) {
             setActiveMenuSpaceId(null);
+        }
+        if (plusMenuRef.current && !plusMenuRef.current.contains(event.target as Node)) {
+            setIsPlusMenuOpen(false);
         }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -482,15 +484,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           active={activeView === 'library'}
                           isCollapsed={isCollapsed}
                       />
-                      {/* Inline Plus Button for New Page */}
+                      {/* Inline Plus Button for New Page with Dropdown */}
                       {!isCollapsed && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onNewNote(); toggleSection('library'); }}
-                            className="p-2 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-md transition-colors opacity-0 group-hover:opacity-100 absolute right-8"
-                            title="New Page"
-                        >
-                            <Plus size={18} />
-                        </button>
+                        <div className="absolute right-8" ref={plusMenuRef}>
+                          <button 
+                              onClick={(e) => { e.stopPropagation(); setIsPlusMenuOpen(!isPlusMenuOpen); }}
+                              className={`p-2 rounded-md transition-colors ${isPlusMenuOpen ? 'bg-pplx-accent text-white' : 'text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover opacity-0 group-hover:opacity-100'}`}
+                              title="Create New..."
+                          >
+                              <Plus size={18} />
+                          </button>
+                          
+                          {isPlusMenuOpen && (
+                            <div className="absolute top-full right-0 mt-1 w-56 bg-pplx-card border border-pplx-border rounded-xl shadow-2xl z-[120] py-2 animate-fadeIn">
+                                <button onClick={() => { onNewNote(); setIsPlusMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-pplx-hover flex items-center gap-3">
+                                  <Plus size={16} className="text-pplx-muted" /> New Page
+                                </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                   </div>
                   
@@ -541,40 +553,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   menuRef={menuRef}
                               />
                           ))}
-                          {onNewPortfolioTracker && (
-                              <div className="mt-4 mb-2 px-3">
-                                  <button 
-                                      onClick={(e) => { e.stopPropagation(); setIsTemplatesOpen(!isTemplatesOpen); }}
-                                      className="w-full flex items-center justify-between px-2 py-1.5 text-[10px] font-bold text-pplx-muted uppercase tracking-wider hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left group/templates"
-                                  >
-                                      <div className="flex items-center gap-2">
-                                          <LayoutGrid size={12} className="text-pplx-accent" />
-                                          <span>Templates</span>
-                                      </div>
-                                      {isTemplatesOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                                  </button>
-                                  
-                                  {isTemplatesOpen && (
-                                      <div className="mt-1 ml-1 space-y-0.5 animate-fadeIn duration-150">
-                                          <button 
-                                              onClick={(e) => { e.stopPropagation(); onNewPortfolioTracker(); toggleSection('library'); }}
-                                              className="w-full flex items-center gap-2 px-2 py-2 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
-                                          >
-                                              <Plus size={14} /> Portfolio Manager Tracker
-                                          </button>
-                                          {onNewProjectDashboard && (
-                                              <button 
-                                                  onClick={(e) => { e.stopPropagation(); onNewProjectDashboard(); toggleSection('library'); }}
-                                                  className="w-full flex items-center gap-2 px-2 py-2 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
-                                              >
-                                                  <Plus size={14} /> Project Dashboard
-                                              </button>
-                                          )}
-                                          {/* Future templates can be added here */}
-                                      </div>
-                                  )}
-                              </div>
-                          )}
                       </div>
                   )}
               </div>
@@ -722,40 +700,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 isMobile={true}
                             />
                         ))}
-                        {onNewPortfolioTracker && (
-                            <div className="mt-6 mb-4 px-3">
-                                <button 
-                                    onClick={() => setIsTemplatesOpen(!isTemplatesOpen)}
-                                    className="w-full flex items-center justify-between px-3 py-3 text-xs font-bold text-pplx-muted uppercase tracking-wider mb-2 hover:bg-pplx-hover rounded-xl transition-colors"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <LayoutGrid size={14} className="text-pplx-accent" />
-                                        <span>Templates</span>
-                                    </div>
-                                    {isTemplatesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                </button>
-                                
-                                {isTemplatesOpen && (
-                                    <div className="space-y-2 animate-fadeIn duration-150">
-                                        <button 
-                                            onClick={() => { onNewPortfolioTracker(); setIsMobileLibraryOpen(false); }}
-                                            className="w-full flex items-center gap-3 px-3 py-3 text-sm text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-xl transition-colors text-left border border-pplx-border/50"
-                                        >
-                                            <Plus size={16} /> Portfolio Tracker
-                                        </button>
-                                        {onNewProjectDashboard && (
-                                            <button 
-                                                onClick={() => { onNewProjectDashboard(); setIsMobileLibraryOpen(false); }}
-                                                className="w-full flex items-center gap-3 px-3 py-3 text-sm text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-xl transition-colors text-left border border-pplx-border/50"
-                                            >
-                                                <Plus size={16} /> Project Dashboard
-                                            </button>
-                                        )}
-                                        {/* Future templates can be added here */}
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
                 )}
             </div>

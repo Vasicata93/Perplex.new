@@ -1,7 +1,6 @@
 import { ToolDefinition, ToolResult, AgentContext } from './types';
 import { TavilyService } from '../../services/tavilyService';
 import { db, STORES } from '../../services/db';
-import { BlockService } from '../../services/blockService';
 import { getHolidays } from '../services/holidayService';
 import { CalendarEvent } from '../../types';
 import * as math from 'mathjs';
@@ -205,106 +204,6 @@ export class ToolingSystem {
                     map += `  PREVIEW: ${snippet}...\n`;
                 });
                 return { map };
-            }
-        });
-
-        // Block Operation Tools
-        this.register({
-            name: 'get_page_structure',
-            description: 'Returns the block structure of a specific page.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    pageTitle: { type: 'string', description: 'Title of the page.' }
-                },
-                required: ['pageTitle'],
-                additionalProperties: false
-            },
-            execute: async (args: { pageTitle: string }, context: AgentContext) => {
-                const pageAttachment = context.attachments.find(a => a.name === args.pageTitle || a.name === args.pageTitle + ".md");
-                if (pageAttachment && pageAttachment.content) {
-                    const page = BlockService.fromMarkdown(pageAttachment.content, args.pageTitle);
-                    const structure = page.blocks.map((b, idx) => {
-                        let context = b.content.length > 60 ? b.content.substring(0, 60) + "..." : b.content;
-                        return `Block ${idx + 1}: [ID: ${b.id}] (${b.type}) -> ${context}`;
-                    }).join('\n');
-                    return { structure };
-                }
-                return { error: "Page not found." };
-            }
-        });
-
-        this.register({
-            name: 'insert_block',
-            description: 'Inserts a new block into a page.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    pageTitle: { type: 'string' },
-                    targetBlockId: { type: 'string' },
-                    content: { type: 'string' },
-                    type: { type: 'string', enum: ['text', 'header', 'list', 'code', 'table'] }
-                },
-                required: ['pageTitle', 'targetBlockId', 'content', 'type'],
-                additionalProperties: false
-            },
-            execute: async (args: any, _context: AgentContext) => {
-                return { pendingAction: { type: 'block_operation', data: { operation: 'insert_block', args } } };
-            }
-        });
-
-        this.register({
-            name: 'replace_block',
-            description: 'Replaces the content of an existing block.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    pageTitle: { type: 'string' },
-                    blockId: { type: 'string' },
-                    newContent: { type: 'string' }
-                },
-                required: ['pageTitle', 'blockId', 'newContent'],
-                additionalProperties: false
-            },
-            execute: async (args: any, _context: AgentContext) => {
-                return { pendingAction: { type: 'block_operation', data: { operation: 'replace_block', args } } };
-            }
-        });
-
-        this.register({
-            name: 'delete_block',
-            description: 'Deletes a block from a page.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    pageTitle: { type: 'string' },
-                    blockId: { type: 'string' }
-                },
-                required: ['pageTitle', 'blockId'],
-                additionalProperties: false
-            },
-            execute: async (args: any, _context: AgentContext) => {
-                return { pendingAction: { type: 'block_operation', data: { operation: 'delete_block', args } } };
-            }
-        });
-
-        this.register({
-            name: 'update_table_cell',
-            description: 'Updates a specific cell in a table block.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    pageTitle: { type: 'string' },
-                    blockId: { type: 'string' },
-                    rowIndex: { type: 'number' },
-                    colIndex: { type: 'number' },
-                    newValue: { type: 'string' }
-                },
-                required: ['pageTitle', 'blockId', 'rowIndex', 'colIndex', 'newValue'],
-                additionalProperties: false
-            },
-            execute: async (args: any, _context: AgentContext) => {
-                return { pendingAction: { type: 'block_operation', data: { operation: 'update_table_cell', args } } };
             }
         });
 

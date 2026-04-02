@@ -20,8 +20,8 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(({ type, configStr
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data && event.data.type === 'WIDGET_RESIZE' && typeof event.data.height === 'number') {
-                // Reduce height by 5% as requested
-                setHeight(Math.floor(event.data.height * 0.95));
+                // Add a larger buffer (40px) to ensure content is not cut off at the bottom
+                setHeight(event.data.height + 40);
             }
         };
 

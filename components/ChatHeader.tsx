@@ -12,7 +12,6 @@ interface ChatHeaderProps {
   showActions?: boolean;
   onTTS?: () => void;
   isPlayingAudio?: boolean;
-  onDashboard?: () => void;
   onCopy?: () => void;
   onShare?: () => void;
   onSave?: () => void;
@@ -27,7 +26,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   showActions,
   onTTS,
   isPlayingAudio,
-  onDashboard,
   onCopy,
   onShare,
   onSave,
@@ -108,15 +106,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             >
                 {isPlayingAudio ? <Square size={20} fill="currentColor" className="md:stroke-[2.2]" /> : <Headphones size={20} className="md:stroke-[2.2]" />}
                 {hoveredTooltip === 'tts' && <Tooltip text="Read Aloud" position="bottom" />}
-            </button>
-            <button 
-                onClick={onDashboard}
-                onMouseEnter={() => setHoveredTooltip('dashboard')}
-                onMouseLeave={() => setHoveredTooltip(null)}
-                className={`${actionButtonClass} relative`}
-            >
-                <Eye size={20} className="md:stroke-[2.2]" />
-                {hoveredTooltip === 'dashboard' && <Tooltip text="View Dashboard" position="bottom" />}
             </button>
             <div className="relative">
                 <button 

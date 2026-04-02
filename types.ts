@@ -1,38 +1,5 @@
 
 
-export interface PortfolioAsset {
-  id: string;
-  name: string;
-  ticker: string;
-  type: 'stock' | 'crypto' | 'etf' | 'commodity' | 'cash';
-  value: number;
-  change: number; // percentage
-  quantity?: number;
-  purchasePrice?: number;
-  allocation?: number; // percentage of total
-  riskLevel?: 'low' | 'medium' | 'high';
-}
-
-export interface PortfolioStrategy {
-  id: string;
-  name: string;
-  status: 'active' | 'defensive' | 'aggressive';
-  description: string;
-  targetReturn?: number;
-}
-
-export interface PortfolioData {
-  totalValue: number;
-  ytdReturns: number;
-  lastMonthReturns: number;
-  volatility: number;
-  riskScore: number; // 0-100
-  assets: PortfolioAsset[];
-  strategies: PortfolioStrategy[];
-  performance: { month: string; value: number }[];
-  riskProfile: { category: string; value: number }[];
-}
-
 export enum Role {
   USER = 'user',
   MODEL = 'model',
@@ -176,16 +143,6 @@ export interface MemoryBufferItem {
   timestamp: number;
 }
 
-export interface Project {
-  id: string;
-  title: string;
-  status: 'active' | 'on_hold' | 'completed';
-  progress: string; // "30%" or "Drafting phase"
-  nextStep: string;
-  techStack: string[];
-  lastUpdated: number;
-}
-
 export enum ModelProvider {
   GEMINI = 'gemini',
   LOCAL = 'local', // Renamed from OLLAMA/LMSTUDIO to generic LOCAL
@@ -305,7 +262,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 // --- New Type for Pending Actions ---
 export interface PendingAction {
-  type: 'create_page' | 'update_page' | 'block_operation' | 'calendar_event';
+  type: 'create_page' | 'update_page' | 'calendar_event';
   data: any;
   originalToolCallId?: string;
 }

@@ -2101,14 +2101,18 @@ function App() {
                                 
                                 {/* Header Row for Model: Avatar + Status Text */}
                                 {msg.role === Role.MODEL && (
-                                    <div className="flex items-center gap-3 mb-2 select-none">
+                                    <div className="flex items-center gap-2 mb-1 select-none">
                                         {/* Avatar/Icon */}
                                         <div className="w-8 h-8 rounded-full bg-pplx-accent/10 flex items-center justify-center border border-transparent shrink-0">
                                             <PerplexityLogo className={`w-5 h-5 text-pplx-accent ${msg.isThinking ? 'animate-spin-y' : ''}`} />
                                         </div>
                                         
                                         {/* Reasoning Indicator (Now to the right of avatar) */}
-                                        <TornadoIndicator isThinking={!!msg.isThinking} reasoning={msg.reasoning} />
+                                        <TornadoIndicator 
+                                            isThinking={!!msg.isThinking} 
+                                            reasoning={msg.reasoning} 
+                                            currentStep={msg.reasoning ? msg.reasoning.split('\n').filter(Boolean).pop() : undefined}
+                                        />
                                     </div>
                                 )}
 

@@ -266,35 +266,7 @@ CRITICAL: You MUST output your reasoning process explicitly using <thinking_step
 Format your reasoning like this:
 <thinking_step name="Step Name">Your detailed reasoning here...</thinking_step>
 
-You can have multiple thinking steps. The "name" attribute should be a short, descriptive title for the step (e.g., "Analyzing Request", "Searching Web", "Formulating Answer").
-
-You have the ability to render interactive charts directly in the chat using Chart.js.
-When the user asks for a chart, graph, or visualization, DO NOT try to draw it with text/ascii.
-Instead, use a standard markdown code block with the language set to \`chart\` to generate a chart:
-
-\`\`\`chart
-{
-  "type": "bar",
-  "data": {
-    "labels": ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"],
-    "datasets": [{
-      "label": "# of Votes",
-      "data": [12, 19, 3, 5, 2, 3],
-      "borderWidth": 1
-    }]
-  },
-  "options": {
-    "scales": {
-      "y": {
-        "beginAtZero": true
-      }
-    }
-  }
-}
-\`\`\`
-
-The content inside the block MUST be a valid JSON object representing a Chart.js configuration.
-You can use any valid Chart.js type (line, bar, pie, doughnut, radar, polarArea, bubble, scatter).`;
+You can have multiple thinking steps. The "name" attribute should be a short, descriptive title for the step (e.g., "Analyzing Request", "Searching Web", "Formulating Answer").`;
 
         return [
             { role: 'system', content: systemPrompt },

@@ -7,6 +7,64 @@ import { FocusMode, Attachment, AppSettings, ModelProvider, ProMode, Note, Space
 import { FOCUS_MODES, PRO_MODES } from '../constants';
 import { Tooltip } from './Tooltip';
 
+// Reusable BottomSheet component for mobile gestures
+const BottomSheet: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  isMobile: boolean;
+  className?: string;
+  scrollRef?: React.RefObject<HTMLDivElement>;
+}> = ({ isOpen, onClose, children, isMobile, className, scrollRef }) => {
+  const dragControls = useDragControls();
+  
+  const handleDragStart = (e: React.PointerEvent) => {
+    if (!isMobile) return;
+    const el = scrollRef?.current;
+    const atTop = el ? el.scrollTop <= 0 : true;
+    if (atTop) {
+      dragControls.start(e);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          drag={isMobile ? "y" : false}
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.8 }}
+          onDragEnd={(_, info) => {
+            if (isMobile && (info.offset.y > 150 || info.velocity.y > 500)) {
+              onClose();
+            }
+          }}
+          initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
+          animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+          exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
+          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+          onPointerDown={handleDragStart}
+          className={className}
+        >
+          {isMobile && (
+            <div 
+              onPointerDown={(e) => dragControls.start(e)}
+              className="w-full py-3 flex justify-center cursor-grab active:cursor-grabbing"
+            >
+              <div className="w-12 h-1.5 bg-gray-500/30 rounded-full" />
+            </div>
+          )}
+          <div ref={scrollRef} className="overflow-y-auto max-h-[85vh] custom-scrollbar touch-pan-y">
+            {children}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 interface InputAreaProps {
   onSendMessage: (text: string, focusModes: FocusMode[], proMode: ProMode, attachments: Attachment[], modelId?: string, isAgentMode?: boolean) => void;
   onStop?: () => void;
@@ -101,9 +159,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
   
   const recognitionRef = useRef<any>(null);
   
-  // Drag Controls for Bottom Sheets
-  const attachDragControls = useDragControls();
-  const focusDragControls = useDragControls();
   const attachScrollRef = useRef<HTMLDivElement>(null);
   const focusScrollRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -342,23 +397,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Helper to handle drag start only when at top
-  const handleDragStart = (
-    e: React.PointerEvent,
-    controls: any,
-    scrollRef: React.RefObject<HTMLDivElement>
-  ) => {
-    if (window.innerWidth >= 768) return; // Doar pe mobil
-    const el = scrollRef.current;
-    if (!el) return;
-    const atTop = el.scrollTop <= 0;
-    const draggingDown = (e as any).movementY > 0;
-    if (atTop || draggingDown) {
-      e.stopPropagation();
-      controls.start(e);
-    }
   };
 
   // --- Submission Logic ---
@@ -602,38 +640,15 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     ))}
                  </div>
                  
-                 <AnimatePresence>
-                 {showAttachMenu && (
-                    <motion.div 
-                        ref={attachScrollRef}
-                        drag={isMobile ? "y" : false}
-                        dragControls={attachDragControls}
-                        dragListener={false}
-                        dragConstraints={{ top: 0, bottom: 0 }}
-                        dragElastic={{ top: 0, bottom: 1 }}
-                        dragMomentum={false}
-                        onDragEnd={(_: any, info: any) => {
-                            if (isMobile && (info.offset.y > 100 || info.velocity.y > 500)) {
-                                setShowAttachMenu(false);
-                            }
-                        }}
-                        initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
-                        animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-                        exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
-                        transition={isMobile ? { duration: 0.15, ease: [0.4, 0, 0.2, 1] } : { duration: 0.15, ease: "easeOut" }}
-                        onPointerDown={(e: React.PointerEvent) => isMobile && handleDragStart(e, attachDragControls, attachScrollRef)}
-                        className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full max-h-[90vh] overflow-y-auto overscroll-contain bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl p-4 z-50 pb-8 md:absolute md:bottom-12 md:left-0 ${compact ? 'md:w-full' : 'md:w-64'} md:border md:rounded-xl md:p-2 md:pb-2 md:border-b custom-scrollbar touch-pan-y`}
-                    >
-                        {/* Mobile Drag Handle */}
-                        <div 
-                            onPointerDown={(e: React.PointerEvent) => attachDragControls.start(e)}
-                            className="w-full py-2 -mt-2 mb-2 md:hidden cursor-grab active:cursor-grabbing flex justify-center" 
-                        >
-                            <div className="w-12 h-1 bg-gray-600/50 rounded-full" />
-                        </div>
-                        
+                 <BottomSheet
+                    isOpen={showAttachMenu}
+                    onClose={() => setShowAttachMenu(false)}
+                    isMobile={isMobile}
+                    scrollRef={attachScrollRef}
+                    className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl z-50 pb-8 md:absolute md:bottom-12 md:left-0 ${compact ? 'md:w-full' : 'md:w-64'} md:border md:rounded-xl md:p-2 md:pb-2 md:border-b overscroll-contain`}
+                 >
                         {/* Attach Section (Horizontal) */}
-                        <div className="mb-2">
+                        <div className="mb-2 px-4">
                             <div className="flex flex-row justify-between gap-2 px-1">
                                 <button onClick={() => imageInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center space-y-1 p-4 md:p-1.5 rounded-lg text-sm text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text transition-colors border border-pplx-border">
                                     <ImageIcon size={24} className="md:w-5 md:h-5" />
@@ -650,10 +665,10 @@ export const InputArea: React.FC<InputAreaProps> = ({
                             </div>
                         </div>
 
-                        <div className="h-px bg-pplx-border my-2 mx-1" />
+                        <div className="h-px bg-pplx-border my-2 mx-5" />
 
                         {/* Modes Section */}
-                        <div className="mb-2">
+                        <div className="mb-2 px-4">
                             <div className="text-[10px] font-semibold text-pplx-muted uppercase tracking-wider mb-1 px-2">Modes</div>
                             <div className="flex flex-col mb-1 bg-pplx-card rounded-lg border border-transparent hover:border-pplx-border transition-colors">
                                 <div className="flex items-center justify-between p-2 cursor-pointer rounded-lg hover:bg-pplx-hover" onClick={() => setIsAgentMode(!isAgentMode)}>
@@ -700,10 +715,10 @@ export const InputArea: React.FC<InputAreaProps> = ({
                             </div>
                         </div>
 
-                        <div className="h-px bg-pplx-border my-2 mx-1" />
+                        <div className="h-px bg-pplx-border my-2 mx-5" />
 
                         {/* Skills Section (Accordion) */}
-                        <div className="mb-2">
+                        <div className="mb-2 px-4">
                             <button 
                                 onClick={() => setIsSkillsExpanded(!isSkillsExpanded)}
                                 className="w-full flex items-center justify-between p-2 rounded-lg text-sm text-pplx-muted hover:bg-pplx-hover hover:text-pplx-text transition-colors"
@@ -795,10 +810,10 @@ export const InputArea: React.FC<InputAreaProps> = ({
                             )}
                         </div>
 
-                        <div className="h-px bg-pplx-border my-2 mx-1" />
+                        <div className="h-px bg-pplx-border my-2 mx-5" />
 
                         {/* Projects Section (Accordion) */}
-                        <div className="mb-2">
+                        <div className="mb-2 px-4">
                             <button 
                                 onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
                                 className="w-full flex items-center justify-between p-2 rounded-lg text-sm text-gray-300 hover:bg-pplx-hover hover:text-pplx-text transition-colors"
@@ -846,10 +861,10 @@ export const InputArea: React.FC<InputAreaProps> = ({
                             )}
                         </div>
 
-                        <div className="h-px bg-pplx-border my-2 mx-1" />
+                        <div className="h-px bg-pplx-border my-2 mx-5" />
 
                         {/* Connectors Section (Accordion) */}
-                        <div className="mb-1">
+                        <div className="mb-1 px-4">
                             <button 
                                 onClick={() => setIsConnectorsExpanded(!isConnectorsExpanded)}
                                 className="w-full flex items-center justify-between p-2 rounded-lg text-sm text-gray-300 hover:bg-pplx-hover hover:text-pplx-text transition-colors"
@@ -870,9 +885,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                                 </div>
                             )}
                         </div>
-                    </motion.div>
-                 )}
-                 </AnimatePresence>
+                 </BottomSheet>
              </div>
 
              {/* Selected Items Badges - Removed for clean UI */}
@@ -900,38 +913,14 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     </div>
                     {hoveredTooltip === 'focus' && !showFocusMenu && <Tooltip text="Focus Mode" position="top" />}
                 </button>
-                
-                {/* Focus Menu */}
-                <AnimatePresence>
-                {showFocusMenu && (
-                    <motion.div 
-                        drag={isMobile ? "y" : false}
-                        dragControls={focusDragControls}
-                        dragListener={false}
-                        dragConstraints={{ top: 0, bottom: 0 }}
-                        dragElastic={{ top: 0, bottom: 1 }}
-                        dragMomentum={false}
-                        onDragEnd={(_: any, info: any) => {
-                            if (isMobile && (info.offset.y > 100 || info.velocity.y > 500)) {
-                                setShowFocusMenu(false);
-                            }
-                        }}
-                        initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
-                        animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-                        exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 10 }}
-                        transition={isMobile ? { duration: 0.15, ease: [0.4, 0, 0.2, 1] } : { duration: 0.15, ease: "easeOut" }}
-                        onPointerDown={(e: React.PointerEvent) => isMobile && handleDragStart(e, focusDragControls, focusScrollRef)}
-                        className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl p-2 z-50 pb-8 md:absolute md:bottom-12 md:right-0 ${compact ? 'md:w-full' : 'md:w-64'} md:border md:rounded-xl md:p-1 md:pb-1 md:border-b overscroll-contain touch-pan-y`}
-                    >
-                        {/* Mobile Drag Handle */}
-                        <div 
-                            onPointerDown={(e: React.PointerEvent) => focusDragControls.start(e)}
-                            className="w-full py-2 -mt-1 mb-1 md:hidden cursor-grab active:cursor-grabbing flex justify-center" 
-                        >
-                            <div className="w-12 h-1 bg-gray-600/50 rounded-full" />
-                        </div>
-
-                        <div ref={focusScrollRef} className="max-h-[85vh] md:max-h-[300px] overflow-y-auto overscroll-contain custom-scrollbar">
+                          <BottomSheet
+                    isOpen={showFocusMenu}
+                    onClose={() => setShowFocusMenu(false)}
+                    isMobile={isMobile}
+                    scrollRef={focusScrollRef}
+                    className={`fixed ${settings?.enableMobileDock ? 'bottom-[72px]' : 'bottom-0'} left-0 right-0 w-full bg-pplx-card border-t border-pplx-border rounded-t-2xl shadow-xl z-50 pb-8 md:absolute md:bottom-12 md:right-0 ${compact ? 'md:w-full' : 'md:w-64'} md:border md:rounded-xl md:p-1 md:pb-1 md:border-b overscroll-contain`}
+                 >
+                        <div className="max-h-[85vh] md:max-h-[300px] overflow-y-auto overscroll-contain custom-scrollbar px-2">
                             {FOCUS_MODES.map((mode) => (
                                 <div key={mode.id}>
                                     <button
@@ -1033,9 +1022,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                                 </div>
                             ))}
                         </div>
-                    </motion.div>
-                )}
-                </AnimatePresence>
+                 </BottomSheet>
              </div>
             
              {/* Model Selector (Hidden on small mobile) */}

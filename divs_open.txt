@@ -1,0 +1,109 @@
+1447:    <div className="flex h-[100dvh] w-full bg-pplx-primary text-pplx-text overflow-hidden font-sans transition-colors duration-150" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+1513:            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-center bg-pplx-primary transition-colors duration-150">
+1516:                <div className="absolute inset-0 md:hidden">
+1517:                    <div className="absolute top-[-20%] left-[-30%] w-[120%] h-[70%] bg-[radial-gradient(ellipse_at_center,_rgba(255,220,160,0.3)_0%,_transparent_70%)] blur-[40px]" />
+1521:                <div className="hidden md:block absolute inset-0" />
+1524:                <div className="absolute inset-0 dark:opacity-[0.02] opacity-[0.01] mix-blend-overlay md:hidden" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
+1541:             <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-pplx-card border border-pplx-accent/30 rounded-full px-3 py-1.5 shadow-lg animate-pulse">
+1558:                <div className="flex items-center h-10 px-3 select-none bg-pplx-primary border-none z-50 w-full relative border-b border-pplx-border/50 md:border-none">
+1559:                     <div className="flex-1 flex items-center min-w-0">
+1562:                        <div className="flex items-center gap-4 mr-2 shrink-0 -ml-2"> 
+1580:                        {openNoteIds.length > 0 && ( <div className="hidden md:flex flex-1 items-center overflow-x-auto no-scrollbar gap-1 ml-1"> {openNoteIds.map(noteId => { const n = notes.find(note => note.id === noteId); if (!n) return null; const isActive = activeNoteId === noteId; return ( <div key={noteId} onClick={() => navigateToNote(noteId)} className={` group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-all max-w-[150px] ${isActive ? 'text-pplx-text font-medium' : 'text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary/50' } `} > <span className="truncate text-xs">{n.emoji || '📄'} {n.title || 'Untitled'}</span> <button onClick={(e) => handleCloseTab(e, noteId)} className="opacity-0 group-hover:opacity-100 hover:bg-pplx-hover rounded p-0.5 transition-opacity" > <X size={10} /> </button> </div> ); })} </div> )}
+1583:                         <div className="flex items-center gap-1 ml-2 relative shrink-0">
+1592:                                        <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsPageMenuOpen(false)} /> 
+1593:                                        <div className="absolute top-8 right-0 z-50 w-64 bg-pplx-card border border-pplx-border shadow-xl rounded-xl p-2 animate-fadeIn flex flex-col opacity-100"> 
+1594:                                            <div className="flex bg-pplx-secondary/50 rounded-lg p-0.5 border border-pplx-border/50 mb-2"> 
+1599:                                            <div className="grid grid-cols-4 gap-1 mb-2"> 
+1605:                                            <div className="h-px bg-pplx-border/50 my-1" /> 
+1609:                                            <div className="h-px bg-pplx-border/50 my-1" /> 
+1613:                                            <div className="h-px bg-pplx-border/50 my-1" /> 
+1614:                                            <div className="flex items-center justify-between px-2 py-1.5"> 
+1615:                                                <div className="flex items-center gap-2"> 
+1620:                                                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${activeNote.isOffline ? 'translate-x-4' : ''}`} /> 
+1623:                                            <div className="flex items-center justify-between px-2 py-1.5"> 
+1624:                                                <div className="flex items-center gap-2"> 
+1629:                                                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${activeNote.isLocked ? 'translate-x-4' : ''}`} /> 
+1632:                                            <div className="h-px bg-pplx-border/50 my-1" /> 
+1646:            <div className="absolute top-0 left-0 right-0 z-20 p-6 pt-12 md:p-2 md:pt-4 flex flex-col items-start gap-6 md:gap-4 pointer-events-none">
+1648:                <div 
+1653:                     <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0 shadow-lg border border-white/10">
+1657:                             <div className="w-full h-full bg-pplx-secondary flex items-center justify-center text-pplx-text text-3xl font-bold">
+1664:                     <div className="flex flex-col">
+1696:            <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none">
+1710:                <div className="fixed top-0 left-0 right-0 h-32 bg-gradient-to-b from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-30" />
+1712:                <div className="absolute top-0 left-0 right-0 z-40 pointer-events-none [&>div]:!bg-transparent [&>div]:!backdrop-blur-none [&>div]:pointer-events-auto">
+1740:    <div className="flex-1 flex flex-col overflow-hidden bg-pplx-secondary/30">
+1752:    <div className="flex-1 overflow-hidden">
+1765:    <div className="flex-1 overflow-hidden bg-pplx-secondary/30">
+1777:            <div 
+1783:                <div className="flex flex-col min-h-full relative z-10">
+1785:                        <div className="flex flex-col min-h-full animate-fadeIn relative max-w-5xl mx-auto w-full">
+1787:                            <div className="hidden md:flex items-center gap-2 text-sm text-pplx-muted hover:text-pplx-text cursor-pointer mb-8 pt-8 px-12" onClick={() => setActiveSpaceId(null)}>
+1792:                            <div className="flex-1 no-scrollbar px-4 md:px-12 pb-4 md:pb-32">
+1793:                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+1796:                                    <div className="md:col-span-2 flex flex-col gap-8">
+1798:                                        <div className="flex flex-col gap-2">
+1799:                                            <div className="flex items-center justify-between">
+1804:                                                <div className="flex items-center gap-2">
+1814:                                        <div className="grid grid-cols-2 gap-3 md:hidden">
+1822:                                                <div className="p-2 bg-pplx-secondary/50 rounded-lg text-pplx-text">
+1825:                                                <div className="flex flex-col">
+1837:                                                <div className="p-2 bg-pplx-secondary/50 rounded-lg text-pplx-text">
+1840:                                                <div className="flex flex-col">
+1850:                                        <div className="flex flex-col gap-4">
+1854:                                            <div className="flex flex-col">
+1859:                                                        <div 
+1864:                                                            <div className="flex flex-col gap-1">
+1877:                                                    <div className="py-8 text-pplx-muted text-sm italic">
+1886:                                    <div className="hidden md:flex md:col-span-1 flex-col gap-6">
+1887:                                        <div className="bg-pplx-card/40 border border-pplx-border/60 rounded-xl p-5 flex flex-col gap-6 backdrop-blur-sm">
+1890:                                            <div className="flex flex-col gap-3">
+1891:                                                <div className="flex items-center justify-between">
+1900:                                                <div className="text-xs text-pplx-muted leading-relaxed line-clamp-3">
+1908:                                            <div className="h-px w-full bg-pplx-border/50" />
+1911:                                            <div className="flex flex-col gap-3">
+1912:                                                <div className="flex items-center justify-between">
+1923:                                                <div className="grid grid-cols-2 gap-2 mt-2">
+1925:                                                        <div key={idx} className="bg-pplx-primary/50 border border-pplx-border/50 rounded p-2 flex items-center gap-2 overflow-hidden">
+1926:                                                            <div className="shrink-0 text-pplx-muted">
+1935:                                                        <div className="col-span-2 py-4 text-center text-[10px] text-pplx-muted border border-dashed border-pplx-border/50 rounded">
+1949:                        <div className={`flex flex-col h-full items-center justify-center relative z-10 ${viewToRender === 'chat' && !activeThreadId ? 'md:mt-24 -mt-10' : '-mt-10'}`}>
+1951:                        <div className="hidden md:flex flex-col items-center">
+1965:                <div className="max-w-3xl mx-auto w-full py-4 space-y-6 px-4 md:px-0 mt-4 md:mt-0 relative z-0 bg-pplx-secondary/5 rounded-2xl">
+1969:                            <div key={msg.id} data-message-id={msg.id} className="flex flex-col space-y-3 animate-fadeIn">
+1973:                            <div className={`flex ${msg.role === Role.USER ? 'justify-end' : 'justify-start flex-col'} w-full group items-start`}>
+1977:                                    <div className="flex items-center gap-3 mb-2 select-none">
+1979:                                        <div className="w-8 h-8 rounded-full bg-pplx-accent/10 flex items-center justify-center border border-transparent shrink-0">
+1993:                                <div className={`flex flex-col min-w-0 ${msg.role === Role.USER ? 'items-end max-w-[85%] md:max-w-[75%]' : 'items-start w-full md:max-w-[100%]'} group`}>
+1997:                                        <div className="flex items-center gap-2 mb-2 mr-1 opacity-100 transition-opacity justify-end w-full group">
+1999:                                             <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2 ${editingMessageId === msg.id ? 'opacity-100' : ''}`}>
+2017:                                             <div className="w-6 h-6 rounded-full bg-pplx-secondary border border-pplx-border flex items-center justify-center">
+2025:                                        <div className={`mt-2 mb-2 grid grid-cols-2 sm:grid-cols-3 gap-3 ${msg.role === Role.USER ? 'justify-items-end' : ''}`}> 
+2027:                                                <div key={i} className="group relative aspect-square rounded-xl border border-pplx-border overflow-hidden bg-pplx-secondary hover:border-pplx-muted transition-colors w-24 h-24"> 
+2028:                                                    {att.type === 'image' ? ( <img src={att.content} alt="attachment" className="w-full h-full object-cover" /> ) : ( <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center"> <FileText className="text-pplx-muted mb-2 group-hover:text-pplx-text transition-colors" size={24} /> <span className="text-xs text-pplx-text leading-tight line-clamp-2 w-full break-words">{att.name}</span> </div> )} 
+2036:                                            <div className="mb-4 mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 w-full">
+2038:                                                    <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-pplx-border group cursor-pointer bg-pplx-secondary">
+2040:                                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+2050:                                             <div className="w-full bg-pplx-secondary border border-pplx-border rounded-2xl p-4 mt-1 animate-fadeIn">
+2057:                                                 <div className="flex justify-end gap-2 mt-2">
+2073:                                            <div className={`font-normal text-[16px] leading-7 transition-all relative ${
+2088:                                            <div className="mt-2 w-full pt-2">
+2089:                                                <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-pplx-muted mb-1.5 tracking-widest opacity-80">
+2092:                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
+2095:                                                            <div className="bg-pplx-secondary p-0.5 rounded-full shrink-0"> <Globe size={8} className="text-pplx-muted" /> </div>
+2096:                                                            <div className="flex flex-col overflow-hidden min-w-0">
+2109:                                            <div className="flex items-center justify-between md:justify-start gap-1 md:gap-2 mt-4 border-t border-pplx-border/30 pt-2 w-full flex-nowrap">
+2137:                                                <div className="relative flex-1 md:flex-none">
+2144:                                                        <div className="flex flex-col items-start leading-[9px] md:flex-row md:items-center md:gap-1 md:leading-normal text-left">
+2153:                                                            <div className="fixed inset-0 z-30" onClick={() => setActiveAddToSpaceId(null)} />
+2154:                                                            <div className="absolute bottom-full right-0 mb-2 w-56 bg-pplx-card border border-pplx-border rounded-xl shadow-xl z-40 p-1 animate-in slide-in-from-bottom-2 fade-in duration-150 origin-bottom-right">
+2155:                                                                <div className="px-3 py-2 text-[10px] font-bold text-pplx-muted uppercase tracking-wider">Select Space</div>
+2156:                                                                <div className="max-h-48 overflow-y-auto custom-scrollbar">
+2158:                                                                        <div className="px-3 py-2 text-xs text-pplx-muted italic">No spaces created yet.</div>
+2180:                                            <div className="mt-4 w-full pt-2">
+2181:                                                 <div className="flex flex-col gap-1">
+2188:                                                             <div className="flex items-center gap-2 truncate">
+2225:                <div className="fixed bottom-[90px] left-0 right-0 h-9 bg-gradient-to-t from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-10 hidden md:block" />
+2227:                <div 
+2236:                <div className={`w-full bg-pplx-primary pt-2 px-4 z-30 shrink-0 border-t border-transparent transition-all duration-150 ${settings.enableMobileDock ? 'sm:pb-6' : 'pb-0'} ${viewToRender === 'chat' && !activeThreadId && !activeSpace ? 'md:pb-[35vh]' : 'md:pb-0'}`}>
+2237:                    <div className="pointer-events-auto">

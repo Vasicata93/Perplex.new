@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Home, Plus, FileText, CheckSquare, ShoppingCart, MoreHorizontal, X, Search, Calendar, Folder, Star, MessageSquareText, Library } from 'lucide-react';
 import { Note, AppSettings } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface MobileDockProps {
   visible: boolean;
@@ -195,53 +196,70 @@ export const MobileDock: React.FC<MobileDockProps> = ({
         />
 
         {/* Rainbow Menu (Arc) */}
-        <div className={`absolute bottom-full mb-6 transition-all duration-150 ${isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-90 pointer-events-none'}`}>
-           <div className="relative w-64 h-32 flex items-end justify-center">
-              {menuItems.map((item, index) => {
-                const total = menuItems.length;
-                const angle = 180 / (total + 1) * (index + 1);
-                const radian = (angle * Math.PI) / 180;
-                const radius = 90;
-                
-                const x = -Math.cos(radian) * radius;
-                const y = -Math.sin(radian) * radius;
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 100 }}
+              dragElastic={0.1}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 50) {
+                  setIsMenuOpen(false);
+                }
+              }}
+              className="absolute bottom-full mb-6"
+            >
+              <div className="relative w-64 h-32 flex items-end justify-center">
+                  {menuItems.map((item, index) => {
+                    const total = menuItems.length;
+                    const angle = 180 / (total + 1) * (index + 1);
+                    const radian = (angle * Math.PI) / 180;
+                    const radius = 90;
+                    
+                    const x = -Math.cos(radian) * radius;
+                    const y = -Math.sin(radian) * radius;
 
-                return (
-                  <div 
-                    key={item.id}
-                    className="absolute"
-                    style={{
-                      bottom: '20px',
-                      left: '50%',
-                      marginLeft: '-24px',
-                      transform: `translate(${x * 1.3}px, ${y}px)`
-                    }}
-                    onMouseEnter={() => setHoveredMenuItemId(item.id)}
-                    onMouseLeave={() => setHoveredMenuItemId(null)}
-                  >
-                    <div className={`absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap transition-all duration-150 ${hoveredMenuItemId === item.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}>
-                        {item.label}
-                    </div>
+                    return (
+                      <div 
+                        key={item.id}
+                        className="absolute"
+                        style={{
+                          bottom: '20px',
+                          left: '50%',
+                          marginLeft: '-24px',
+                          transform: `translate(${x * 1.3}px, ${y}px)`
+                        }}
+                        onMouseEnter={() => setHoveredMenuItemId(item.id)}
+                        onMouseLeave={() => setHoveredMenuItemId(null)}
+                      >
+                        <div className={`absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap transition-all duration-150 ${hoveredMenuItemId === item.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}>
+                            {item.label}
+                        </div>
 
-                    <button
-                      onClick={() => {
-                          onNewPage(item.id as any);
-                          setIsMenuOpen(false);
-                      }}
-                      className="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transform transition-transform hover:scale-110 active:scale-95"
-                      style={{
-                        backgroundColor: item.color === 'bg-blue-500' ? '#3b82f6' : 
-                                       item.color === 'bg-green-500' ? '#22c55e' : 
-                                       item.color === 'bg-orange-500' ? '#f97316' : '#a855f7',
-                      }}
-                    >
-                      <item.icon size={20} />
-                    </button>
-                  </div>
-                );
-              })}
-           </div>
-        </div>
+                        <button
+                          onClick={() => {
+                              onNewPage(item.id as any);
+                              setIsMenuOpen(false);
+                          }}
+                          className="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transform transition-transform hover:scale-110 active:scale-95"
+                          style={{
+                            backgroundColor: item.color === 'bg-blue-500' ? '#3b82f6' : 
+                                           item.color === 'bg-green-500' ? '#22c55e' : 
+                                           item.color === 'bg-orange-500' ? '#f97316' : '#a855f7',
+                          }}
+                        >
+                          <item.icon size={20} />
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Main Dock Bar */}
         <div className="flex items-center gap-2.5 px-4">
