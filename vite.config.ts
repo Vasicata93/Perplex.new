@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
@@ -8,43 +7,43 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        injectRegister: 'auto',
-        devOptions: {
-            enabled: true
-        },
-        includeAssets: ['logo.svg'],
-        manifest: {
-          name: 'Perplex Clone',
-          short_name: 'Perplex',
-          description: 'A high-fidelity clone of Perplex AI featuring local-first data storage and multi-model support.',
-          theme_color: '#202222',
-          background_color: '#191A1A',
-          display: 'standalone',
-          orientation: 'portrait',
-          scope: '/',
-          start_url: '/',
-          lang: 'en',
-          icons: [
-            {
-              src: 'logo.svg',
-              sizes: '64x64 32x32 24x24 16x16 192x192 512x512',
-              type: 'image/svg+xml',
-              purpose: 'any'
-            },
-            {
-              src: 'logo.svg',
-              sizes: '192x192 512x512',
-              type: 'image/svg+xml',
-              purpose: 'maskable'
-            }
-          ]
-        },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg}']
-        }
-      })
+      // VitePWA({
+      //   registerType: 'autoUpdate',
+      //   injectRegister: 'auto',
+      //   devOptions: {
+      //       enabled: true
+      //   },
+      //   includeAssets: ['logo.svg'],
+      //   manifest: {
+      //     name: 'Perplex Clone',
+      //     short_name: 'Perplex',
+      //     description: 'A high-fidelity clone of Perplex AI featuring local-first data storage and multi-model support.',
+      //     theme_color: '#202222',
+      //     background_color: '#191A1A',
+      //     display: 'standalone',
+      //     orientation: 'portrait',
+      //     scope: '/',
+      //     start_url: '/',
+      //     lang: 'en',
+      //     icons: [
+      //       {
+      //         src: 'logo.svg',
+      //         sizes: '64x64 32x32 24x24 16x16 192x192 512x512',
+      //         type: 'image/svg+xml',
+      //         purpose: 'any'
+      //       },
+      //       {
+      //         src: 'logo.svg',
+      //         sizes: '192x192 512x512',
+      //         type: 'image/svg+xml',
+      //         purpose: 'maskable'
+      //       }
+      //     ]
+      //   },
+      //   workbox: {
+      //     globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+      //   }
+      // })
     ],
     build: {
       outDir: 'dist',
