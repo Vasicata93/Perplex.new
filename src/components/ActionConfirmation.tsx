@@ -20,16 +20,84 @@ interface ActionConfirmationProps {
   action: PendingAction;
   onConfirm: (modifiedData: any) => void;
   onCancel: () => void;
+  onRedact?: () => void;
 }
 
 export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
   action,
   onConfirm,
   onCancel,
+  onRedact,
 }) => {
   const isBlockOperation = action.type === "block_operation";
   const isCalendarEvent = action.type === "calendar_event";
   const isComplexModule = action.type === "complex_module_action";
+  const isSensitiveData = action.type === "sensitive_data_warning";
+
+  // --- SENSITIVE DATA WARNING ---
+  if (isSensitiveData) {
+    return (
+      <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-pplx-border bg-orange-500/10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg text-orange-500 bg-orange-500/20">
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-pplx-text tracking-tight">
+                  Sensitive Data Detected
+                </h2>
+                <p className="text-xs text-pplx-muted">
+                  The agent is attempting to use potentially sensitive information.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5">
+                <FileText size={12} /> Data Payload
+              </label>
+              <div className="w-full bg-pplx-input border border-pplx-border rounded-xl px-3 py-2 text-xs font-mono text-pplx-text shadow-sm overflow-x-auto">
+                <pre>{JSON.stringify(action.data.payload, null, 2)}</pre>
+              </div>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs">
+              Warning: This data will be sent to an external tool or search engine.
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-5 border-t border-pplx-border bg-pplx-card flex flex-col gap-3">
+            <button
+              onClick={() => onConfirm(action.data.payload)}
+              className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-orange-600 shadow-lg shadow-orange-600/20 transition-all hover:scale-[1.02] active:scale-95"
+            >
+              <Check size={16} strokeWidth={3} />
+              Continue (Send Data)
+            </button>
+            <button
+              onClick={onRedact}
+              className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-pplx-text bg-pplx-secondary hover:bg-pplx-hover transition-all"
+            >
+              <Edit3 size={16} />
+              Continue without data (Redact)
+            </button>
+            <button
+              onClick={onCancel}
+              className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors"
+            >
+              <X size={16} /> Cancel Action
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // State for Page/Block operations
   const [title, setTitle] = useState(

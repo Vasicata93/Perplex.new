@@ -1,4 +1,4 @@
-import { Message } from '../../types';
+import { Message, ModelProvider, LocalModelConfig } from '../../types';
 import { LLMService } from '../geminiService';
 import { RoutingDecision } from './AgentRouter';
 
@@ -7,7 +7,9 @@ export interface AgentPlan {
     id: string;
     description: string;
     tool?: string;
+    toolArgs?: any;
     dependencies?: string[];
+    retried?: boolean;
   }[];
   reasoning: string;
 }
@@ -17,9 +19,36 @@ export class AgentPlanner {
     text: string,
     history: Message[],
     routingDecision: RoutingDecision,
-    llmService: LLMService
+    systemContextStr: string,
+    memoryContextStr: string,
+    perceptionContextStr: string,
+    injectedSkillsStr: string,
+    activeToolsStr: string,
+    llmService: LLMService,
+    provider: ModelProvider = ModelProvider.GEMINI,
+    openRouterKey: string = "",
+    openRouterModel: string = "",
+    openAiKey: string = "",
+    openAiModel: string = "",
+    activeLocalModel: LocalModelConfig | undefined = undefined,
+    geminiApiKey?: string
   ): Promise<AgentPlan> {
     const prompt = `
+SYSTEM CONTEXT:
+${systemContextStr}
+
+MEMORY CONTEXT:
+${memoryContextStr}
+
+PERCEPTION CONTEXT:
+${perceptionContextStr}
+
+INJECTED SKILLS:
+${injectedSkillsStr}
+
+ACTIVE TOOLS (Prefix Masked):
+${activeToolsStr}
+
 You are the PLANNER layer of an advanced AI agent.
 Your job is to break down the user's request into a sequence of actionable tasks.
 
@@ -28,14 +57,12 @@ ${history.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')}
 
 User Request: "${text}"
 Complexity: ${routingDecision.complexity}
-Injected Skills: ${routingDecision.injectedSkills.join(', ')}
+Priority: ${routingDecision.priority}
+Tool State: ${routingDecision.toolState}
 
-Available Tools:
-- memory_retrieval: Fetch relevant context from memory.
-- search_workspace: Search files and data in the workspace.
-- web_search: Search the internet for information.
-- code_execution: Execute code or scripts.
-- file_system: Read or write files.
+CRITICAL INSTRUCTION:
+STEP 4 - TODO LIST ACTIVATION: Create an internal todo list. Order subtasks by dependencies.
+LANGUAGE: Always respond in the language of the user's last message.
 
 Output a JSON object with the following structure:
 {
@@ -45,6 +72,7 @@ Output a JSON object with the following structure:
       "id": "task_1",
       "description": "Clear description of what needs to be done",
       "tool": "tool_name_if_applicable",
+      "toolArgs": { "arg1": "value1" },
       "dependencies": ["list_of_task_ids_that_must_complete_first"]
     }
   ]
@@ -55,7 +83,16 @@ Respond ONLY with valid JSON.
 `;
 
     try {
-      const responseText = await llmService.generateSimpleText(prompt);
+      const responseText = await llmService.generateSimpleText(
+        prompt,
+        provider,
+        openRouterKey,
+        openRouterModel,
+        openAiKey,
+        openAiModel,
+        activeLocalModel,
+        geminiApiKey
+      );
       // Extract JSON from potential markdown blocks
       const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
                         responseText.match(/```\n([\s\S]*?)\n```/) ||
@@ -63,6 +100,7 @@ Respond ONLY with valid JSON.
       
       const jsonString = jsonMatch[1].trim();
       const plan = JSON.parse(jsonString) as AgentPlan;
+      if (!plan) throw new Error("Parsed plan is null");
       return plan;
     } catch (error) {
       console.error("Planner evaluation failed:", error);

@@ -79,7 +79,7 @@ export const MessageRenderer = React.memo<MessageRendererProps>(
             // @ts-ignore
             "custom-widget": ({ node, widgetType, configStr, ...props }) => {
               return (
-                <div className="mb-8">
+                <div className="my-4">
                   <WidgetRenderer
                     type={widgetType as string}
                     configStr={configStr as string}
@@ -88,30 +88,16 @@ export const MessageRenderer = React.memo<MessageRendererProps>(
               );
             },
             p: ({ node, children, ...props }) => {
-              // Check if paragraph contains a custom-widget to avoid validateDOMNesting warning
-              // @ts-ignore
-              const hasWidget = node?.children?.some(
-                (child: any) => child.tagName === "custom-widget",
-              );
-              if (hasWidget) {
-                return (
-                  <div
-                    className="mb-6 leading-relaxed text-pplx-text font-normal text-[15px] md:text-[16px]"
-                    {...props}
-                  >
-                    {children}
-                  </div>
-                );
-              }
               return (
-                <p
+                <div
                   className="mb-6 leading-relaxed text-pplx-text font-normal text-[15px] md:text-[16px]"
                   {...props}
                 >
                   {children}
-                </p>
+                </div>
               );
             },
+            pre: ({ children }) => <>{children}</>,
             ul: ({ node, ...props }) => (
               <ul
                 className="list-disc pl-5 mb-6 space-y-2 text-pplx-text leading-relaxed"
@@ -163,14 +149,14 @@ export const MessageRenderer = React.memo<MessageRendererProps>(
                   lang === "diagram")
               ) {
                 return (
-                  <div className="mb-8">
+                  <div className="my-4">
                     <WidgetRenderer
                       type={
                         lang === "mermaid" || lang === "diagram"
                           ? "mermaid"
                           : "chart"
                       }
-                      configStr={String(props.children)}
+                      configStr={props.children ? String(props.children) : ""}
                     />
                   </div>
                 );
@@ -189,7 +175,7 @@ export const MessageRenderer = React.memo<MessageRendererProps>(
                     </span>
                     <button
                       onClick={() =>
-                        navigator.clipboard.writeText(String(props.children))
+                        navigator.clipboard.writeText(props.children ? String(props.children) : "")
                       }
                       className="flex items-center gap-1.5 text-xs text-pplx-text-secondary hover:text-pplx-text transition-colors font-medium"
                     >

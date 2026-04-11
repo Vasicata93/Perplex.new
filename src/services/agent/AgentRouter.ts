@@ -1,5 +1,5 @@
 import { LLMService } from '../geminiService';
-import { Message } from '../../types';
+import { Message, ModelProvider, LocalModelConfig } from '../../types';
 
 export type ComplexityLevel = 'SIMPLU' | 'MEDIU' | 'COMPLEX' | 'AMBIGUU';
 export type PriorityLevel = 'URGENT_IMPORTANT' | 'IMPORTANT' | 'RUTINA' | 'OPTIONAL';
@@ -22,9 +22,28 @@ export class AgentRouter {
   static async evaluate(
     currentMessage: string,
     recentHistory: Message[],
-    llmService: LLMService
+    systemContextStr: string,
+    memoryContextStr: string,
+    perceptionContextStr: string,
+    llmService: LLMService,
+    provider: ModelProvider = ModelProvider.GEMINI,
+    openRouterKey: string = "",
+    openRouterModel: string = "",
+    openAiKey: string = "",
+    openAiModel: string = "",
+    activeLocalModel: LocalModelConfig | undefined = undefined,
+    geminiApiKey?: string
   ): Promise<RoutingDecision> {
     const prompt = `
+SYSTEM CONTEXT:
+${systemContextStr}
+
+MEMORY CONTEXT:
+${memoryContextStr}
+
+PERCEPTION CONTEXT:
+${perceptionContextStr}
+
 You are the ROUTER layer of an advanced AI agent.
 Your job is to evaluate the user's latest message and determine the optimal execution path.
 
@@ -52,19 +71,38 @@ Rules:
   - IMPORTANT: Needs planning and confirmation.
   - RUTINA: Direct execution.
   - OPTIONAL: Mention, don't execute.
-- Tool State: Usually 'idle' for new requests. If the user is asking to write/modify data, it might need 'confirming'.
+- Tool State:
+  - idle: Default state, all tools available.
+  - writing: Use this if the user is currently in the middle of a multi-step writing process and we should focus on finishing it. Read tools are blocked in this state.
+  - confirming: Use this if the next step MUST be a user confirmation before any tool can be used. All tools are blocked.
+  - error: Use this if the previous action failed and we need to decide on a fallback.
 - Skills: Only inject skills that are highly relevant to the request.
+  - coding_skill: Programming, debugging, architecture.
+  - research_skill: Deep dives, fact checking, synthesis.
+  - finance_skill: Calculations, market analysis, budgeting.
+  - writing_skill: Creative writing, editing, formal docs.
+  - data_analysis_skill: Statistics, visualization, pattern detection.
 
 Output ONLY valid JSON.
 `;
 
     try {
-      const responseText = await llmService.generateSimpleText(prompt);
+      const responseText = await llmService.generateSimpleText(
+        prompt,
+        provider,
+        openRouterKey,
+        openRouterModel,
+        openAiKey,
+        openAiModel,
+        activeLocalModel,
+        geminiApiKey
+      );
       
       // Extract JSON from response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const decision = JSON.parse(jsonMatch[0]) as RoutingDecision;
+        if (!decision) throw new Error("Parsed decision is null");
         return decision;
       }
       

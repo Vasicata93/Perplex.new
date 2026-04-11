@@ -63,6 +63,7 @@ export interface Message {
   reasoningSteps?: StepProgress[]; // The structured chain of thoughts
   agentPlan?: any[]; // Agent's plan
   agentActions?: any[]; // Agent's actions
+  isAgentPro?: boolean; // Tag for Agent Pro mode
 }
 
 export interface Thread {
@@ -303,9 +304,11 @@ export interface PendingAction {
     | "update_page"
     | "block_operation"
     | "calendar_event"
-    | "complex_module_action";
+    | "complex_module_action"
+    | "sensitive_data_warning";
   data: any;
   originalToolCallId?: string;
+  resolvePromise?: (result: 'confirm' | 'cancel' | 'redact') => void;
 }
 
 export interface CalendarEvent {

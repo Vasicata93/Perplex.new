@@ -4,18 +4,7 @@ export type ConfidenceScore = 'high' | 'medium' | 'low';
 
 export type AgentMode = 'chat' | 'agent' | 'idle';
 
-export type ToolState = 'idle' | 'writing' | 'confirming' | 'error' | 'blocked';
-
-export interface SafetyViolation {
-  type: 'recursion' | 'sensitive_data' | 'write_blocked' | 'frustration' | 'sanity_check';
-  message: string;
-  severity: 'warning' | 'critical';
-}
-
-export interface GuardResult {
-  isSafe: boolean;
-  violation?: SafetyViolation;
-}
+export type ToolState = 'idle' | 'writing' | 'confirming' | 'error';
 
 export interface Perception {
   timestamp: number;
@@ -23,12 +12,45 @@ export interface Perception {
   realIntent: string;
   tone: string;
   urgency: 'low' | 'medium' | 'high' | 'critical';
+  situationModel: {
+    projectState: string;
+    changesSinceLastMessage: string;
+    relevantMemoryContext: string;
+  };
+  goalAwareness: {
+    mainGoal: string;
+    activeSubgoals: string[];
+    remainingTasks: string[];
+  };
+  eventDetection: {
+    directionChanges: string[];
+    opportunities: string[];
+    blocks: string[];
+  };
+}
+
+export interface SubTaskLog {
+  id: string;
+  timestamp: number;
+  type: 'thought' | 'action' | 'result' | 'error';
+  content: string;
+  toolName?: string;
 }
 
 export interface SubTask {
   id: string;
   description: string;
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  logs: SubTaskLog[]; // Detailed logs for this specific task
+  retried?: boolean;
+}
+
+export interface ArchitectureStep {
+  id: string;
+  name: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  description: string;
+  logs: SubTaskLog[];
 }
 
 export interface ActionFeedItem {
@@ -53,6 +75,7 @@ export interface AgentState {
   // UI Panels
   planPanel: SubTask[];
   actionFeed: ActionFeedItem[];
+  architectureSteps: ArchitectureStep[];
   
   // Thinking Indicator
   currentStep: number;
@@ -61,9 +84,4 @@ export interface AgentState {
   
   // Response
   confidenceScore: ConfidenceScore | null;
-
-  // Safety & Performance
-  recursionCount: number;
-  frustrationLevel: number; // 0-10
-  lastViolation: SafetyViolation | null;
 }

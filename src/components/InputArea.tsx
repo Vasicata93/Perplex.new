@@ -41,6 +41,7 @@ interface InputAreaProps {
     attachments: Attachment[],
     modelId?: string,
     isAgentMode?: boolean,
+    isAgentProMode?: boolean,
   ) => void;
   onStop?: () => void;
   isThinking: boolean;
@@ -62,6 +63,8 @@ interface InputAreaProps {
   setIsAgentMode?: (isAgent: boolean) => void;
   isLongThinking?: boolean;
   setIsLongThinking?: (isThinking: boolean) => void;
+  isAgentProMode?: boolean;
+  setIsAgentProMode?: (isPro: boolean) => void;
 }
 
 export const InputArea: React.FC<InputAreaProps> = ({
@@ -85,6 +88,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
   setIsAgentMode: propSetIsAgentMode,
   isLongThinking: propIsLongThinking,
   setIsLongThinking: propSetIsLongThinking,
+  isAgentProMode: propIsAgentProMode,
+  setIsAgentProMode: propSetIsAgentProMode,
 }) => {
   const [input, setInput] = useState("");
   const [focusModes, setFocusModes] = useState<FocusMode[]>([
@@ -94,6 +99,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
   // Local State Fallbacks
   const [localProMode, setLocalProMode] = useState<ProMode>(ProMode.STANDARD);
   const [localIsAgentMode, setLocalIsAgentMode] = useState(false);
+  const [localIsAgentProMode, setLocalIsAgentProMode] = useState(false);
   const [localIsLongThinking, setLocalIsLongThinking] = useState(false);
 
   // Use props if available, otherwise local state
@@ -103,6 +109,10 @@ export const InputArea: React.FC<InputAreaProps> = ({
   const isAgentMode =
     propIsAgentMode !== undefined ? propIsAgentMode : localIsAgentMode;
   const setIsAgentMode = propSetIsAgentMode || setLocalIsAgentMode;
+
+  const isAgentProMode =
+    propIsAgentProMode !== undefined ? propIsAgentProMode : localIsAgentProMode;
+  const setIsAgentProMode = propSetIsAgentProMode || setLocalIsAgentProMode;
 
   const isLongThinking =
     propIsLongThinking !== undefined ? propIsLongThinking : localIsLongThinking;
@@ -444,6 +454,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
         finalAttachments,
         selectedModelId || undefined,
         isAgentMode,
+        isAgentProMode,
       );
       setInput("");
       setAttachments([]);
@@ -643,24 +654,42 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
               {/* Active Mode Badges (Minimalist) */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[200px] md:max-w-none mask-linear-fade">
-                {isAgentMode && (
-                  <button
-                    onClick={() => setIsAgentMode(false)}
-                    onMouseEnter={() => setHoveredTooltip("agent")}
-                    onMouseLeave={() => setHoveredTooltip(null)}
-                    className="relative flex items-center gap-1 px-2 py-1 rounded-full bg-pplx-accent/10 border border-pplx-accent/20 text-[10px] font-medium text-pplx-accent whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-pplx-accent/20 transition-colors group"
-                  >
-                    <Bot size={10} />
-                    <span>Agent</span>
-                    <X
-                      size={8}
-                      className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                    {hoveredTooltip === "agent" && (
-                      <Tooltip text="Agent Mode" position="top" />
+                    {isAgentMode && (
+                      <button
+                        onClick={() => setIsAgentMode(false)}
+                        onMouseEnter={() => setHoveredTooltip("agent")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                        className="relative flex items-center gap-1 px-2 py-1 rounded-full bg-pplx-accent/10 border border-pplx-accent/20 text-[10px] font-medium text-pplx-accent whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-pplx-accent/20 transition-colors group"
+                      >
+                        <Bot size={10} />
+                        <span>Agent</span>
+                        <X
+                          size={8}
+                          className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
+                        {hoveredTooltip === "agent" && (
+                          <Tooltip text="Agent Mode" position="top" />
+                        )}
+                      </button>
                     )}
-                  </button>
-                )}
+                    {isAgentProMode && (
+                      <button
+                        onClick={() => setIsAgentProMode(false)}
+                        onMouseEnter={() => setHoveredTooltip("agentpro")}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                        className="relative flex items-center gap-1 px-2 py-1 rounded-full bg-pplx-accent/20 border border-pplx-accent/40 text-[10px] font-bold text-pplx-accent whitespace-nowrap animate-in fade-in zoom-in duration-150 hover:bg-pplx-accent/30 transition-colors group"
+                      >
+                        <Zap size={10} />
+                        <span>Agent Pro</span>
+                        <X
+                          size={8}
+                          className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
+                        {hoveredTooltip === "agentpro" && (
+                          <Tooltip text="Agent Pro Mode" position="top" />
+                        )}
+                      </button>
+                    )}
                 {isLongThinking && (
                   <button
                     onClick={() => setIsLongThinking(false)}
@@ -754,6 +783,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
               <AnimatePresence>
                 {showAttachMenu && isMobile && (
                   <motion.div
+                    key="attach-overlay"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -763,6 +793,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                 )}
                 {showAttachMenu && (
                   <motion.div
+                    key="attach-menu"
                     drag={isMobile ? "y" : false}
                     dragControls={attachDragControls}
                     dragListener={isMobile && isAttachAtTop}
@@ -851,7 +882,10 @@ export const InputArea: React.FC<InputAreaProps> = ({
                       <div className="flex flex-col mb-1 bg-pplx-card rounded-lg border border-transparent hover:border-pplx-border transition-colors">
                         <div
                           className="flex items-center justify-between p-2 cursor-pointer rounded-lg hover:bg-pplx-hover"
-                          onClick={() => setIsAgentMode(!isAgentMode)}
+                          onClick={() => {
+                            setIsAgentMode(!isAgentMode);
+                            if (!isAgentMode) setIsAgentProMode(false);
+                          }}
                         >
                           <div className="flex items-center space-x-3">
                             <Bot
@@ -874,6 +908,44 @@ export const InputArea: React.FC<InputAreaProps> = ({
                           >
                             <div
                               className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${isAgentMode ? "left-5" : "left-1"}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Agent Pro Mode */}
+                      <div className="flex flex-col mb-1 bg-pplx-card rounded-lg border border-transparent hover:border-pplx-border transition-colors">
+                        <div
+                          className="flex items-center justify-between p-2 cursor-pointer rounded-lg hover:bg-pplx-hover"
+                          onClick={() => {
+                            setIsAgentProMode(!isAgentProMode);
+                            if (!isAgentProMode) setIsAgentMode(false);
+                          }}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Zap
+                              size={16}
+                              className={
+                                isAgentProMode
+                                  ? "text-pplx-accent"
+                                  : "text-pplx-muted"
+                              }
+                            />
+                            <div className="flex flex-col">
+                              <span
+                                className={`text-sm ${isAgentProMode ? "text-pplx-accent font-bold" : "text-pplx-text font-medium"}`}
+                              >
+                                Agent Pro
+                              </span>
+                              <span className="text-[9px] text-pplx-muted -mt-0.5">Architecture 2.0 (Complex)</span>
+                            </div>
+                          </div>
+                          {/* Toggle Switch */}
+                          <div
+                            className={`w-10 h-6 rounded-full transition-colors relative ${isAgentProMode ? "bg-pplx-accent" : "bg-pplx-muted/40"}`}
+                          >
+                            <div
+                              className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${isAgentProMode ? "left-5" : "left-1"}`}
                             />
                           </div>
                         </div>
@@ -1248,6 +1320,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
               <AnimatePresence>
                 {showFocusMenu && isMobile && (
                   <motion.div
+                    key="focus-overlay"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -1257,6 +1330,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                 )}
                 {showFocusMenu && (
                   <motion.div
+                    key="focus-menu"
                     drag={isMobile ? "y" : false}
                     dragControls={focusDragControls}
                     dragListener={isMobile && isFocusAtTop}

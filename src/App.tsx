@@ -136,12 +136,12 @@ function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
 
-  // UI State - Initialize from SessionStorage to persist on refresh
+  // UI State - Initialize from LocalStorage to persist on refresh and closure
   const [activeView, setActiveView] = useState<
     "chat" | "library" | "calendar" | "search" | "portfolio"
   >(
     () =>
-      (sessionStorage.getItem("pplx_activeView") as
+      (localStorage.getItem("pplx_activeView") as
         | "chat"
         | "library"
         | "calendar"
@@ -161,15 +161,15 @@ function App() {
     activeView === "search" ? previousViewBeforeSearch : activeView;
 
   const [activeThreadId, setActiveThreadId] = useState<string | null>(
-    () => sessionStorage.getItem("pplx_activeThreadId") || null,
+    () => localStorage.getItem("pplx_activeThreadId") || null,
   );
 
   const [activeSpaceId, setActiveSpaceId] = useState<string | null>(
-    () => sessionStorage.getItem("pplx_activeSpaceId") || null,
+    () => localStorage.getItem("pplx_activeSpaceId") || null,
   );
 
   const [activeNoteId, setActiveNoteId] = useState<string | null>(
-    () => sessionStorage.getItem("pplx_activeNoteId") || null,
+    () => localStorage.getItem("pplx_activeNoteId") || null,
   );
 
   const [isThinking, setIsThinking] = useState(false);
@@ -178,27 +178,34 @@ function App() {
   // Input State (Lifted from InputArea for persistence)
   const [inputProMode, setInputProMode] = useState<ProMode>(
     () =>
-      (sessionStorage.getItem("pplx_inputProMode") as ProMode) ||
+      (localStorage.getItem("pplx_inputProMode") as ProMode) ||
       ProMode.STANDARD,
   );
   const [inputIsAgentMode, setInputIsAgentMode] = useState(
-    () => sessionStorage.getItem("pplx_inputIsAgentMode") === "true",
+    () => localStorage.getItem("pplx_inputIsAgentMode") === "true",
+  );
+  const [inputIsAgentProMode, setInputIsAgentProMode] = useState(
+    () => localStorage.getItem("pplx_inputIsAgentProMode") === "true",
   );
   const [inputIsLongThinking, setInputIsLongThinking] = useState(
-    () => sessionStorage.getItem("pplx_inputIsLongThinking") === "true",
+    () => localStorage.getItem("pplx_inputIsLongThinking") === "true",
   );
 
   // Persist Input State
   useEffect(() => {
-    sessionStorage.setItem("pplx_inputProMode", inputProMode);
+    localStorage.setItem("pplx_inputProMode", inputProMode);
   }, [inputProMode]);
 
   useEffect(() => {
-    sessionStorage.setItem("pplx_inputIsAgentMode", String(inputIsAgentMode));
+    localStorage.setItem("pplx_inputIsAgentMode", String(inputIsAgentMode));
   }, [inputIsAgentMode]);
 
   useEffect(() => {
-    sessionStorage.setItem(
+    localStorage.setItem("pplx_inputIsAgentProMode", String(inputIsAgentProMode));
+  }, [inputIsAgentProMode]);
+
+  useEffect(() => {
+    localStorage.setItem(
       "pplx_inputIsLongThinking",
       String(inputIsLongThinking),
     );
@@ -254,7 +261,7 @@ function App() {
   // Tab & Navigation State
   const [openNoteIds, setOpenNoteIds] = useState<string[]>(() => {
     try {
-      return JSON.parse(sessionStorage.getItem("pplx_openNoteIds") || "[]");
+      return JSON.parse(localStorage.getItem("pplx_openNoteIds") || "[]");
     } catch {
       return [];
     }
@@ -274,7 +281,7 @@ function App() {
 
   // Header UI State
   const [isDashboardMode, setIsDashboardMode] = useState(
-    () => sessionStorage.getItem("pplx_isDashboardMode") === "true",
+    () => localStorage.getItem("pplx_isDashboardMode") === "true",
   );
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
@@ -353,24 +360,24 @@ function App() {
   const touchYRef = useRef<number | null>(null);
   const isStoppedRef = useRef(false);
 
-  // Persist State to SessionStorage (Refresh safety)
+  // Persist State to LocalStorage (Refresh and closure safety)
   useEffect(() => {
-    sessionStorage.setItem("pplx_activeView", activeView);
+    localStorage.setItem("pplx_activeView", activeView);
 
     if (activeThreadId)
-      sessionStorage.setItem("pplx_activeThreadId", activeThreadId);
-    else sessionStorage.removeItem("pplx_activeThreadId");
+      localStorage.setItem("pplx_activeThreadId", activeThreadId);
+    else localStorage.removeItem("pplx_activeThreadId");
 
     if (activeSpaceId)
-      sessionStorage.setItem("pplx_activeSpaceId", activeSpaceId);
-    else sessionStorage.removeItem("pplx_activeSpaceId");
+      localStorage.setItem("pplx_activeSpaceId", activeSpaceId);
+    else localStorage.removeItem("pplx_activeSpaceId");
 
-    if (activeNoteId) sessionStorage.setItem("pplx_activeNoteId", activeNoteId);
-    else sessionStorage.removeItem("pplx_activeNoteId");
+    if (activeNoteId) localStorage.setItem("pplx_activeNoteId", activeNoteId);
+    else localStorage.removeItem("pplx_activeNoteId");
 
-    sessionStorage.setItem("pplx_openNoteIds", JSON.stringify(openNoteIds));
-    sessionStorage.setItem("pplx_isDashboardMode", String(isDashboardMode));
-    sessionStorage.setItem("pplx_sidebarWidth", String(sidebarWidth));
+    localStorage.setItem("pplx_openNoteIds", JSON.stringify(openNoteIds));
+    localStorage.setItem("pplx_isDashboardMode", String(isDashboardMode));
+    localStorage.setItem("pplx_sidebarWidth", String(sidebarWidth));
   }, [
     activeView,
     activeThreadId,
@@ -442,7 +449,16 @@ function App() {
   // OR when 'isThinking' status changes.
   useEffect(() => {
     if (isThinking) {
-      scrollToBottom();
+      if (chatContainerRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+        // Only auto-scroll if the user is already near the bottom
+        // This allows the user to scroll up and read previous messages without being forced down
+        // Reduced threshold from 300 to 30 so a small scroll up breaks the lock
+        const isBottom = scrollHeight - scrollTop - clientHeight <= 30;
+        if (isBottom) {
+          scrollToBottom();
+        }
+      }
     }
   }, [threads, isThinking]);
 
@@ -1128,13 +1144,6 @@ function App() {
     setIsHomeBackActive(false);
   };
 
-  // Determine Back Destination for Mobile Dock
-  const backDestination = isHomeBackActive
-    ? "home"
-    : navHistory.length > 0
-      ? navHistory[navHistory.length - 1].view
-      : "home";
-
   // ... existing handlers ...
 
   const handleSelectThread = (id: string) => {
@@ -1312,13 +1321,13 @@ function App() {
   };
 
   // --- CONFIRMATION ACTION HANDLERS ---
-  const handleConfirmAction = async (modifiedData?: any) => {
-    if (!pendingAction) return;
+  const handleConfirmAction = async (modifiedData?: any, actionToConfirm: PendingAction | null = pendingAction) => {
+    if (!actionToConfirm) return;
 
-    const titleToUse = modifiedData?.title || pendingAction.data.title;
-    const contentToUse = modifiedData?.content || pendingAction.data.content;
+    const titleToUse = modifiedData?.title || actionToConfirm.data.title;
+    const contentToUse = modifiedData?.content || actionToConfirm.data.content;
 
-    if (pendingAction.type === "create_page") {
+    if (actionToConfirm.type === "create_page") {
       // Create New Note
       const newNote: Note = {
         id: generateId(),
@@ -1331,8 +1340,8 @@ function App() {
       };
       setNotes((prev) => [newNote, ...prev]);
       navigateToNote(newNote.id);
-    } else if (pendingAction.type === "block_operation") {
-      const { operation, args } = pendingAction.data;
+    } else if (actionToConfirm.type === "block_operation") {
+      const { operation, args } = actionToConfirm.data;
       const pageTitle = args.pageTitle;
 
       // Find the note
@@ -1404,10 +1413,10 @@ function App() {
       } else {
         alert(`Page "${pageTitle}" not found.`);
       }
-    } else if (pendingAction.type === "update_page") {
+    } else if (actionToConfirm.type === "update_page") {
       // Find existing note by title (case-insensitive) or just append to active note if ambiguous?
       // For now, let's search by title logic
-      const targetTitle = pendingAction.data.title.toLowerCase();
+      const targetTitle = actionToConfirm.data.title.toLowerCase();
       const existingNote = notes.find((n) =>
         n.title.toLowerCase().includes(targetTitle),
       );
@@ -1436,8 +1445,8 @@ function App() {
         setNotes((prev) => [newNote, ...prev]);
         navigateToNote(newNote.id);
       }
-    } else if (pendingAction.type === "calendar_event") {
-      const { operation, args } = pendingAction.data;
+    } else if (actionToConfirm.type === "calendar_event") {
+      const { operation, args } = actionToConfirm.data;
 
       if (operation === "add") {
         const newEvent: CalendarEvent = {
@@ -1487,8 +1496,8 @@ function App() {
         db.set(STORES.CALENDAR, "all_events", filteredEvents);
         window.dispatchEvent(new CustomEvent("calendar-updated"));
       }
-    } else if (pendingAction.type === "complex_module_action") {
-      const { module, action, data } = pendingAction.data;
+    } else if (actionToConfirm.type === "complex_module_action") {
+      const { module, action, data } = actionToConfirm.data;
 
       try {
         if (module === "safe_digital") {
@@ -1533,18 +1542,18 @@ function App() {
     // Add a system message to chat to confirm
     if (activeThreadId) {
       let confirmText = "";
-      if (pendingAction.type === "block_operation") {
+      if (actionToConfirm.type === "block_operation") {
         confirmText = `Action confirmed. I've updated the page "${titleToUse}".`;
-      } else if (pendingAction.type === "calendar_event") {
-        const op = pendingAction.data.operation;
-        confirmText = `Action confirmed. I've ${op === "add" ? "added" : op === "update" ? "updated" : "deleted"} the event "${modifiedData?.title || pendingAction.data.args.title}".`;
-      } else if (pendingAction.type === "complex_module_action") {
-        const { module, action } = pendingAction.data;
+      } else if (actionToConfirm.type === "calendar_event") {
+        const op = actionToConfirm.data.operation;
+        confirmText = `Action confirmed. I've ${op === "add" ? "added" : op === "update" ? "updated" : "deleted"} the event "${modifiedData?.title || actionToConfirm.data.args.title}".`;
+      } else if (actionToConfirm.type === "complex_module_action") {
+        const { module, action } = actionToConfirm.data;
         const moduleName =
           module === "safe_digital" ? "Safe Digital" : "Portfolio";
         confirmText = `Action confirmed. I've performed the "${action}" action in ${moduleName}.`;
       } else {
-        confirmText = `Action confirmed. I've ${pendingAction.type === "create_page" ? "created" : "updated"} the page "${titleToUse}".`;
+        confirmText = `Action confirmed. I've ${actionToConfirm.type === "create_page" ? "created" : "updated"} the page "${titleToUse}".`;
       }
 
       const confirmMsg: Message = {
@@ -1562,6 +1571,9 @@ function App() {
       );
     }
 
+    if (actionToConfirm.resolvePromise) {
+      actionToConfirm.resolvePromise('confirm');
+    }
     setPendingAction(null);
   };
 
@@ -1581,7 +1593,38 @@ function App() {
         ),
       );
     }
+    if (pendingAction?.resolvePromise) {
+      pendingAction.resolvePromise('cancel');
+    }
     setPendingAction(null);
+  };
+
+  const handleRedactAction = () => {
+    if (pendingAction?.resolvePromise) {
+      pendingAction.resolvePromise('redact');
+    }
+    setPendingAction(null);
+  };
+
+  const requestConfirmation = (action: any): Promise<'confirm' | 'cancel' | 'redact'> => {
+    return new Promise((resolve) => {
+      const destructiveOps = ['delete_block', 'delete_calendar_event', 'replace_block', 'update_page', 'update_calendar_event'];
+      let isDestructive = false;
+      if (action.type === 'block_operation' && destructiveOps.includes(action.data.operation)) isDestructive = true;
+      if (action.type === 'calendar_event' && destructiveOps.includes(action.data.operation + '_calendar_event')) isDestructive = true;
+      if (action.type === 'update_page') isDestructive = true;
+      if (action.type === 'sensitive_data_warning') isDestructive = true;
+
+      if (isDestructive) {
+        setPendingAction({ ...action, resolvePromise: resolve });
+      } else {
+        // Auto confirm
+        setTimeout(() => {
+          handleConfirmAction(undefined, action);
+          resolve('confirm');
+        }, 0);
+      }
+    });
   };
 
   const handleRegenerate = async (
@@ -1612,6 +1655,7 @@ function App() {
       previousUserMsg.attachments || [],
       newMessages,
       inputIsAgentMode,
+      inputIsAgentProMode,
     );
   };
 
@@ -1649,8 +1693,9 @@ function App() {
       updatedThread.id,
       newContent,
       attachments,
-      prunedMessages,
+      prunedMessages.slice(0, msgIndex),
       inputIsAgentMode,
+      inputIsAgentProMode,
     );
   };
 
@@ -1660,6 +1705,7 @@ function App() {
     attachments: Attachment[],
     history: Message[],
     isAgentMode: boolean = false,
+    isAgentProMode: boolean = false,
   ) => {
     setIsThinking(true);
     const tempBotId = generateId();
@@ -1682,6 +1728,8 @@ function App() {
           : t,
       ),
     );
+    
+    setTimeout(scrollToBottom, 50);
 
     let effectiveUseSearch = settings.useSearch;
     let modifiedPrompt = prompt;
@@ -1708,7 +1756,28 @@ function App() {
         (m) => m.id === settings.activeLocalModelId,
       );
 
-      const onChunk = (textChunk: string, reasoningChunk?: string) => {
+      let textQueue = "";
+      let reasoningQueue = "";
+      let isDraining = false;
+
+      const drainQueue = () => {
+        if (!textQueue && !reasoningQueue) {
+          isDraining = false;
+          return;
+        }
+
+        isDraining = true;
+        
+        // Dynamically adjust chunk size based on queue length to prevent falling behind
+        const textChunkSize = Math.max(2, Math.ceil(textQueue.length / 8));
+        const reasoningChunkSize = Math.max(2, Math.ceil(reasoningQueue.length / 8));
+
+        const textChunk = textQueue.substring(0, textChunkSize);
+        const reasoningChunk = reasoningQueue.substring(0, reasoningChunkSize);
+        
+        textQueue = textQueue.substring(textChunkSize);
+        reasoningQueue = reasoningQueue.substring(reasoningChunkSize);
+
         setThreads((prev) =>
           prev.map((t) => {
             if (t.id !== threadId) return t;
@@ -1716,17 +1785,76 @@ function App() {
               ...t,
               messages: t.messages.map((m) => {
                 if (m.id !== tempBotId) return m;
-                // MODIFICATION: Removed isThinking: false to keep processing animation active until done
                 return {
                   ...m,
-                  content: m.content + (textChunk || ""),
-                  reasoning: (m.reasoning || "") + (reasoningChunk || ""),
+                  content: m.content + textChunk,
+                  reasoning: (m.reasoning || "") + reasoningChunk,
+                  isAgentPro: isAgentProMode, // Tag message as Pro
                 };
               }),
             };
           }),
         );
+
+        setTimeout(drainQueue, 20); // ~50fps smooth updates
       };
+
+      const onChunk = (textChunk: string, reasoningChunk?: string) => {
+        if (textChunk) textQueue += textChunk;
+        if (reasoningChunk) reasoningQueue += reasoningChunk;
+        
+        if (!isDraining) {
+          drainQueue();
+        }
+      };
+
+      if (isAgentProMode) {
+        await AgentEngine.processRequest(
+          modifiedPrompt,
+          history,
+          llmService,
+          onChunk,
+          (finalText) => {
+            const finalPlan = useAgentStore.getState().planPanel;
+            const finalActions = useAgentStore.getState().actionFeed;
+
+            // pendingAction is now handled by requestConfirmation inside AgentEngine
+
+            setThreads((prev) =>
+              prev.map((t) =>
+                t.id === threadId
+                  ? {
+                      ...t,
+                      messages: t.messages.map((m) =>
+                        m.id === tempBotId
+                          ? {
+                              ...m,
+                              content: finalText,
+                              isThinking: false,
+                              agentPlan: finalPlan,
+                              agentActions: finalActions,
+                            }
+                          : m,
+                      ),
+                      updatedAt: Date.now(),
+                    }
+                  : t,
+              ),
+            );
+            setIsThinking(false);
+          },
+          requestConfirmation,
+          true, // forceAgentMode
+          provider,
+          settings.openRouterApiKey,
+          settings.openRouterModelId,
+          settings.openAiApiKey,
+          settings.openAiModelId,
+          activeLocalModel,
+          settings.geminiApiKey,
+        );
+        return;
+      }
 
       const response = await llmService.generateResponse(
         history,
@@ -1861,6 +1989,7 @@ function App() {
     attachments: Attachment[],
     modelId?: string,
     isAgentMode: boolean = false,
+    isAgentProMode: boolean = false,
     threadIdOverride?: string,
   ) => {
     isStoppedRef.current = false;
@@ -1906,6 +2035,7 @@ function App() {
       content: "",
       timestamp: Date.now(),
       isThinking: true,
+      isAgentPro: isAgentProMode,
     };
 
     // Get current messages to pass as history
@@ -1925,11 +2055,13 @@ function App() {
           : t,
       ),
     );
+    
+    setTimeout(scrollToBottom, 50);
 
     // ==========================================
     // INTEGRATION: AGENT ENGINE ROUTING
     // ==========================================
-    if (isAgentMode) {
+    if (isAgentProMode) {
       try {
         const currentThread = threads.find(t => t.id === threadId);
         const history = currentThread ? currentThread.messages : [];
@@ -1938,7 +2070,7 @@ function App() {
           text,
           history,
           llmService,
-          (chunk) => {
+          (chunk, reasoning) => {
             if (isStoppedRef.current) return;
             setThreads((prev) =>
               prev.map((t) => {
@@ -1950,6 +2082,7 @@ function App() {
                     return {
                       ...m,
                       content: m.content + chunk,
+                      reasoning: reasoning ? (m.reasoning || "") + reasoning : m.reasoning,
                     };
                   }),
                 };
@@ -1961,6 +2094,10 @@ function App() {
             
             const finalPlan = useAgentStore.getState().planPanel;
             const finalActions = useAgentStore.getState().actionFeed;
+            
+            console.log("onComplete called. finalPlan:", finalPlan, "finalActions:", finalActions);
+
+            // pendingAction is now handled by requestConfirmation inside AgentEngine
 
             setThreads((prev) =>
               prev.map((t) =>
@@ -1984,7 +2121,15 @@ function App() {
               ),
             );
           },
-          isAgentMode
+          requestConfirmation,
+          true, // forceAgentMode
+          settings.modelProvider,
+          settings.openRouterApiKey,
+          settings.openRouterModelId,
+          settings.openAiApiKey,
+          settings.openAiModelId,
+          settings.localModels?.find((m) => m.id === settings.activeLocalModelId),
+          settings.geminiApiKey
         );
       } catch (e) {
         console.error("Agent Engine Error:", e);
@@ -2007,6 +2152,7 @@ function App() {
               : t,
           ),
         );
+        useAgentStore.getState().setMode('idle');
       } finally {
         setIsThinking(false);
       }
@@ -2076,8 +2222,28 @@ function App() {
         }
       }
 
-      const onChunk = (textChunk: string, reasoningChunk?: string) => {
-        if (isStoppedRef.current) return;
+      let textQueue = "";
+      let reasoningQueue = "";
+      let isDraining = false;
+
+      const drainQueue = () => {
+        if (isStoppedRef.current || (!textQueue && !reasoningQueue)) {
+          isDraining = false;
+          return;
+        }
+
+        isDraining = true;
+        
+        // Dynamically adjust chunk size based on queue length to prevent falling behind
+        const textChunkSize = Math.max(2, Math.ceil(textQueue.length / 8));
+        const reasoningChunkSize = Math.max(2, Math.ceil(reasoningQueue.length / 8));
+
+        const textChunk = textQueue.substring(0, textChunkSize);
+        const reasoningChunk = reasoningQueue.substring(0, reasoningChunkSize);
+        
+        textQueue = textQueue.substring(textChunkSize);
+        reasoningQueue = reasoningQueue.substring(reasoningChunkSize);
+
         setThreads((prev) =>
           prev.map((t) => {
             if (t.id !== threadId) return t;
@@ -2085,16 +2251,27 @@ function App() {
               ...t,
               messages: t.messages.map((m) => {
                 if (m.id !== tempBotId) return m;
-                // MODIFICATION: Removed isThinking: false to keep processing animation active until done
                 return {
                   ...m,
-                  content: m.content + (textChunk || ""),
-                  reasoning: (m.reasoning || "") + (reasoningChunk || ""),
+                  content: m.content + textChunk,
+                  reasoning: (m.reasoning || "") + reasoningChunk,
                 };
               }),
             };
           }),
         );
+
+        setTimeout(drainQueue, 20); // ~50fps smooth updates
+      };
+
+      const onChunk = (textChunk: string, reasoningChunk?: string) => {
+        if (isStoppedRef.current) return;
+        if (textChunk) textQueue += textChunk;
+        if (reasoningChunk) reasoningQueue += reasoningChunk;
+        
+        if (!isDraining) {
+          drainQueue();
+        }
       };
 
       const response = await llmService.generateResponse(
@@ -2412,14 +2589,16 @@ function App() {
           />
         )}
 
-        {isLearning && (
-          <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-pplx-card border border-pplx-accent/30 rounded-full px-3 py-1.5 shadow-lg animate-pulse">
-            <Brain size={14} className="text-pplx-accent" />
-            <span className="text-xs font-medium text-pplx-accent">
-              Learning...
-            </span>
-          </div>
-        )}
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+          {isLearning && (
+            <div className="flex items-center gap-2 bg-pplx-card border border-pplx-accent/30 rounded-full px-3 py-1.5 shadow-lg animate-pulse">
+              <Brain size={14} className="text-pplx-accent" />
+              <span className="text-xs font-medium text-pplx-accent">
+                Learning...
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* --- PENDING ACTION CONFIRMATION MODAL --- */}
         {pendingAction && (
@@ -2427,6 +2606,7 @@ function App() {
             action={pendingAction}
             onConfirm={handleConfirmAction}
             onCancel={handleCancelAction}
+            onRedact={handleRedactAction}
           />
         )}
 
@@ -3178,6 +3358,8 @@ function App() {
                                       .pop()
                                   : undefined
                               }
+                              agentPlan={msg.agentPlan}
+                              agentActions={msg.agentActions}
                             />
                           </div>
                         )}
@@ -3575,6 +3757,8 @@ function App() {
                     setProMode={setInputProMode}
                     isAgentMode={inputIsAgentMode}
                     setIsAgentMode={setInputIsAgentMode}
+                    isAgentProMode={inputIsAgentProMode}
+                    setIsAgentProMode={setInputIsAgentProMode}
                     isLongThinking={inputIsLongThinking}
                     setIsLongThinking={setInputIsLongThinking}
                   />
@@ -3620,6 +3804,7 @@ function App() {
             ProMode.STANDARD,
             atts,
             undefined,
+            false,
             false,
             sideChatThreadId!,
           )
@@ -3675,8 +3860,6 @@ function App() {
                   ? "calendar"
                   : activeNoteId || ""
         }
-        backDestination={backDestination}
-        isHomeBackActive={isHomeBackActive}
       />
     </div>
   );

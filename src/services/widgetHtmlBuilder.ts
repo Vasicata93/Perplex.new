@@ -9,19 +9,43 @@ export function buildWidgetHtml(
 
   const resizeScript = `
         <script>
+            let lastHeight = 0;
             function sendHeight() {
-                // Use offsetHeight of the root element to get the most accurate content height
-                const height = document.documentElement.offsetHeight || document.body.offsetHeight;
-                window.parent.postMessage({ type: 'WIDGET_RESIZE', height: height }, '*');
+                const container = document.getElementById('widget-container');
+                let height;
+                
+                if (container) {
+                    // Measure the exact content height, avoiding viewport stretching
+                    height = container.getBoundingClientRect().height;
+                    
+                    // Add body padding to ensure nothing is cut off
+                    const style = window.getComputedStyle(document.body);
+                    const paddingTop = parseFloat(style.paddingTop) || 0;
+                    const paddingBottom = parseFloat(style.paddingBottom) || 0;
+                    height += paddingTop + paddingBottom;
+                } else {
+                    // Fallback
+                    height = document.documentElement.offsetHeight || document.body.offsetHeight;
+                }
+                
+                // Only send if height changed significantly to avoid infinite 1px jitter loops
+                if (height && Math.abs(height - lastHeight) > 2) {
+                    lastHeight = height;
+                    window.parent.postMessage({ type: 'WIDGET_RESIZE', height: height }, '*');
+                }
             }
             window.addEventListener('load', sendHeight);
-            // Use ResizeObserver for real-time updates (e.g. after animations or dynamic content)
+            
+            // Use ResizeObserver for real-time updates
             if (window.ResizeObserver) {
                 const ro = new ResizeObserver(sendHeight);
-                ro.observe(document.body);
+                const target = document.getElementById('widget-container') || document.body;
+                ro.observe(target);
             }
+            
             // Fallback for any late-loading assets
-            setTimeout(sendHeight, 1000);
+            setTimeout(sendHeight, 500);
+            setTimeout(sendHeight, 1500);
             setTimeout(sendHeight, 3000);
         </script>
     `;
@@ -348,24 +372,36 @@ export function buildWidgetHtml(
     <style>
         body {
             margin: 0;
-            padding: 12px;
+            padding: 24px;
+            padding-bottom: 48px; /* 20% more space at the bottom */
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 300px;
-            padding-bottom: 20px;
             background-color: transparent;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
         }
+        #widget-container {
+            width: 100%;
+            height: 380px; /* Fixed height to prevent resize loops while giving plenty of space */
+            position: relative;
+            animation: fadeIn 0.8s ease-out;
+        }
         canvas {
             max-width: 100%;
             max-height: 100%;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.05));
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-    <canvas id="myChart"></canvas>
+    <div id="widget-container">
+        <canvas id="myChart"></canvas>
+    </div>
     <script>
         try {
             const ctx = document.getElementById('myChart').getContext('2d');
@@ -386,7 +422,7 @@ export function buildWidgetHtml(
             Chart.defaults.color = '${textColor}';
             Chart.defaults.borderColor = '${gridColor}';
             Chart.defaults.font.family = "'Inter', sans-serif";
-            Chart.defaults.font.size = 11;
+            Chart.defaults.font.size = 12;
             
             // Refine datasets for a premium look
             if (config.data && config.data.datasets) {
@@ -403,28 +439,41 @@ export function buildWidgetHtml(
                     if (config.type === 'line' || config.type === 'radar') {
                         ds.tension = 0.4;
                         ds.borderWidth = 3;
-                        ds.pointRadius = 4;
-                        ds.pointHoverRadius = 4;
-                        ds.pointBackgroundColor = ds.borderColor;
-                        ds.pointBorderColor = '${isDark ? "#191919" : "#ffffff"}';
+                        ds.pointRadius = 0; // Hide points by default for cleaner look
+                        ds.pointHoverRadius = 6;
+                        ds.pointBackgroundColor = '${isDark ? "#191919" : "#ffffff"}';
+                        ds.pointBorderColor = color;
                         ds.pointBorderWidth = 2;
                         
                         // Add gradient fill if fill is enabled
-                        if (ds.fill) {
+                        if (ds.fill || config.type === 'radar') {
                             const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                            gradient.addColorStop(0, color + '66'); // 40% opacity
-                            gradient.addColorStop(0.5, color + '22'); // 13% opacity
+                            gradient.addColorStop(0, color + '40'); // 25% opacity
                             gradient.addColorStop(1, color + '00'); // 0% opacity
                             ds.backgroundColor = gradient;
+                            ds.fill = true;
                         }
                     }
                     
                     // Bar charts refinement
                     if (config.type === 'bar') {
-                        ds.borderRadius = 8;
+                        ds.borderRadius = 6;
                         ds.borderSkipped = false;
-                        ds.hoverBackgroundColor = ds.backgroundColor;
-                        ds.hoverBorderColor = ds.borderColor;
+                        ds.hoverBackgroundColor = ds.backgroundColor || color; // Keep the same color on hover
+                        ds.hoverBorderColor = color;
+                        ds.barPercentage = 0.6;
+                        ds.categoryPercentage = 0.8;
+                    }
+                    
+                    // Doughnut/Pie charts refinement
+                    if (config.type === 'doughnut' || config.type === 'pie') {
+                        ds.borderWidth = 2;
+                        ds.borderColor = '${isDark ? "#191919" : "#ffffff"}';
+                        ds.hoverOffset = 4;
+                        if (config.type === 'doughnut') {
+                            config.options = config.options || {};
+                            config.options.cutout = '75%';
+                        }
                     }
                 });
             }
@@ -432,25 +481,34 @@ export function buildWidgetHtml(
             if (config.options) {
                 config.options.responsive = true;
                 config.options.maintainAspectRatio = false;
-                config.options.hover = { mode: null };
+                config.options.interaction = {
+                    mode: 'index',
+                    intersect: false,
+                };
                 
                 // Premium Tooltip
                 if (!config.options.plugins) config.options.plugins = {};
                 config.options.plugins.tooltip = {
-                    backgroundColor: '${isDark ? "#27272a" : "#ffffff"}',
+                    backgroundColor: '${isDark ? "rgba(39, 39, 42, 0.9)" : "rgba(255, 255, 255, 0.9)"}',
                     titleColor: '${isDark ? "#ffffff" : "#111827"}',
-                    bodyColor: '${isDark ? "#a1a1aa" : "#4b5563"}',
+                    bodyColor: '${isDark ? "#e4e4e7" : "#4b5563"}',
                     borderColor: '${isDark ? "#3f3f46" : "#e5e7eb"}',
                     borderWidth: 1,
-                    padding: 12,
-                    cornerRadius: 8,
+                    padding: 16,
+                    cornerRadius: 12,
                     displayColors: true,
                     usePointStyle: true,
-                    boxPadding: 6,
-                    bodyFont: { size: 12 },
-                    titleFont: { size: 12, weight: 'bold' },
-                    shadowBlur: 10,
-                    shadowColor: 'rgba(0,0,0,0.1)'
+                    boxPadding: 8,
+                    bodyFont: { size: 13, family: "'Inter', sans-serif" },
+                    titleFont: { size: 14, weight: 'bold', family: "'Inter', sans-serif" },
+                    callbacks: {
+                        labelColor: function(context) {
+                            return {
+                                borderColor: context.dataset.borderColor,
+                                backgroundColor: context.dataset.borderColor,
+                            };
+                        }
+                    }
                 };
 
                 // Ensure scales use theme colors if they exist
@@ -459,9 +517,12 @@ export function buildWidgetHtml(
                         if (!scale.grid) scale.grid = {};
                         scale.grid.color = '${gridColor}';
                         scale.grid.drawBorder = false;
+                        scale.grid.tickLength = 0;
                         if (!scale.ticks) scale.ticks = {};
                         scale.ticks.color = '${textColor}';
-                        scale.ticks.padding = 10;
+                        scale.ticks.padding = 12;
+                        scale.ticks.font = { size: 11, family: "'Inter', sans-serif" };
+                        scale.border = { display: false };
                     });
                 }
 
@@ -471,30 +532,52 @@ export function buildWidgetHtml(
                     config.options.plugins.legend.labels.color = '${textColor}';
                     config.options.plugins.legend.labels.usePointStyle = true;
                     config.options.plugins.legend.labels.pointStyle = 'circle';
-                    config.options.plugins.legend.labels.padding = 20;
-                    config.options.plugins.legend.labels.font = { size: 11, weight: '500' };
+                    config.options.plugins.legend.labels.padding = 24;
+                    config.options.plugins.legend.labels.font = { size: 12, weight: '500', family: "'Inter', sans-serif" };
+                    config.options.plugins.legend.position = 'top';
+                    config.options.plugins.legend.align = 'end';
                 }
             } else {
                 config.options = {
                     responsive: true,
                     maintainAspectRatio: false,
-                    hover: { mode: null },
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
+                            position: 'top',
+                            align: 'end',
                             labels: { 
                                 color: '${textColor}',
                                 usePointStyle: true,
-                                padding: 20,
-                                font: { size: 11, weight: '500' }
+                                pointStyle: 'circle',
+                                padding: 24,
+                                font: { size: 12, weight: '500', family: "'Inter', sans-serif" }
                             }
+                        },
+                        tooltip: {
+                            backgroundColor: '${isDark ? "rgba(39, 39, 42, 0.9)" : "rgba(255, 255, 255, 0.9)"}',
+                            titleColor: '${isDark ? "#ffffff" : "#111827"}',
+                            bodyColor: '${isDark ? "#e4e4e7" : "#4b5563"}',
+                            borderColor: '${isDark ? "#3f3f46" : "#e5e7eb"}',
+                            borderWidth: 1,
+                            padding: 16,
+                            cornerRadius: 12,
+                            usePointStyle: true,
+                            boxPadding: 8
                         }
                     },
                     scales: {
-                        x: { grid: { color: '${gridColor}', drawBorder: false }, ticks: { color: '${textColor}', padding: 10 } },
-                        y: { grid: { color: '${gridColor}', drawBorder: false }, ticks: { color: '${textColor}', padding: 10 } }
+                        x: { border: { display: false }, grid: { color: '${gridColor}', drawBorder: false, tickLength: 0 }, ticks: { color: '${textColor}', padding: 12 } },
+                        y: { border: { display: false }, grid: { color: '${gridColor}', drawBorder: false, tickLength: 0 }, ticks: { color: '${textColor}', padding: 12 } }
                     }
                 };
             }
+
+            // Animation
+            config.options.animation = {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            };
 
             new Chart(ctx, config);
         } catch (error) {
@@ -517,24 +600,38 @@ export function buildWidgetHtml(
     <style>
         body { 
             margin: 0; 
-            padding: 16px; 
-            padding-bottom: 24px;
-            display: flex; 
-            justify-content: center; 
+            padding: 0; 
             background-color: transparent;
             color: ${textColor};
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+        #widget-container {
+            padding: 16px;
+            padding-bottom: 24px;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            box-sizing: border-box;
         }
         .mermaid {
             background-color: transparent;
             width: 100%;
             display: flex;
             justify-content: center;
+            animation: fadeIn 0.8s ease-out;
+            margin: 0;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         /* Premium Diagram Styling */
         .mermaid svg {
             filter: drop-shadow(0 15px 25px rgba(0,0,0,0.1));
             max-width: 100% !important;
+            max-height: 500px !important; /* Constrain height to prevent massive diagrams */
+            height: auto !important; /* Ensure proportional scaling */
         }
         .mermaid .node rect, .mermaid .node circle, .mermaid .node ellipse, .mermaid .node polygon, .mermaid .node path {
             stroke-width: 1.5px !important;
@@ -555,18 +652,53 @@ export function buildWidgetHtml(
             rx: 12px;
             ry: 12px;
         }
+        /* Class & ER Diagram specific improvements */
+        .mermaid .classGroup rect, .mermaid .er.entityBox {
+            fill: ${isDark ? "#27272a" : "#ffffff"} !important;
+            stroke: ${isDark ? "#3f3f46" : "#e5e7eb"} !important;
+            stroke-width: 1.5px !important;
+            rx: 8px;
+            ry: 8px;
+        }
+        .mermaid .classLabel .label, .mermaid .er.entityLabel {
+            font-weight: 700 !important;
+        }
+        .mermaid .er.attributeBoxEven {
+            fill: ${isDark ? "#18181b" : "#f9fafb"} !important;
+        }
+        .mermaid .er.attributeBoxOdd {
+            fill: ${isDark ? "#27272a" : "#ffffff"} !important;
+        }
     </style>
 </head>
 <body>
-    <pre class="mermaid">
+    <div id="widget-container">
+        <pre class="mermaid">
 ${mermaidCode}
-    </pre>
+        </pre>
+    </div>
     <script>
         mermaid.initialize({ 
             startOnLoad: true, 
             theme: '${isDark ? "dark" : "neutral"}',
             securityLevel: 'loose',
             fontFamily: 'Inter, sans-serif',
+            gantt: {
+                fontSize: 12,
+                sectionFontSize: 14,
+                topPadding: 50,
+                bottomPadding: 70, // Fixes text overlap at the bottom
+                useWidth: 1200 // Gives gantt charts more breathing room
+            },
+            sequence: {
+                actorMargin: 50,
+                messageMargin: 40,
+                boxMargin: 10,
+                rightAngles: false
+            },
+            mindmap: {
+                padding: 20
+            },
             themeVariables: {
                 darkMode: ${isDark},
                 background: '${isDark ? "#191919" : "#ffffff"}',

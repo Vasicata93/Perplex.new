@@ -1,6 +1,6 @@
 // src/store/agentStore.ts
 import { create } from 'zustand';
-import { AgentState, Perception, SubTask, ActionFeedItem, AgentMode, ToolState, ConfidenceScore } from '../types/agent';
+import { AgentState, Perception, SubTask, ActionFeedItem, AgentMode, ToolState, ConfidenceScore, SubTaskLog, ArchitectureStep } from '../types/agent';
 
 interface AgentStore extends AgentState {
   // Actions
@@ -8,9 +8,15 @@ interface AgentStore extends AgentState {
   setMode: (mode: AgentMode) => void;
   setToolState: (state: ToolState) => void;
   
+  // Architecture Steps Actions
+  initArchitectureSteps: (steps: ArchitectureStep[]) => void;
+  updateArchitectureStepStatus: (stepId: string, status: ArchitectureStep['status'], description?: string) => void;
+  addArchitectureStepLog: (stepId: string, log: Omit<SubTaskLog, 'id' | 'timestamp'>) => void;
+
   // Plan Panel Actions
   setPlan: (tasks: SubTask[]) => void;
   updateTaskStatus: (taskId: string, status: SubTask['status']) => void;
+  addTaskLog: (taskId: string, log: Omit<SubTaskLog, 'id' | 'timestamp'>) => void;
   
   // Action Feed Actions
   addAction: (action: ActionFeedItem) => void;
@@ -22,12 +28,6 @@ interface AgentStore extends AgentState {
   // Response Actions
   setConfidence: (score: ConfidenceScore) => void;
   
-  // Safety Actions
-  incrementRecursion: () => void;
-  resetRecursion: () => void;
-  setFrustration: (level: number) => void;
-  setViolation: (violation: AgentState['lastViolation']) => void;
-  
   // Reset
   resetSession: () => void;
 }
@@ -38,13 +38,11 @@ const initialState: AgentState = {
   toolState: 'idle',
   planPanel: [],
   actionFeed: [],
+  architectureSteps: [],
   currentStep: 0,
   totalSteps: 0,
   stepDescription: '',
   confidenceScore: null,
-  recursionCount: 0,
-  frustrationLevel: 0,
-  lastViolation: null,
 };
 
 export const useAgentStore = create<AgentStore>((set) => ({
@@ -56,6 +54,34 @@ export const useAgentStore = create<AgentStore>((set) => ({
   
   setToolState: (toolState) => set({ toolState }),
   
+  initArchitectureSteps: (steps) => set({ architectureSteps: steps }),
+
+  updateArchitectureStepStatus: (stepId, status, description) =>
+    set((state) => ({
+      architectureSteps: state.architectureSteps.map((step) =>
+        step.id === stepId ? { ...step, status, ...(description ? { description } : {}) } : step
+      )
+    })),
+
+  addArchitectureStepLog: (stepId, log) =>
+    set((state) => ({
+      architectureSteps: state.architectureSteps.map((step) =>
+        step.id === stepId
+          ? {
+              ...step,
+              logs: [
+                ...(step.logs || []),
+                {
+                  ...log,
+                  id: Math.random().toString(36).substring(7),
+                  timestamp: Date.now(),
+                },
+              ],
+            }
+          : step
+      ),
+    })),
+
   setPlan: (tasks) => set({ planPanel: tasks }),
   
   updateTaskStatus: (taskId, status) => 
@@ -63,6 +89,25 @@ export const useAgentStore = create<AgentStore>((set) => ({
       planPanel: state.planPanel.map((task) => 
         task.id === taskId ? { ...task, status } : task
       )
+    })),
+    
+  addTaskLog: (taskId, log) =>
+    set((state) => ({
+      planPanel: state.planPanel.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              logs: [
+                ...(task.logs || []),
+                {
+                  ...log,
+                  id: Math.random().toString(36).substring(7),
+                  timestamp: Date.now(),
+                },
+              ],
+            }
+          : task
+      ),
     })),
     
   addAction: (action) => 
@@ -81,14 +126,6 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set({ currentStep, totalSteps, stepDescription }),
     
   setConfidence: (confidenceScore) => set({ confidenceScore }),
-  
-  incrementRecursion: () => set((state) => ({ recursionCount: state.recursionCount + 1 })),
-  
-  resetRecursion: () => set({ recursionCount: 0 }),
-  
-  setFrustration: (frustrationLevel) => set({ frustrationLevel }),
-  
-  setViolation: (lastViolation) => set({ lastViolation }),
   
   resetSession: () => set(initialState),
 }));

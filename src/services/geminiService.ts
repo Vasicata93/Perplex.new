@@ -896,6 +896,10 @@ export class LLMService {
   private learningListeners: ((isLearning: boolean) => void)[] = [];
 
   // Virtual Knowledge Base for Tool-based Retrieval
+  public getWorkspaceFiles(): Attachment[] {
+    return this.workspaceFiles;
+  }
+
   private workspaceFiles: Attachment[] = [];
 
   // Models that support internal reasoning via OpenRouter
@@ -980,25 +984,37 @@ export class LLMService {
       }));
       contents.push({ role: "user", parts: [{ text: prompt }] });
 
-      const response = await client.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: contents,
-        config: {
-          systemInstruction: systemInstruction,
-          responseMimeType: "application/json",
-        },
-      });
-      let jsonText = "";
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
       try {
-        jsonText = response.text || "";
-      } catch (e) {
-        if (response.candidates?.[0]?.content?.parts) {
-          for (const part of response.candidates[0].content.parts) {
-            if (part.text) jsonText += part.text;
+        const response = await client.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: contents,
+          config: {
+            systemInstruction: systemInstruction,
+            responseMimeType: "application/json",
+            // @ts-ignore
+            signal: controller.signal
+          },
+        });
+        clearTimeout(timeoutId);
+        let jsonText = "";
+        try {
+          jsonText = response.text || "";
+        } catch (e) {
+          if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+              if (part.text) jsonText += part.text;
+            }
           }
         }
+        return this.extractJson(jsonText || "{}");
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.error("Error generating JSON with Gemini:", error);
+        throw error;
       }
-      return this.extractJson(jsonText || "{}");
     } else {
       let endpoint = "";
       let apiKey = "";
@@ -1037,13 +1053,66 @@ export class LLMService {
         response_format: { type: "json_object" },
       };
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      return this.extractJson(data.choices[0].message.content);
+      let retryCount = 0;
+      const maxRetries = 3;
+      let lastError: any = null;
+
+      while (retryCount <= maxRetries) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+        try {
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(body),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (res.status === 429 && retryCount < maxRetries) {
+            retryCount++;
+            const delay = 2000 * retryCount;
+            console.warn(`[callLLMJson] Rate limited (429) for ${provider}. Retrying in ${delay}ms... (Attempt ${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+
+          const contentType = res.headers.get("content-type") || "";
+          if (!contentType.includes("application/json")) {
+            const text = await res.text();
+            throw new Error(`Expected JSON response, got ${contentType}: ${text.substring(0, 100)}`);
+          }
+
+          const data = await res.json();
+          if (!res.ok || !data.choices || !data.choices[0]) {
+            let errorMessage = data.error?.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data)) || "Unknown API error";
+            
+            // OpenRouter specific error details
+            if (data.error?.metadata?.raw) {
+              errorMessage = `${errorMessage} (Details: ${data.error.metadata.raw})`;
+            }
+            
+            throw new Error(errorMessage);
+          }
+          return this.extractJson(data.choices[0].message.content);
+        } catch (error) {
+          clearTimeout(timeoutId);
+          lastError = error;
+          
+          if (retryCount < maxRetries && (error instanceof Error && (error.name === 'AbortError' || error.message.includes('fetch')))) {
+             retryCount++;
+             const delay = 1000 * retryCount;
+             console.warn(`[callLLMJson] Network error for ${provider}. Retrying in ${delay}ms... (Attempt ${retryCount}/${maxRetries})`);
+             await new Promise(resolve => setTimeout(resolve, delay));
+             continue;
+          }
+          
+          console.error("Error generating JSON with provider:", provider, error);
+          throw error;
+        }
+      }
+      throw lastError || new Error("Max retries reached for JSON generation");
     }
   }
 
@@ -1067,19 +1136,111 @@ export class LLMService {
   }
 
   // --- Simple Text Generation ---
-  public async generateSimpleText(prompt: string): Promise<string> {
-    if (!this.ai) {
-      throw new Error("Gemini API not initialized");
-    }
-    try {
-      const response = await this.ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+  public async generateSimpleText(
+    prompt: string,
+    provider: ModelProvider = ModelProvider.GEMINI,
+    openRouterKey: string = "",
+    openRouterModel: string = "",
+    openAiKey: string = "",
+    openAiModel: string = "",
+    activeLocalModel: LocalModelConfig | undefined = undefined,
+    geminiApiKey?: string
+  ): Promise<string> {
+    if (provider === ModelProvider.GEMINI) {
+      const client = new GoogleGenAI({
+        apiKey: geminiApiKey || this.apiKey || "",
       });
-      return response.text || "";
-    } catch (error) {
-      console.error("Error generating simple text:", error);
-      throw error;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
+      try {
+        const response = await client.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            // @ts-ignore - some versions of the SDK support signal
+            signal: controller.signal
+          }
+        });
+        clearTimeout(timeoutId);
+        return response.text || "";
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.error("Error generating simple text with Gemini:", error);
+        throw error;
+      }
+    } else {
+      let endpoint = "";
+      let apiKey = "";
+      let modelName = "";
+      if (provider === ModelProvider.OPENAI) {
+        endpoint = "https://api.openai.com/v1/chat/completions";
+        apiKey = openAiKey;
+        modelName = openAiModel || "gpt-4o-mini";
+      } else if (provider === ModelProvider.OPENROUTER) {
+        endpoint = "https://openrouter.ai/api/v1/chat/completions";
+        apiKey = openRouterKey;
+        modelName = openRouterModel || "openai/gpt-4o-mini";
+      } else {
+        endpoint = "http://localhost:11434/v1/chat/completions";
+        modelName = activeLocalModel?.modelId || "";
+        apiKey = "not-needed";
+      }
+
+      const headers: any = { "Content-Type": "application/json" };
+      if (apiKey !== "not-needed") {
+        headers["Authorization"] = `Bearer ${apiKey}`;
+      }
+
+      const body = {
+        model: modelName,
+        messages: [{ role: "user", content: prompt }],
+      };
+
+      let response: Response;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (true) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (response.status === 429 && retryCount < maxRetries) {
+          retryCount++;
+          console.warn(`[SimpleText] Rate limited (429). Retrying in ${2000 * retryCount}ms... (Attempt ${retryCount}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+          continue;
+        }
+        break;
+      }
+      
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        const text = await response.text();
+        throw new Error(`Expected JSON response, got ${contentType}: ${text.substring(0, 100)}`);
+      }
+      
+      const data = await response.json();
+      if (!response.ok || !data.choices || !data.choices[0]) {
+        let errorMessage = data.error?.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data)) || "Unknown API error";
+        
+        // OpenRouter specific error details
+        if (data.error?.metadata?.raw) {
+          errorMessage = `${errorMessage} (Details: ${data.error.metadata.raw})`;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      return data.choices[0].message.content || "";
     }
   }
 
@@ -1223,6 +1384,7 @@ export class LLMService {
     }
 
     if (
+      !plan ||
       plan.type === "direct" ||
       !plan.steps ||
       plan.steps.length === 0 ||
@@ -2078,20 +2240,33 @@ export class LLMService {
       let currentMessage: any = currentParts;
 
       while (turns < maxTurns) {
-        const result = await chat.sendMessageStream({
-          message: currentMessage,
-        });
-        let turnText = "";
-        let functionCalls: any[] = [];
+        const fetchController = new AbortController();
+        const timeoutId = setTimeout(() => fetchController.abort(), 120000); // 120s timeout per turn
+        
+        const onUserAbort = () => fetchController.abort();
+        if (this.abortController) {
+          this.abortController.signal.addEventListener('abort', onUserAbort);
+        }
 
-        for await (const chunk of result) {
-          if (!this.abortController || this.abortController.signal.aborted) break;
+        try {
+          const result = await chat.sendMessageStream({
+            message: currentMessage,
+            config: {
+              // @ts-ignore
+              signal: fetchController.signal
+            }
+          });
+          let turnText = "";
+          let functionCalls: any[] = [];
 
-          // Extract Function Calls
-          const fc = chunk.candidates?.[0]?.content?.parts
-            ?.filter((p: any) => !!p.functionCall)
-            .map((p: any) => p.functionCall);
-          if (fc && fc.length > 0) functionCalls = [...functionCalls, ...fc];
+          for await (const chunk of result) {
+            if (!this.abortController || this.abortController.signal.aborted) break;
+
+            // Extract Function Calls
+            const fc = chunk.candidates?.[0]?.content?.parts
+              ?.filter((p: any) => !!p.functionCall)
+              .map((p: any) => p.functionCall);
+            if (fc && fc.length > 0) functionCalls = [...functionCalls, ...fc];
 
           // Extract Text and Reasoning
           let text = "";
@@ -2572,6 +2747,18 @@ export class LLMService {
         } else {
           break;
         }
+        
+        clearTimeout(timeoutId);
+        if (this.abortController) {
+          this.abortController.signal.removeEventListener('abort', onUserAbort);
+        }
+      } catch (e) {
+        clearTimeout(timeoutId);
+        if (this.abortController) {
+          this.abortController.signal.removeEventListener('abort', onUserAbort);
+        }
+        throw e;
+      }
       }
 
       const { cleanText, questions } =
@@ -2741,133 +2928,200 @@ export class LLMService {
           searchProvider,
         });
 
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: headers,
-          body: JSON.stringify(body),
-          signal: this.abortController?.signal,
-        });
+        let response: Response;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (true) {
+          const fetchController = new AbortController();
+          const timeoutId = setTimeout(() => fetchController.abort(), 120000); // 120s timeout per turn
+          
+          const onUserAbort = () => fetchController.abort();
+          if (this.abortController) {
+            this.abortController.signal.addEventListener('abort', onUserAbort);
+          }
 
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(body),
+            signal: fetchController.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          if (this.abortController) {
+            this.abortController.signal.removeEventListener('abort', onUserAbort);
+          }
+
+          if (response.status === 429 && retryCount < maxRetries) {
+            retryCount++;
+            console.warn(`[Generic] Rate limited (429). Retrying in ${2000 * retryCount}ms... (Attempt ${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+            continue;
+          }
+          break;
+        }
+        
         if (!response.ok) {
           const errText = await response.text();
           throw new Error(`API Error ${response.status}: ${errText}`);
         }
 
-        // Streaming Parser
-        const reader = response.body!.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
+        const contentType = response.headers.get("content-type") || "";
         let currentTurnContent = "";
+        let toolCallMap: Record<number, { id: string; name: string; args: string }> = {};
 
-        // Tool Call Accumulator
-        let toolCallMap: Record<
-          number,
-          { id: string; name: string; args: string }
-        > = {};
-
-        // XML Parsing State for Reasoning
-        let inThinkingTag = false;
-
-        while (true) {
-          const { done, value } = await reader.read();
-
-          if (value) {
-            buffer += decoder.decode(value, { stream: true });
+        if (contentType.includes("application/json")) {
+          // API returned a JSON object instead of a stream
+          const data = await response.json();
+          if (data.error) {
+            throw new Error(data.error.message || JSON.stringify(data.error));
           }
-
-          let lines = buffer.split("\n");
-          if (!done) {
-            buffer = lines.pop() || "";
-          } else {
-            buffer = ""; // Process all remaining lines
-          }
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-            if (trimmed === "data: [DONE]") continue;
-            if (!trimmed.startsWith("data: ")) continue;
-
-            try {
-              const json = JSON.parse(trimmed.slice(6));
-              const choice = json.choices?.[0];
-              if (!choice) continue;
-              const delta = choice.delta;
-
-              // 1. Handle Reasoning (OpenRouter/OpenAI/DeepSeek)
-              const reasoningChunk =
-                delta.reasoning ||
-                delta.thought ||
-                (delta as any).reasoning_content;
-              if (reasoningChunk) {
+          
+          const choice = data.choices?.[0];
+          if (choice) {
+            const msg = choice.message;
+            if (msg) {
+              if (msg.reasoning || msg.thought) {
+                const reasoningChunk = msg.reasoning || msg.thought;
                 finalReasoning += reasoningChunk;
                 if (onChunk) onChunk("", reasoningChunk);
               }
+              if (msg.content) {
+                currentTurnContent = msg.content;
+                if (onChunk) onChunk(currentTurnContent, undefined);
+              }
+              if (msg.tool_calls) {
+                msg.tool_calls.forEach((tc: any, idx: number) => {
+                  toolCallMap[idx] = {
+                    id: tc.id,
+                    name: tc.function?.name || "",
+                    args: tc.function?.arguments || ""
+                  };
+                });
+              }
+            }
+          }
+        } else {
+          // Streaming Parser
+          const reader = response.body!.getReader();
+          const decoder = new TextDecoder("utf-8");
+          let buffer = "";
 
-              // 2. Handle Content (Text)
-              if (delta.content) {
-                const chunk = delta.content;
-                currentTurnContent += chunk;
+          // XML Parsing State for Reasoning
+          let inThinkingTag = false;
 
-                // Streaming Logic for <thinking> tags
-                // We need to detect if we are inside <thinking>...</thinking>
-                // This is a simple state machine parser for streaming XML tags
+          while (true) {
+            const { done, value } = await reader.read();
 
-                let remaining = chunk;
-                while (remaining.length > 0) {
-                  if (!inThinkingTag) {
-                    const startIdx = remaining.indexOf("<thinking>");
-                    if (startIdx !== -1) {
-                      // Found start tag
-                      const textPart = remaining.substring(0, startIdx);
-                      if (textPart && onChunk) onChunk(textPart, undefined);
+            if (value) {
+              buffer += decoder.decode(value, { stream: true });
+            }
 
-                      inThinkingTag = true;
-                      remaining = remaining.substring(startIdx + 10); // Skip <thinking>
+            let lines = buffer.split("\n");
+            if (!done) {
+              buffer = lines.pop() || "";
+            } else {
+              buffer = ""; // Process all remaining lines
+            }
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              if (trimmed === "data: [DONE]") continue;
+              if (!trimmed.startsWith("data: ")) {
+                // Some APIs might send error objects in the stream without 'data:' prefix
+                if (trimmed.startsWith("{") && trimmed.includes('"error"')) {
+                  try {
+                    const errJson = JSON.parse(trimmed);
+                    if (errJson.error) throw new Error(errJson.error.message || JSON.stringify(errJson.error));
+                  } catch (e) {
+                    // Ignore parse errors here
+                  }
+                }
+                continue;
+              }
+
+              try {
+                const json = JSON.parse(trimmed.slice(6));
+                if (json.error) {
+                  throw new Error(json.error.message || JSON.stringify(json.error));
+                }
+                const choice = json.choices?.[0];
+                if (!choice) continue;
+                const delta = choice.delta;
+
+                // 1. Handle Reasoning (OpenRouter/OpenAI/DeepSeek)
+                const reasoningChunk =
+                  delta.reasoning ||
+                  delta.thought ||
+                  (delta as any).reasoning_content;
+                if (reasoningChunk) {
+                  finalReasoning += reasoningChunk;
+                  if (onChunk) onChunk("", reasoningChunk);
+                }
+
+                // 2. Handle Content (Text)
+                if (delta.content) {
+                  const chunk = delta.content;
+                  currentTurnContent += chunk;
+
+                  // Streaming Logic for <thinking> tags
+                  let remaining = chunk;
+                  while (remaining.length > 0) {
+                    if (!inThinkingTag) {
+                      const startIdx = remaining.indexOf("<thinking>");
+                      if (startIdx !== -1) {
+                        const textPart = remaining.substring(0, startIdx);
+                        if (textPart && onChunk) onChunk(textPart, undefined);
+
+                        inThinkingTag = true;
+                        remaining = remaining.substring(startIdx + 10);
+                      } else {
+                        if (onChunk) onChunk(remaining, undefined);
+                        remaining = "";
+                      }
                     } else {
-                      // No start tag, just text
-                      if (onChunk) onChunk(remaining, undefined);
-                      remaining = "";
-                    }
-                  } else {
-                    const endIdx = remaining.indexOf("</thinking>");
-                    if (endIdx !== -1) {
-                      // Found end tag
-                      const thoughtPart = remaining.substring(0, endIdx);
-                      finalReasoning += thoughtPart;
-                      if (onChunk) onChunk("", thoughtPart);
+                      const endIdx = remaining.indexOf("</thinking>");
+                      if (endIdx !== -1) {
+                        const thoughtPart = remaining.substring(0, endIdx);
+                        finalReasoning += thoughtPart;
+                        if (onChunk) onChunk("", thoughtPart);
 
-                      inThinkingTag = false;
-                      remaining = remaining.substring(endIdx + 11); // Skip </thinking>
-                    } else {
-                      // Still in thinking tag
-                      finalReasoning += remaining;
-                      if (onChunk) onChunk("", remaining);
-                      remaining = "";
+                        inThinkingTag = false;
+                        remaining = remaining.substring(endIdx + 11);
+                      } else {
+                        finalReasoning += remaining;
+                        if (onChunk) onChunk("", remaining);
+                        remaining = "";
+                      }
                     }
                   }
                 }
-              }
 
-              // 2. Handle Tool Calls (Streaming)
-              if (delta.tool_calls) {
-                for (const tc of delta.tool_calls) {
-                  const idx = tc.index;
-                  if (!toolCallMap[idx])
-                    toolCallMap[idx] = { id: "", name: "", args: "" };
+                // 2. Handle Tool Calls (Streaming)
+                if (delta.tool_calls) {
+                  for (const tc of delta.tool_calls) {
+                    const idx = tc.index;
+                    if (!toolCallMap[idx])
+                      toolCallMap[idx] = { id: "", name: "", args: "" };
 
-                  if (tc.id) toolCallMap[idx].id = tc.id;
-                  if (tc.function?.name)
-                    toolCallMap[idx].name += tc.function.name;
-                  if (tc.function?.arguments)
-                    toolCallMap[idx].args += tc.function.arguments;
+                    if (tc.id) toolCallMap[idx].id = tc.id;
+                    if (tc.function?.name)
+                      toolCallMap[idx].name += tc.function.name;
+                    if (tc.function?.arguments)
+                      toolCallMap[idx].args += tc.function.arguments;
+                  }
                 }
+              } catch (e: any) {
+                if (e.message && !e.message.includes("Unexpected token")) {
+                  throw e; // Re-throw actual API errors parsed from JSON
+                }
+                // Ignore partial JSON parse errors
               }
-            } catch (e) {
-              // Ignore partial JSON parse errors
             }
+            if (done) break;
           }
-          if (done) break;
         }
 
         // Turn Complete
@@ -3575,7 +3829,23 @@ Instead, use a standard markdown code block with the language set to \`chart\` t
 \`\`\`
 
 The content inside the block MUST be a valid JSON object representing a Chart.js configuration.
-You can use any valid Chart.js type (line, bar, pie, doughnut, radar, polarArea, bubble, scatter).`);
+You can use any valid Chart.js type (line, bar, pie, doughnut, radar, polarArea, bubble, scatter).
+
+**DIAGRAM GENERATION PROTOCOL:**
+To display diagrams, flowcharts, or state machines, use Mermaid.js via a \`\`\`mermaid code block.
+Example:
+\`\`\`mermaid
+graph TD;
+  A[Start] --> B{Is it working?};
+  B -- Yes --> C[Great!];
+  B -- No --> D[Fix it];
+\`\`\`
+
+**WIDGET GENERATION PROTOCOL:**
+To display a professional portfolio dashboard widget, use:
+\`\`\`widget
+{ "type": "portfolio-dashboard" }
+\`\`\``);
 
     if (spaceSystemInstruction) {
       parts.push(

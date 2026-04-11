@@ -11,8 +11,6 @@ import {
   Calendar,
   Folder,
   Star,
-  MessageSquareText,
-  Library,
 } from "lucide-react";
 import { Note, AppSettings } from "../types";
 
@@ -24,8 +22,6 @@ interface MobileDockProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void;
   activeView: string;
-  backDestination?: string;
-  isHomeBackActive?: boolean;
 }
 
 export const MobileDock: React.FC<MobileDockProps> = ({
@@ -36,8 +32,6 @@ export const MobileDock: React.FC<MobileDockProps> = ({
   settings,
   onUpdateSettings,
   activeView,
-  backDestination = "home",
-  isHomeBackActive = false,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hoveredMenuItemId, setHoveredMenuItemId] = useState<string | null>(
@@ -46,7 +40,6 @@ export const MobileDock: React.FC<MobileDockProps> = ({
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(
     null,
   );
-  const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
   const [showPagePicker, setShowPagePicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
@@ -76,19 +69,7 @@ export const MobileDock: React.FC<MobileDockProps> = ({
   };
 
   const handleHomeClick = () => {
-    if (clickTimer) {
-      // Double click -> Go Home directly
-      clearTimeout(clickTimer);
-      setClickTimer(null);
-      onNavigate("home_direct");
-    } else {
-      // Single click -> Go Back
-      const timer = setTimeout(() => {
-        onNavigate("home_back");
-        setClickTimer(null);
-      }, 300); // 300ms window for double click
-      setClickTimer(timer);
-    }
+    onNavigate("home_direct");
   };
 
   const handleShortcutClick = (slotIndex: number) => {
@@ -164,31 +145,6 @@ export const MobileDock: React.FC<MobileDockProps> = ({
     },
     { id: "more", icon: MoreHorizontal, label: "More", color: "bg-purple-500" },
   ];
-
-  // Helper to get Home Icon
-  const getHomeIcon = () => {
-    if (backDestination === "chat")
-      return (
-        <MessageSquareText
-          size={20}
-          strokeWidth={2.5}
-          fill={activeView === "chat" ? "black" : "none"}
-        />
-      );
-    if (backDestination === "library")
-      return <Library size={20} strokeWidth={2.5} />;
-    if (backDestination === "calendar")
-      return <Calendar size={20} strokeWidth={2.5} />;
-    if (activeView === "search")
-      return <Search size={20} strokeWidth={2.5} fill="black" />;
-    return (
-      <Home
-        size={20}
-        strokeWidth={2.5}
-        fill={activeView === "home" ? "black" : "none"}
-      />
-    );
-  };
 
   return (
     <>
@@ -354,18 +310,20 @@ export const MobileDock: React.FC<MobileDockProps> = ({
             {/* Subtle Dock Shine */}
             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none" />
 
-            {/* Home / Back / Search Button */}
+            {/* Home Button */}
             <button
               onClick={handleHomeClick}
               className={`relative flex items-center justify-center w-[43px] h-[43px] rounded-full transition-all duration-150 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ${
-                activeView === "search" ||
-                activeView === "home" ||
-                isHomeBackActive
+                activeView === "home"
                   ? "bg-[#e8dcc4] text-black"
                   : "bg-[#2a2a2a] text-white/70 hover:text-white"
               }`}
             >
-              {getHomeIcon()}
+              <Home
+                size={20}
+                strokeWidth={2.5}
+                fill={activeView === "home" ? "black" : "none"}
+              />
               {/* Button Shine */}
               <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/[0.08] to-transparent pointer-events-none" />
             </button>

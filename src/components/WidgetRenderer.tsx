@@ -26,9 +26,9 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(
           event.data.type === "WIDGET_RESIZE" &&
           typeof event.data.height === "number"
         ) {
-          // Add 60px buffer (approx 1.5cm) to ensure no elements are covered
-          // This accounts for potential scaling and dynamic elements
-          setHeight(Math.floor(event.data.height + 60));
+          // Add a small 10px buffer to ensure no elements are covered
+          // We now measure the exact content height via getBoundingClientRect
+          setHeight(Math.floor(event.data.height + 10));
         }
       };
 
@@ -57,218 +57,223 @@ export const WidgetRenderer = React.memo<WidgetRendererProps>(
     }, []);
 
     useEffect(() => {
-      try {
-        // Robust JSON cleaning
-        let cleanConfigStr = configStr.trim();
+      const timerId = setTimeout(() => {
+        try {
+          // Robust JSON cleaning
+          let cleanConfigStr = configStr.trim();
 
-        // 1. Remove potential markdown code block markers
-        if (cleanConfigStr.startsWith("```")) {
-          cleanConfigStr = cleanConfigStr
-            .replace(/^```(\w+)?\n/, "")
-            .replace(/\n```$/, "");
-        }
+          // 1. Remove potential markdown code block markers
+          if (cleanConfigStr.startsWith("```")) {
+            cleanConfigStr = cleanConfigStr
+              .replace(/^```(\w+)?\n/, "")
+              .replace(/\n```$/, "");
+          }
 
-        // 2. Check for HTML content (common LLM error)
-        if (cleanConfigStr.trim().startsWith("<")) {
-          throw new Error(
-            "Received HTML instead of JSON configuration. Please check the agent's output.",
-          );
-        }
-
-        // 3. Aggressive cleaning for common LLM JSON errors
-        const aggressiveClean = (str: string) => {
-          let s = str.trim();
-
-          // 1. Fix smart quotes
-          s = s.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
-
-          // 2. Remove comments
-          s = s.replace(/\/\/.*$/gm, "");
-          s = s.replace(/\/\*[\s\S]*?\*\//g, "");
-
-          // 3. Fix literal newlines/tabs inside string literals
-          s = s.replace(/(["'])([\s\S]*?)(?<!\\)\1/g, (_, quote, content) => {
-            return (
-              quote +
-              content
-                .replace(/\n/g, "\\n")
-                .replace(/\r/g, "\\r")
-                .replace(/\t/g, "\\t") +
-              quote
+          // 2. Check for HTML content (common LLM error)
+          if (cleanConfigStr.trim().startsWith("<")) {
+            throw new Error(
+              "Received HTML instead of JSON configuration. Please check the agent's output.",
             );
-          });
-
-          // 4. Fix unquoted keys (more robustly)
-          // Matches keys that are not quoted: { key: ... } or { key : ... }
-          // We look for alphanumeric characters followed by a colon
-          s = s.replace(/([{,]\s*)([a-zA-Z0-9_\-]+)(\s*:)/g, '$1"$2"$3');
-
-          // 5. Fix single quotes on keys/values
-          s = s.replace(/([{,]\s*)'([^']*)'(\s*:)/g, '$1"$2"$3'); // Keys
-          s = s.replace(/(:\s*)'([^']*)'(\s*[,}\]])/g, '$1"$2"$3'); // Values
-
-          // 6. Fix missing commas between key-value pairs or array elements
-          // This looks for "value" "key": or 123 456 or { ... } { ... }
-          s = s.replace(
-            /(["\d\}\]]|true|false|null)\s*\n?\s*(["\{\[\d]|true|false|null)/g,
-            "$1, $2",
-          );
-
-          // 7. Handle truncated JSON
-          const quoteCount = (s.match(/"/g) || []).length;
-          if (quoteCount % 2 !== 0) {
-            s += '"';
           }
 
-          const openBraces = (s.match(/\{/g) || []).length;
-          const closeBraces = (s.match(/\}/g) || []).length;
-          if (openBraces > closeBraces) {
-            s += "}".repeat(openBraces - closeBraces);
-          }
+          // 3. Aggressive cleaning for common LLM JSON errors
+          const aggressiveClean = (str: string) => {
+            let s = str.trim();
 
-          const openBrackets = (s.match(/\[/g) || []).length;
-          const closeBrackets = (s.match(/\]/g) || []).length;
-          if (openBrackets > closeBrackets) {
-            s += "]".repeat(openBrackets - closeBrackets);
-          }
+            // 1. Fix smart quotes
+            s = s.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
 
-          // 8. Remove trailing commas
-          s = s.replace(/,\s*([\}\]])/g, "$1");
+            // 2. Remove comments
+            s = s.replace(/\/\/.*$/gm, "");
+            s = s.replace(/\/\*[\s\S]*?\*\//g, "");
 
-          // 9. Fix non-JSON values
-          s = s.replace(/\bundefined\b/g, "null");
-          s = s.replace(/\bNaN\b/g, "null");
-          s = s.replace(/\bInfinity\b/g, "null");
+            // 3. Fix literal newlines/tabs inside string literals
+            s = s.replace(/(["'])([\s\S]*?)(?<!\\)\1/g, (_, quote, content) => {
+              return (
+                quote +
+                content
+                  .replace(/\n/g, "\\n")
+                  .replace(/\r/g, "\\r")
+                  .replace(/\t/g, "\\t") +
+                quote
+              );
+            });
 
-          // 10. Fix functions
-          s = s.replace(/function\s*\([^\)]*\)\s*\{[^}]*\}/g, "null");
+            // 4. Fix unquoted keys (more robustly)
+            s = s.replace(/([{,]\s*)([a-zA-Z0-9_\-]+)(\s*:)/g, '$1"$2"$3');
 
-          return s;
-        };
+            // 5. Fix single quotes on keys/values
+            s = s.replace(/([{,]\s*)'([^']*)'(\s*:)/g, '$1"$2"$3'); // Keys
+            s = s.replace(/(:\s*)'([^']*)'(\s*[,}\]])/g, '$1"$2"$3'); // Values
 
-        // 4. Stack-based JSON extractor
-        const extractJson = (str: string) => {
-          let s = str.trim();
-          // Skip :::widget[...] prefix if present (fallback for malformed blocks)
-          if (s.startsWith(":::widget")) {
-            const closingBracket = s.indexOf("]");
-            if (closingBracket !== -1) {
-              s = s.substring(closingBracket + 1);
+            // 6. Fix missing commas between key-value pairs or array elements
+            s = s.replace(
+              /(["\d\}\]]|true|false|null)\s*\n?\s*(["\{\[\d]|true|false|null)/g,
+              "$1, $2",
+            );
+
+            // 7. Handle truncated JSON
+            const quoteCount = (s.match(/"/g) || []).length;
+            if (quoteCount % 2 !== 0) {
+              s += '"';
             }
-          }
 
-          const firstBrace = s.indexOf("{");
-          const firstBracket = s.indexOf("[");
-          let start = -1;
-
-          if (
-            firstBrace !== -1 &&
-            (firstBracket === -1 || firstBrace < firstBracket)
-          ) {
-            start = firstBrace;
-          } else if (firstBracket !== -1) {
-            start = firstBracket;
-          }
-
-          if (start === -1) return null;
-
-          let stack = 0;
-          let inString = false;
-          let escape = false;
-          let quoteChar = "";
-
-          for (let i = start; i < s.length; i++) {
-            const c = s[i];
-            if (escape) {
-              escape = false;
-              continue;
+            const openBraces = (s.match(/\{/g) || []).length;
+            const closeBraces = (s.match(/\}/g) || []).length;
+            if (openBraces > closeBraces) {
+              s += "}".repeat(openBraces - closeBraces);
             }
-            if (c === "\\") {
-              escape = true;
-              continue;
-            }
-            if (inString) {
-              if (c === quoteChar) inString = false;
-              continue;
-            }
-            if (c === '"' || c === "'") {
-              inString = true;
-              quoteChar = c;
-              continue;
-            }
-            if (c === "{" || c === "[") stack++;
-            else if (c === "}" || c === "]") {
-              stack--;
-              if (stack === 0) return s.substring(start, i + 1);
-            }
-          }
-          return s.substring(start); // Return truncated if not balanced
-        };
 
-        let config;
-        if (type === "mermaid" || type === "diagram") {
-          try {
-            config = JSON.parse(cleanConfigStr);
-          } catch (e) {
-            config = cleanConfigStr;
-          }
-        } else {
-          // Try multiple parsing strategies
-          const strategies = [
-            () => JSON.parse(cleanConfigStr),
-            () => JSON.parse(aggressiveClean(cleanConfigStr)),
-            () => {
-              const extracted = extractJson(cleanConfigStr);
-              if (!extracted) throw new Error("No JSON structure found");
-              return JSON.parse(extracted);
-            },
-            () => {
-              const extracted = extractJson(cleanConfigStr);
-              if (!extracted) throw new Error("No JSON structure found");
-              return JSON.parse(aggressiveClean(extracted));
-            },
-          ];
+            const openBrackets = (s.match(/\[/g) || []).length;
+            const closeBrackets = (s.match(/\]/g) || []).length;
+            if (openBrackets > closeBrackets) {
+              s += "]".repeat(openBrackets - closeBrackets);
+            }
 
-          let lastError = null;
-          for (const strategy of strategies) {
+            // 8. Remove trailing commas
+            s = s.replace(/,\s*([\}\]])/g, "$1");
+
+            // 9. Fix non-JSON values
+            s = s.replace(/\bundefined\b/g, "null");
+            s = s.replace(/\bNaN\b/g, "null");
+            s = s.replace(/\bInfinity\b/g, "null");
+
+            // 10. Fix functions
+            s = s.replace(/function\s*\([^\)]*\)\s*\{[^}]*\}/g, "null");
+
+            return s;
+          };
+
+          // 4. Stack-based JSON extractor
+          const extractJson = (str: string) => {
+            let s = str.trim();
+            // Skip :::widget[...] prefix if present (fallback for malformed blocks)
+            if (s.startsWith(":::widget")) {
+              const closingBracket = s.indexOf("]");
+              if (closingBracket !== -1) {
+                s = s.substring(closingBracket + 1);
+              }
+            }
+
+            const firstBrace = s.indexOf("{");
+            const firstBracket = s.indexOf("[");
+            let start = -1;
+
+            if (
+              firstBrace !== -1 &&
+              (firstBracket === -1 || firstBrace < firstBracket)
+            ) {
+              start = firstBrace;
+            } else if (firstBracket !== -1) {
+              start = firstBracket;
+            }
+
+            if (start === -1) return null;
+
+            let stack = 0;
+            let inString = false;
+            let escape = false;
+            let quoteChar = "";
+
+            for (let i = start; i < s.length; i++) {
+              const c = s[i];
+              if (escape) {
+                escape = false;
+                continue;
+              }
+              if (c === "\\") {
+                escape = true;
+                continue;
+              }
+              if (inString) {
+                if (c === quoteChar) inString = false;
+                continue;
+              }
+              if (c === '"' || c === "'") {
+                inString = true;
+                quoteChar = c;
+                continue;
+              }
+              if (c === "{" || c === "[") stack++;
+              else if (c === "}" || c === "]") {
+                stack--;
+                if (stack === 0) return s.substring(start, i + 1);
+              }
+            }
+            return s.substring(start); // Return truncated if not balanced
+          };
+
+          let config;
+          if (type === "mermaid" || type === "diagram") {
             try {
-              config = strategy();
-              break;
+              config = JSON.parse(cleanConfigStr);
             } catch (e) {
-              lastError = e;
+              config = cleanConfigStr;
             }
+          } else {
+            // Try multiple parsing strategies
+            const strategies = [
+              () => JSON.parse(cleanConfigStr),
+              () => JSON.parse(aggressiveClean(cleanConfigStr)),
+              () => {
+                const extracted = extractJson(cleanConfigStr);
+                if (!extracted) throw new Error("No JSON structure found");
+                return JSON.parse(extracted);
+              },
+              () => {
+                const extracted = extractJson(cleanConfigStr);
+                if (!extracted) throw new Error("No JSON structure found");
+                return JSON.parse(aggressiveClean(extracted));
+              },
+            ];
+
+            let lastError = null;
+            for (const strategy of strategies) {
+              try {
+                config = strategy();
+                break;
+              } catch (e) {
+                lastError = e;
+              }
+            }
+
+            if (!config)
+              throw lastError || new Error("Failed to parse configuration");
           }
 
-          if (!config)
-            throw lastError || new Error("Failed to parse configuration");
+          // Build the HTML string with theme support
+          const html = buildWidgetHtml(type, config, isDark ? "dark" : "light");
+
+          // ONLY update if the HTML content has actually changed
+          if (html === lastHtmlRef.current && blobUrlRef.current) {
+            return;
+          }
+
+          // Revoke old URL if it exists
+          if (blobUrlRef.current) {
+            URL.revokeObjectURL(blobUrlRef.current);
+          }
+
+          lastHtmlRef.current = html;
+
+          // Create a Blob and URL
+          const blob = new Blob([html], { type: "text/html" });
+          const url = URL.createObjectURL(blob);
+
+          blobUrlRef.current = url;
+          setBlobUrl(url);
+          setError(null);
+        } catch (err: any) {
+          // Only show error if we haven't successfully rendered anything yet.
+          // This prevents the UI from violently flashing between an iframe and an error div
+          // during streaming when the JSON is temporarily malformed.
+          if (!blobUrlRef.current) {
+            setError(`Invalid widget configuration: ${err.message}`);
+          }
         }
+      }, 600); // 600ms debounce to prevent iframe reloading jitter during streaming
 
-        // Build the HTML string with theme support
-        const html = buildWidgetHtml(type, config, isDark ? "dark" : "light");
-
-        // ONLY update if the HTML content has actually changed
-        if (html === lastHtmlRef.current && blobUrlRef.current) {
-          return;
-        }
-
-        // Revoke old URL if it exists
-        if (blobUrlRef.current) {
-          URL.revokeObjectURL(blobUrlRef.current);
-        }
-
-        lastHtmlRef.current = html;
-
-        // Create a Blob and URL
-        const blob = new Blob([html], { type: "text/html" });
-        const url = URL.createObjectURL(blob);
-
-        blobUrlRef.current = url;
-        setBlobUrl(url);
-        setError(null);
-      } catch (err: any) {
-        console.error("Failed to parse widget config:", err);
-        setError(`Invalid widget configuration: ${err.message}`);
-      }
+      return () => clearTimeout(timerId);
     }, [type, configStr, isDark]);
 
     // Cleanup on unmount
