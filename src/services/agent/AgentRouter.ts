@@ -83,7 +83,8 @@ Rules:
   - writing_skill: Creative writing, editing, formal docs.
   - data_analysis_skill: Statistics, visualization, pattern detection.
 
-Output ONLY valid JSON.
+Output ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
+CRITICAL: Ensure all property names are enclosed in double quotes. Do not use single quotes for strings. Escape any internal double quotes using \\". Do not include trailing commas.
 `;
 
     try {
@@ -99,9 +100,19 @@ Output ONLY valid JSON.
       );
       
       // Extract JSON from response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const decision = JSON.parse(jsonMatch[0]) as RoutingDecision;
+      let jsonString = responseText.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
+      
+      const jsonStart = jsonString.indexOf('{');
+      const jsonEnd = jsonString.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
+        
+        // Basic JSON repair
+        jsonString = jsonString
+          .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+          .replace(/,\s*([}\]])/g, '$1');
+
+        const decision = JSON.parse(jsonString) as RoutingDecision;
         if (!decision) throw new Error("Parsed decision is null");
         return decision;
       }

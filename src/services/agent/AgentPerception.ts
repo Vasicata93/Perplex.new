@@ -59,6 +59,7 @@ Analyze the request and output a JSON object with the following structure:
 }
 
 Respond ONLY with valid JSON. Do not include markdown formatting like \`\`\`json.
+CRITICAL: Ensure all property names are enclosed in double quotes. Do not use single quotes for strings. Escape any internal double quotes using \\". Do not include trailing commas.
 `;
 
     try {
@@ -74,7 +75,22 @@ Respond ONLY with valid JSON. Do not include markdown formatting like \`\`\`json
       );
 
       // Clean up markdown if present
-      const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      let cleanedResponse = response.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
+      
+      // Extract JSON object if there's surrounding text
+      const jsonStart = cleanedResponse.indexOf('{');
+      const jsonEnd = cleanedResponse.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        cleanedResponse = cleanedResponse.substring(jsonStart, jsonEnd + 1);
+      }
+
+      // Basic JSON repair for common LLM mistakes
+      cleanedResponse = cleanedResponse
+        // Fix unquoted keys (basic heuristic)
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+        // Remove trailing commas
+        .replace(/,\s*([}\]])/g, '$1');
+
       const parsed = JSON.parse(cleanedResponse);
 
       return {

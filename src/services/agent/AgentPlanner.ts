@@ -79,7 +79,8 @@ Output a JSON object with the following structure:
 }
 
 Ensure the plan is logical, efficient, and directly addresses the user's request.
-Respond ONLY with valid JSON.
+Respond ONLY with valid JSON. Do not include markdown formatting like \`\`\`json.
+CRITICAL: Ensure all property names are enclosed in double quotes. Do not use single quotes for strings. Escape any internal double quotes using \\". Do not include trailing commas.
 `;
 
     try {
@@ -94,11 +95,22 @@ Respond ONLY with valid JSON.
         geminiApiKey
       );
       // Extract JSON from potential markdown blocks
-      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
-                        responseText.match(/```\n([\s\S]*?)\n```/) ||
-                        [null, responseText];
+      let jsonString = responseText.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
       
-      const jsonString = jsonMatch[1].trim();
+      // Extract JSON object if there's surrounding text
+      const jsonStart = jsonString.indexOf('{');
+      const jsonEnd = jsonString.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
+      }
+
+      // Basic JSON repair for common LLM mistakes
+      jsonString = jsonString
+        // Fix unquoted keys (basic heuristic)
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+        // Remove trailing commas
+        .replace(/,\s*([}\]])/g, '$1');
+
       const plan = JSON.parse(jsonString) as AgentPlan;
       if (!plan) throw new Error("Parsed plan is null");
       return plan;
