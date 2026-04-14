@@ -8,6 +8,7 @@ import { ChatHeader } from "./components/ChatHeader";
 import { DashboardView } from "./components/DashboardView";
 import { CalendarView } from "./components/CalendarView";
 import { PortfolioDashboard } from "./components/portfolio/PortfolioDashboard";
+import { IntegrationsView } from "./components/IntegrationsView";
 import SafeDigitalPage from "./components/safedigital/SafeDigitalPage";
 import { SearchView } from "./components/SearchView";
 import { ActionConfirmation } from "./components/ActionConfirmation";
@@ -70,10 +71,14 @@ import {
   Plus,
 } from "lucide-react";
 import { db, STORES } from "./services/db";
+import { initializeIntegrations } from "./services/integration/init";
 
 import { SpaceFilesModal } from "./components/SpaceFilesModal";
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
+
+// Initialize integrations once
+initializeIntegrations();
 
 // --- Premium Tornado Thinking Component (Updated: Persistent Visibility) ---
 function App() {
@@ -136,7 +141,7 @@ function App() {
 
   // UI State - Initialize from LocalStorage to persist on refresh and closure
   const [activeView, setActiveView] = useState<
-    "chat" | "library" | "calendar" | "search" | "portfolio"
+    "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations"
   >(
     () =>
       (localStorage.getItem("pplx_activeView") as
@@ -144,10 +149,11 @@ function App() {
         | "library"
         | "calendar"
         | "search"
-        | "portfolio") || "chat",
+        | "portfolio"
+        | "integrations") || "chat",
   );
   const [previousViewBeforeSearch, setPreviousViewBeforeSearch] = useState<
-    "chat" | "library" | "calendar" | "search" | "portfolio"
+    "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations"
   >("chat");
 
   // Update isDashboardMode based on activeView
@@ -2573,7 +2579,7 @@ function App() {
           }
           pushToHistory();
           setActiveView(
-            view as "chat" | "library" | "calendar" | "search" | "portfolio",
+            view as "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations",
           );
         }}
         onNewThread={handleNewThread}
@@ -3164,6 +3170,10 @@ function App() {
         ) : viewToRender === "portfolio" ? (
           <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar">
             <PortfolioDashboard />
+          </div>
+        ) : viewToRender === "integrations" ? (
+          <div className="flex-1 overflow-hidden bg-pplx-primary">
+            <IntegrationsView />
           </div>
         ) : (
           <>

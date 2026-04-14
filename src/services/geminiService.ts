@@ -24,6 +24,7 @@ import { MemoryService } from "./memoryService";
 import { TavilyService } from "./tavilyService";
 import { db, STORES } from "./db";
 import { getHolidays } from "./holidayService";
+import { skillManager } from "./integration/SkillManager";
 
 // --- Tool Definitions ---
 
@@ -2119,6 +2120,9 @@ export class LLMService {
     if (useSearch) {
       tools.push({ googleSearch: {} });
     }
+    
+    const dynamicSkills = skillManager.getAvailableSkills().map(skill => skillManager.getGeminiTool(skill));
+    
     tools.push({
       functionDeclarations: [
         saveToolGemini,
@@ -2134,6 +2138,7 @@ export class LLMService {
         getCurrentTimeToolGemini,
         getCalendarHolidaysToolGemini,
         manageComplexModuleToolGemini,
+        ...dynamicSkills
       ],
     });
     if (useReadFiles) {
@@ -2710,6 +2715,38 @@ export class LLMService {
               });
               if (onChunk)
                 onChunk("", `\n🧠 Căutare semantică: "${query}"...\n`);
+            } else {
+              // Check if it's a dynamic skill
+              const availableSkills = skillManager.getAvailableSkills();
+              const skill = availableSkills.find(s => s.name === fc.name);
+              
+              if (skill) {
+                try {
+                  if (onChunk) onChunk("", `\n⚙️ Executing skill: ${skill.name}...\n`);
+                  const result = await skillManager.executeSkill(skill.id, fc.args);
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: { content: JSON.stringify(result) },
+                    },
+                  });
+                } catch (error: any) {
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: { content: `Error executing skill: ${error.message}` },
+                    },
+                  });
+                }
+              } else {
+                console.warn(`Unknown function call: ${fc.name}`);
+                toolResponses.push({
+                  functionResponse: {
+                    name: fc.name,
+                    response: { content: "Error: Unknown function." },
+                  },
+                });
+              }
             }
           }
 

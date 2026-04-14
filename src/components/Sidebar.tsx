@@ -34,13 +34,13 @@ interface SidebarProps {
   activeThreadId: string | null;
   activeSpaceId: string | null;
   activeNoteId: string | null;
-  activeView: "chat" | "library" | "calendar" | "search" | "portfolio";
+  activeView: "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations";
   onSelectThread: (id: string) => void;
   onSelectSpace: (id: string | null) => void; // null = home/default
   onSelectNote: (id: string) => void;
   onSelectEvent: (id: string) => void;
   onChangeView: (
-    view: "chat" | "library" | "calendar" | "search" | "portfolio",
+    view: "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations",
   ) => void;
   onNewThread: () => void;
   onNewNote: (parentId?: string) => void;
@@ -725,6 +725,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
               active={activeView === "calendar"}
               onClick={() => {
                 onChangeView("calendar");
+                if (window.innerWidth < 768) setSidebarOpen(false);
+              }}
+              isCollapsed={isCollapsed}
+            />
+          </div>
+
+          {/* Integrations Button */}
+          <div
+            className={`pb-1 ${isCollapsed ? "flex justify-center px-0" : "px-3"}`}
+          >
+            <NavItem
+              icon={<Settings size={20} />}
+              label="Integrations"
+              active={activeView === "integrations"}
+              onClick={() => {
+                onChangeView("integrations");
                 if (window.innerWidth < 768) setSidebarOpen(false);
               }}
               isCollapsed={isCollapsed}
