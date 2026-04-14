@@ -15,8 +15,8 @@ interface PerformanceChartProps {
 
 export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
   return (
-    <div className="bg-white dark:bg-pplx-card rounded-3xl p-6 border border-gray-100 dark:border-zinc-800 shadow-sm transition-colors duration-300">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white dark:bg-pplx-card rounded-3xl p-4 sm:p-6 border border-gray-100 dark:border-zinc-800 shadow-sm transition-colors duration-300">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">
           Periodic Performance (12M)
         </h3>
@@ -36,7 +36,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
         </div>
       </div>
 
-      <div className="h-[300px] w-full">
+      <div className="h-[150px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <Bar
@@ -78,8 +78,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-50 dark:border-zinc-800 text-center">
-        <button className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+      <div className="mt-2 text-center">
+        <button className="text-[8px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
           Explore Full History
         </button>
       </div>

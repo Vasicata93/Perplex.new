@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, (process as any).cwd(), '');
+  console.log('GEMINI_API_KEY exists:', !!env.GEMINI_API_KEY);
   return {
     plugins: [
       react(),
@@ -50,8 +51,8 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
-      'process.env.NODE_ENV': JSON.stringify(mode),
-      'process.env': { NODE_ENV: JSON.stringify(mode) }
+      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || env.GEMINI_API_KEY),
+      'process.env.NODE_ENV': JSON.stringify(mode)
     }
   };
 });

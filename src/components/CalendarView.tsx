@@ -1269,7 +1269,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       )}
 
       {/* Header Bar - Translucent, sticky */}
-      <div className="sticky top-0 z-20 flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4 shrink-0 bg-pplx-primary/80 backdrop-blur-md px-4 py-3 md:py-2 border-b border-pplx-border">
+      <div className="sticky top-0 z-20 flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 shrink-0 bg-pplx-primary/80 backdrop-blur-md px-4 py-2 md:py-2 border-b border-pplx-border">
         {/* Top Row (Desktop: Sidebar Toggle, Icon, Title | Mobile: Weather & Date) */}
         <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto justify-between md:justify-start">
           {/* Desktop: Weather Widget (Replacing Title) */}

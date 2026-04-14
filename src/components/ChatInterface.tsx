@@ -14,10 +14,8 @@ import {
   RefreshCw,
   Share2,
   Volume2,
-  ImageIcon,
   FileText,
   Pencil,
-  ArrowRight,
 } from "lucide-react";
 
 interface ChatInterfaceProps {
@@ -60,6 +58,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [expandedCitations, setExpandedCitations] = useState<Record<string, boolean>>({});
+
+  const toggleCitations = (msgId: string) => {
+    setExpandedCitations(prev => ({
+      ...prev,
+      [msgId]: !prev[msgId]
+    }));
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -202,33 +208,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     </div>
                   )}
 
-                  {/* Search Images */}
-                  {msg.role === Role.MODEL &&
-                    msg.searchImages &&
-                    msg.searchImages.length > 0 && (
-                      <div className="mb-4 mt-2 grid grid-cols-2 gap-2 w-full">
-                        {msg.searchImages.slice(0, 4).map((imgUrl, i) => (
-                          <div
-                            key={i}
-                            className="relative aspect-video rounded-lg overflow-hidden border border-pplx-border group cursor-pointer bg-pplx-secondary"
-                          >
-                            <img
-                              src={imgUrl}
-                              alt="search"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <ImageIcon
-                                size={18}
-                                className="text-white drop-shadow-lg"
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
                   {/* Content Bubble OR Edit Mode */}
                   {editingMessageId === msg.id ? (
                     <div className="w-full bg-pplx-secondary border border-pplx-border rounded-2xl p-4 mt-1 animate-fadeIn">
@@ -272,12 +251,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   {/* Sources */}
                   {msg.role === Role.MODEL &&
                     msg.citations &&
-                    msg.citations.length > 0 && (
+                    msg.citations.length > 0 &&
+                    expandedCitations[msg.id] && (
                       <div className="mt-4 w-full pt-2 border-t border-pplx-border/20">
-                        <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-pplx-muted mb-2 tracking-widest opacity-80">
-                          <BookOpen size={9} /> <span>Sources</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5">
+                        <div className="grid grid-cols-2 gap-1.5 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                           {msg.citations.map((cit, idx) => (
                             <a
                               key={idx}
@@ -301,7 +278,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
                   {/* Actions */}
                   {msg.role === Role.MODEL && !msg.isThinking && (
-                    <div className="flex items-center gap-1 mt-4 border-t border-pplx-border/30 pt-2 w-full flex-wrap">
+                    <div className="flex items-center gap-1 mt-4 border-t border-pplx-border/30 pt-2 w-full flex-nowrap overflow-x-auto no-scrollbar">
+                      {msg.citations && msg.citations.length > 0 && (
+                        <button
+                          onClick={() => toggleCitations(msg.id)}
+                          className={`flex items-center gap-1.5 px-2 py-1.5 text-[10px] transition-colors rounded-lg border ${expandedCitations[msg.id] ? "bg-pplx-accent/10 border-pplx-accent/30 text-pplx-accent" : "text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover border-transparent"}`}
+                        >
+                          <BookOpen
+                            size={12}
+                            className={expandedCitations[msg.id] ? "text-pplx-accent" : ""}
+                          />
+                          <span className="font-bold uppercase tracking-tight">
+                            Surse
+                          </span>
+                        </button>
+                      )}
                       <button
                         onClick={() => onRegenerate(msg.id)}
                         onMouseEnter={() => setHoveredTooltip("rewrite")}
@@ -354,27 +345,24 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     </div>
                   )}
 
-                  {/* Compact Related Questions */}
+                  {/* Compact Related Questions - Clickable Text */}
                   {msg.role === Role.MODEL &&
                     msg.relatedQuestions &&
                     msg.relatedQuestions.length > 0 && (
                       <div className="mt-4 w-full pt-2">
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[11px] font-bold uppercase text-pplx-muted tracking-wider mb-1 opacity-70">
+                            Întrebări sugerate
+                          </span>
                           {msg.relatedQuestions.map((q, i) => (
                             <button
                               key={i}
                               onClick={() =>
                                 onSendMessage(q, [FocusMode.ALL], [])
                               }
-                              className="flex items-center justify-between w-full py-1.5 px-1 text-left text-[13px] italic text-pplx-muted hover:text-pplx-text transition-colors group relative pl-3 border-l-2 border-transparent hover:border-pplx-accent/50"
+                              className="text-[13px] italic text-pplx-muted hover:text-pplx-text transition-colors text-left leading-relaxed"
                             >
-                              <div className="flex items-center gap-2 truncate">
-                                <span className="truncate">{q}</span>
-                              </div>
-                              <ArrowRight
-                                size={14}
-                                className="text-pplx-muted opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-150"
-                              />
+                              {q}
                             </button>
                           ))}
                         </div>

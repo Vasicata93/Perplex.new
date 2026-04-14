@@ -66,7 +66,8 @@ export class SystemContext {
           "semantic_search_workspace",
           "list_calendar_events",
           "get_calendar_holidays",
-          "get_page_structure"
+          "get_page_structure",
+          "read_complex_module"
         ],
         writeTools: [
           "save_to_library",

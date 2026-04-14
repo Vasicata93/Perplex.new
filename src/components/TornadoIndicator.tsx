@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { ChevronDown, ChevronRight, CheckCircle2, Circle, XCircle, Terminal, Brain, Zap, Search, FileText, Code, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, CheckCircle2, Circle, XCircle, Terminal, Brain, Search, FileText, Code, Check } from "lucide-react";
 import { useAgentStore } from "../store/agentStore";
 import { SubTaskLog } from "../types/agent";
 
 interface TornadoIndicatorProps {
   isThinking: boolean;
   reasoning?: string;
-  currentStep?: string;
+  currentStep?: string; // Kept for backwards compatibility if passed, but unused internally
   agentPlan?: any[];
   agentActions?: any[];
 }
@@ -27,10 +27,9 @@ const LogIcon = ({ type, toolName }: { type: string, toolName?: string }) => {
 export const TornadoIndicator: React.FC<TornadoIndicatorProps> = ({
   isThinking,
   reasoning,
-  currentStep,
   agentPlan,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
   
   // Subscribe to store
@@ -63,7 +62,7 @@ export const TornadoIndicator: React.FC<TornadoIndicatorProps> = ({
   }, [storeStepDesc, isThinking]);
 
   const displayReasoning = isThinking
-    ? liveReasoning.join('\n') 
+    ? (liveReasoning.length > 0 ? liveReasoning.join('\n') : reasoning)
     : reasoning;
 
   // Only show if there is reasoning to show or if it's an agent message with a plan/actions
@@ -83,9 +82,36 @@ export const TornadoIndicator: React.FC<TornadoIndicatorProps> = ({
     return clean.length > 70 ? `${clean.substring(0, 70)}...` : clean;
   };
 
-  const activeStepText = isThinking
-    ? simplifyStep(storeStepDesc || currentStep || "")
-    : (currentStep ? simplifyStep(currentStep) : "");
+  // Generate a stable summary for non-agent modes to prevent rapid flickering
+  const [stageSummary, setStageSummary] = useState("Analyzing request...");
+
+  useEffect(() => {
+    if (!isThinking) return;
+
+    if (isAgentModeActive && storeStepDesc) {
+      setStageSummary(simplifyStep(storeStepDesc));
+      return;
+    }
+
+    // For Chat Mode (raw reasoning stream)
+    if (reasoning) {
+      const lowerReasoning = reasoning.toLowerCase();
+      // Use the last 200 characters to determine the current stage
+      const recentReasoning = lowerReasoning.slice(-200);
+      
+      if (recentReasoning.includes("synthesiz") || recentReasoning.includes("final") || recentReasoning.includes("conclu")) {
+        setStageSummary("Synthesizing response...");
+      } else if (recentReasoning.includes("search") || recentReasoning.includes("http") || recentReasoning.includes("find")) {
+        setStageSummary("Searching for information...");
+      } else if (recentReasoning.includes("evaluat") || recentReasoning.includes("consider") || recentReasoning.includes("compar")) {
+        setStageSummary("Evaluating options...");
+      } else if (reasoning.length > 150) {
+        setStageSummary("Processing information...");
+      } else {
+        setStageSummary("Analyzing request...");
+      }
+    }
+  }, [reasoning, storeStepDesc, isThinking, isAgentModeActive]);
 
   const toggleTask = (taskId: string) => {
     setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
@@ -99,22 +125,20 @@ export const TornadoIndicator: React.FC<TornadoIndicatorProps> = ({
       </div>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 group cursor-pointer transition-all w-fit py-1 px-2 rounded-md hover:bg-pplx-secondary/50"
+        className="relative flex items-center gap-2.5 cursor-pointer transition-all w-fit py-1.5 px-4 rounded-full bg-pplx-secondary/40 hover:bg-pplx-secondary/60 overflow-hidden group shadow-sm"
       >
-        <Zap size={14} className={isThinking ? "text-pplx-accent animate-pulse" : "text-pplx-muted"} />
-        <span
-          className={`relative inline-block overflow-hidden text-[13px] font-medium tracking-tight ${isThinking ? "text-pplx-text" : "text-pplx-muted group-hover:text-pplx-text"}`}
-        >
-          <span className={isThinking ? "animate-shimmer bg-[linear-gradient(110deg,#111827,45%,#6b7280,55%,#111827)] dark:bg-[linear-gradient(110deg,#f3f4f6,45%,#9ca3af,55%,#f3f4f6)] bg-clip-text text-transparent" : ""}>
-            {isThinking 
-              ? (activeStepText || "Thinking...") 
-              : "Thought Process Completed"}
-          </span>
+        {/* Sweeping Light Background Effect */}
+        {isThinking && (
+          <div className="absolute inset-0 z-0 bg-[linear-gradient(110deg,transparent,40%,rgba(32,184,205,0.15),60%,transparent)] dark:bg-[linear-gradient(110deg,transparent,40%,rgba(255,255,255,0.1),60%,transparent)] bg-[length:200%_100%] animate-shimmer" />
+        )}
+        
+        <span className={`relative z-10 text-[13px] font-medium tracking-wide transition-colors ${isThinking ? "text-pplx-text" : "text-pplx-muted group-hover:text-pplx-text"}`}>
+          {isThinking ? stageSummary : "Thought Process Completed"}
         </span>
 
         <ChevronDown
           size={14}
-          className={`text-pplx-muted transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+          className={`relative z-10 text-pplx-muted transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
         />
       </button>
 

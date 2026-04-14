@@ -16,6 +16,12 @@ export interface Position {
   costBasis: number;
   currentPrice: number;
   lastUpdate: number;
+  targetPrice?: number;
+  stopLoss?: number;
+  riskRewardRatio?: string;
+  strategy?: string;
+  status?: 'planned' | 'in-progress' | 'completed' | 'stopped';
+  type?: 'buy' | 'sell' | 'hold';
 }
 
 export interface Strategy {
@@ -30,6 +36,14 @@ export interface PerformancePoint {
   month: string;
   value: number;
   isPositive: boolean;
+}
+
+export interface HistoricalPoint {
+  date: string;
+  portfolio: number;
+  sp500?: number;
+  bitcoin?: number;
+  gold?: number;
 }
 
 export interface PortfolioSummary {

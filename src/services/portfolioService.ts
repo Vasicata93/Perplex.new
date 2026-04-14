@@ -4,6 +4,7 @@ import {
   Position,
   Strategy,
   PerformancePoint,
+  HistoricalPoint,
 } from "../types/portfolio";
 
 export class PortfolioService {
@@ -36,6 +37,60 @@ export class PortfolioService {
     await db.set(STORES.PORTFOLIO, "strategies", strategies);
   }
 
+  async getJournalEntries(): Promise<any[]> {
+    const data = await db.get<any>(STORES.PORTFOLIO, "journal_entries");
+    return data || [];
+  }
+
+  async saveJournalEntries(entries: any[]): Promise<void> {
+    await db.set(STORES.PORTFOLIO, "journal_entries", entries);
+  }
+
+  async getMoodLogs(): Promise<any[]> {
+    const data = await db.get<any>(STORES.PORTFOLIO, "mood_logs");
+    return data || [];
+  }
+
+  async saveMoodLogs(logs: any[]): Promise<void> {
+    await db.set(STORES.PORTFOLIO, "mood_logs", logs);
+  }
+
+  async getPsychologicalScores(): Promise<any[]> {
+    const data = await db.get<any>(STORES.PORTFOLIO, "psychological_scores");
+    return data || [];
+  }
+
+  async savePsychologicalScores(scores: any[]): Promise<void> {
+    await db.set(STORES.PORTFOLIO, "psychological_scores", scores);
+  }
+
+  async getPlans(): Promise<any[]> {
+    const data = await db.get<any>(STORES.PORTFOLIO, "plans");
+    return data || [];
+  }
+
+  async savePlans(plans: any[]): Promise<void> {
+    await db.set(STORES.PORTFOLIO, "plans", plans);
+  }
+
+  async getObjectives(): Promise<any[]> {
+    const data = await db.get<any>(STORES.PORTFOLIO, "objectives");
+    return data || [];
+  }
+
+  async saveObjectives(objectives: any[]): Promise<void> {
+    await db.set(STORES.PORTFOLIO, "objectives", objectives);
+  }
+
+  async getRules(): Promise<any[]> {
+    const data = await db.get<any>(STORES.PORTFOLIO, "rules");
+    return data || [];
+  }
+
+  async saveRules(rules: any[]): Promise<void> {
+    await db.set(STORES.PORTFOLIO, "rules", rules);
+  }
+
   async getPerformance(): Promise<PerformancePoint[]> {
     const data = await db.get<any>(STORES.PORTFOLIO, "performance");
     return data || [];
@@ -45,12 +100,25 @@ export class PortfolioService {
     await db.set(STORES.PORTFOLIO, "performance", points);
   }
 
+  async getHistoricalPortfolioData(): Promise<HistoricalPoint[]> {
+    const data = await db.get<any>(STORES.PORTFOLIO, "historical_data");
+    return data || [];
+  }
+
+  async saveHistoricalPortfolioData(data: HistoricalPoint[]): Promise<void> {
+    await db.set(STORES.PORTFOLIO, "historical_data", data);
+  }
+
   async initializeDefaultData(): Promise<void> {
     const isInitialized = await db.get<boolean>(
       STORES.PORTFOLIO,
       "is_initialized",
     );
-    if (isInitialized) return;
+    
+    const existingHistoricalData = await this.getHistoricalPortfolioData();
+    const needsHistoricalData = existingHistoricalData.length === 0;
+
+    if (isInitialized && !needsHistoricalData) return;
 
     const assets = await this.getAssets();
     if (assets.length === 0) {
@@ -192,6 +260,37 @@ export class PortfolioService {
       await this.savePerformance(defaultPerformance);
     }
 
+    if (needsHistoricalData) {
+      // Initialize Historical Data
+      const historicalData: HistoricalPoint[] = [];
+      const startDate = new Date();
+      startDate.setFullYear(startDate.getFullYear() - 1);
+      
+      let currentPortfolio = 50000;
+      let currentSP500 = 4500;
+      let currentBTC = 30000;
+      let currentGold = 1900;
+
+      for (let i = 0; i < 365; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        
+        currentPortfolio *= (1 + (Math.random() * 0.02 - 0.008));
+        currentSP500 *= (1 + (Math.random() * 0.015 - 0.007));
+        currentBTC *= (1 + (Math.random() * 0.05 - 0.024));
+        currentGold *= (1 + (Math.random() * 0.01 - 0.004));
+
+        historicalData.push({
+          date: date.toISOString().split('T')[0],
+          portfolio: Math.round(currentPortfolio),
+          sp500: Math.round(currentSP500),
+          bitcoin: Math.round(currentBTC),
+          gold: Math.round(currentGold)
+        });
+      }
+      await this.saveHistoricalPortfolioData(historicalData);
+    }
+
     await db.set(STORES.PORTFOLIO, "is_initialized", true);
   }
 
@@ -200,7 +299,14 @@ export class PortfolioService {
       db.set(STORES.PORTFOLIO, "assets", []),
       db.set(STORES.PORTFOLIO, "positions", []),
       db.set(STORES.PORTFOLIO, "strategies", []),
+      db.set(STORES.PORTFOLIO, "journal_entries", []),
+      db.set(STORES.PORTFOLIO, "mood_logs", []),
+      db.set(STORES.PORTFOLIO, "psychological_scores", []),
+      db.set(STORES.PORTFOLIO, "plans", []),
+      db.set(STORES.PORTFOLIO, "objectives", []),
+      db.set(STORES.PORTFOLIO, "rules", []),
       db.set(STORES.PORTFOLIO, "performance", []),
+      db.set(STORES.PORTFOLIO, "historical_data", []),
       db.set(STORES.PORTFOLIO, "is_initialized", false),
     ]);
   }

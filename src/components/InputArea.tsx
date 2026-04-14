@@ -19,6 +19,8 @@ import {
   Brain,
   FolderPlus,
   Plug,
+  Headset,
+  PhoneOff,
 } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import {
@@ -29,9 +31,12 @@ import {
   ProMode,
   Note,
   Space,
+  Role,
+  Thread,
 } from "../types";
 import { FOCUS_MODES, PRO_MODES } from "../constants";
 import { Tooltip } from "./Tooltip";
+import { LiveVoiceWidget } from "./LiveVoiceWidget";
 
 interface InputAreaProps {
   onSendMessage: (
@@ -43,6 +48,9 @@ interface InputAreaProps {
     isAgentMode?: boolean,
     isAgentProMode?: boolean,
   ) => void;
+  onAddMessage?: (role: Role, content: string) => string | null;
+  onUpdateMessage?: (id: string, content: string) => void;
+  onSelectView?: (view: any) => void;
   onStop?: () => void;
   isThinking: boolean;
   centered?: boolean;
@@ -65,10 +73,14 @@ interface InputAreaProps {
   setIsLongThinking?: (isThinking: boolean) => void;
   isAgentProMode?: boolean;
   setIsAgentProMode?: (isPro: boolean) => void;
+  activeThread?: Thread;
 }
 
 export const InputArea: React.FC<InputAreaProps> = ({
   onSendMessage,
+  onAddMessage,
+  onUpdateMessage,
+  onSelectView,
   onStop,
   isThinking,
   centered = false,
@@ -90,6 +102,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
   setIsLongThinking: propSetIsLongThinking,
   isAgentProMode: propIsAgentProMode,
   setIsAgentProMode: propSetIsAgentProMode,
+  activeThread,
 }) => {
   const [input, setInput] = useState("");
   const [focusModes, setFocusModes] = useState<FocusMode[]>([
@@ -145,6 +158,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   // Voice Input State
   const [isListening, setIsListening] = useState(false);
+  const [isLiveVoiceOpen, setIsLiveVoiceOpen] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [detectedLangDisplay, setDetectedLangDisplay] = useState<string>(""); // For UI display (RO/EN)
 
@@ -288,8 +302,11 @@ export const InputArea: React.FC<InputAreaProps> = ({
         console.error("Speech Recognition Error", event.error);
       }
       if (event.error === "not-allowed") {
-        alert("Microphone permission denied.");
+        alert("Microphone access denied. Please allow microphone permissions in your browser settings (check the lock icon in the address bar and ensure you are not in Private/Incognito mode).");
         stopListening();
+      } else if (event.error !== "no-speech") {
+        // For other errors, we might want to show a subtle hint or just log
+        setIsListening(false);
       }
     };
 
@@ -1678,42 +1695,81 @@ export const InputArea: React.FC<InputAreaProps> = ({
               )}
             </button>
 
-            {/* Voice Input (Enhanced) */}
-            <button
-              onClick={handleVoiceInput}
-              onMouseEnter={() => setHoveredTooltip("voice")}
-              onMouseLeave={() => setHoveredTooltip(null)}
-              className={`relative flex items-center justify-center transition-all duration-150 gap-2 shrink-0 ${
-                isListening
-                  ? "bg-red-500/10 text-red-500 px-4 py-2 sm:py-1.5 rounded-full border border-red-500/30"
-                  : `rounded-full hover:text-pplx-text ${roundButtonPadding} ${mobileButtonFixedBg} ${mobileSidePanel ? "!p-1.5" : ""}`
-              }`}
-            >
-              {isListening ? (
-                <>
-                  <div className="relative">
-                    <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20"></span>
-                    <Square size={12} fill="currentColor" />
+            {/* Live Voice (Gemini Live API) */}
+            {!isLiveVoiceOpen ? (
+              <>
+                <button
+                  onClick={() => {
+                    setIsLiveVoiceOpen(true);
+                    if (onSelectView) onSelectView("chat");
+                  }}
+                  onMouseEnter={() => setHoveredTooltip("live")}
+                  onMouseLeave={() => setHoveredTooltip(null)}
+                  disabled={isListening}
+                  className={`relative flex items-center justify-center rounded-full transition-colors hover:text-pplx-accent text-pplx-accent/80 ${roundButtonPadding} ${mobileButtonFixedBg}`}
+                >
+                  <div>
+                    <Headset size={iconSize} />
                   </div>
-                  <span className="text-xs font-mono font-medium animate-pulse flex items-center gap-1.5">
-                    {formatTimer(recordingSeconds)}
-                    <span className="opacity-50">•</span>
-                    <span className="font-bold tracking-wider">
-                      {detectedLangDisplay}
-                    </span>
-                  </span>
-                </>
-              ) : (
-                <div>
-                  <Mic
-                    size={mobileSidePanel ? (isMobile ? 20 : 16) : iconSize}
-                  />
+                  {hoveredTooltip === "live" && (
+                    <Tooltip text="Live Voice Conversation" position="top" />
+                  )}
+                </button>
+
+                {/* Voice Input (Enhanced) */}
+                <button
+                  onClick={handleVoiceInput}
+                  onMouseEnter={() => setHoveredTooltip("voice")}
+                  onMouseLeave={() => setHoveredTooltip(null)}
+                  disabled={isLiveVoiceOpen}
+                  className={`relative flex items-center justify-center transition-all duration-150 gap-2 shrink-0 ${
+                    isListening
+                      ? "bg-red-500/10 text-red-500 px-4 py-2 sm:py-1.5 rounded-full border border-red-500/30"
+                      : `rounded-full hover:text-pplx-text ${roundButtonPadding} ${mobileButtonFixedBg} ${mobileSidePanel ? "!p-1.5" : ""} ${isLiveVoiceOpen ? "opacity-50 cursor-not-allowed" : ""}`
+                  }`}
+                >
+                  {isListening ? (
+                    <>
+                      <div className="relative">
+                        <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20"></span>
+                        <Square size={12} fill="currentColor" />
+                      </div>
+                      <span className="text-xs font-mono font-medium animate-pulse flex items-center gap-1.5">
+                        {formatTimer(recordingSeconds)}
+                        <span className="opacity-50">•</span>
+                        <span className="font-bold tracking-wider">
+                          {detectedLangDisplay}
+                        </span>
+                      </span>
+                    </>
+                  ) : (
+                    <div>
+                      <Mic
+                        size={mobileSidePanel ? (isMobile ? 20 : 16) : iconSize}
+                      />
+                    </div>
+                  )}
+                  {hoveredTooltip === "voice" && !isListening && (
+                    <Tooltip text="Voice Input (Auto-Detect)" position="top" />
+                  )}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsLiveVoiceOpen(false)}
+                className={`relative flex items-center justify-center transition-all duration-150 gap-2 shrink-0 bg-red-500/10 hover:bg-red-500/20 text-red-500 px-4 py-2 sm:py-1.5 rounded-full border border-red-500/30`}
+              >
+                <div className="relative">
+                  <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20"></span>
+                  <PhoneOff size={14} />
                 </div>
-              )}
-              {hoveredTooltip === "voice" && !isListening && (
-                <Tooltip text="Voice Input (Auto-Detect)" position="top" />
-              )}
-            </button>
+                <span className="text-xs font-mono font-medium animate-pulse flex items-center gap-1.5">
+                  <span className="font-bold tracking-wider uppercase">
+                    End Call
+                  </span>
+                </span>
+              </button>
+            )}
 
             {/* Send / Stop Button - Hidden when listening to allow voice bar to expand right */}
             {!isListening &&
@@ -1745,6 +1801,19 @@ export const InputArea: React.FC<InputAreaProps> = ({
               )}
           </div>
         </div>
+        
+        {/* Live Voice Widget */}
+        <LiveVoiceWidget 
+          isOpen={isLiveVoiceOpen} 
+          onClose={() => setIsLiveVoiceOpen(false)} 
+          apiKey={process.env.GEMINI_API_KEY || ''} 
+          onAddMessage={onAddMessage}
+          onUpdateMessage={onUpdateMessage}
+          settings={settings}
+          activeThread={activeThread}
+          isThinking={isThinking}
+          onGenericSendMessage={(text) => onSendMessage(text, focusModes, proMode, [], undefined, isAgentMode, isAgentProMode)}
+        />
       </div>
     </div>
   );

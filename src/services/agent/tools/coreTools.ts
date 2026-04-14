@@ -2,6 +2,8 @@ import { ToolRegistry } from './ToolRegistry';
 import { MemoryManager } from '../../memory/MemoryManager';
 import { TavilyService } from '../../tavilyService';
 import { db, STORES } from '../../db';
+import { portfolioService } from '../../portfolioService';
+import { safeDigitalService } from '../../safeDigitalService';
 
 export function registerCoreTools() {
   ToolRegistry.register(
@@ -105,13 +107,19 @@ export function registerCoreTools() {
               data: searchData.results,
               summary: `Found ${searchData.results.length} web results for "${args.query}".`
             };
+          } else {
+            return {
+              success: false,
+              error: "Search returned no results or failed. Check your API key and network connection.",
+              summary: `Search failed for "${args.query}".`
+            };
           }
         }
         
         // Fallback mock if no API key
         return {
           success: true,
-          data: { results: [`Mock result for ${args.query}`] },
+          data: { results: [`Mock result for ${args.query} (No API Key provided)`] },
           summary: `Mock search completed for "${args.query}".`
         };
       } catch (error) {
@@ -196,14 +204,93 @@ export function registerCoreTools() {
 
   ToolRegistry.register(
     {
-      name: 'manage_complex_module',
-      description: 'Performs actions on complex application modules like Safe Digital or Portfolio.',
+      name: 'read_complex_module',
+      description: 'Reads data from complex application modules like Safe Digital or Portfolio. Use this to get information about assets, positions, documents, etc.',
       parameters: {
         type: 'object',
         properties: {
           module: { type: 'string', enum: ['safe_digital', 'portfolio'] },
-          action: { type: 'string' },
-          data: { type: 'object' }
+          target: { type: 'string', description: 'What to read. For portfolio: "assets", "positions", "strategies", "performance", "historical", "all". For safe_digital: "documents", "notes", "tasks", "all".' }
+        },
+        required: ['module', 'target']
+      }
+    },
+    async (args: { module: string, target: string }) => {
+      try {
+        if (args.module === 'portfolio') {
+          let data;
+          switch (args.target) {
+            case 'assets': data = await portfolioService.getAssets(); break;
+            case 'positions': data = await portfolioService.getPositions(); break;
+            case 'strategies': data = await portfolioService.getStrategies(); break;
+            case 'performance': data = await portfolioService.getPerformance(); break;
+            case 'historical': data = await portfolioService.getHistoricalPortfolioData(); break;
+            case 'all': 
+              data = {
+                assets: await portfolioService.getAssets(),
+                positions: await portfolioService.getPositions(),
+                strategies: await portfolioService.getStrategies()
+              };
+              break;
+            default: 
+              return { 
+                success: false, 
+                error: `Invalid target "${args.target}" for portfolio module.`,
+                summary: `Failed to read ${args.target} from portfolio.`
+              };
+          }
+          return {
+            success: true,
+            data: data,
+            summary: `Successfully read ${args.target} from portfolio.`
+          };
+        } else if (args.module === 'safe_digital') {
+          let data;
+          switch (args.target) {
+            case 'documents': data = await safeDigitalService.getDocuments(); break;
+            case 'notes': data = await safeDigitalService.getNotes(); break;
+            case 'tasks': data = await safeDigitalService.getTasks(); break;
+            case 'all':
+              data = {
+                documents: await safeDigitalService.getDocuments(),
+                notes: await safeDigitalService.getNotes(),
+                tasks: await safeDigitalService.getTasks()
+              };
+              break;
+            default:
+              return { 
+                success: false, 
+                error: `Invalid target "${args.target}" for safe_digital module.`,
+                summary: `Failed to read ${args.target} from safe_digital.`
+              };
+          }
+          return {
+            success: true,
+            data: data,
+            summary: `Successfully read ${args.target} from safe_digital.`
+          };
+        }
+        return { 
+          success: false, 
+          error: `Module "${args.module}" not supported for reading.`,
+          summary: `Failed to read from ${args.module}`
+        };
+      } catch (error) {
+        return { success: false, error: String(error), summary: `Failed to read from ${args.module}.` };
+      }
+    }
+  );
+
+  ToolRegistry.register(
+    {
+      name: 'manage_complex_module',
+      description: 'Performs WRITE actions (add, update, delete) on complex application modules like Safe Digital or Portfolio. These actions require user confirmation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          module: { type: 'string', enum: ['safe_digital', 'portfolio'] },
+          action: { type: 'string', description: 'The action to perform (e.g., "add_asset", "update_position", "delete_document").' },
+          data: { type: 'object', description: 'The data for the action.' }
         },
         required: ['module', 'action', 'data']
       }

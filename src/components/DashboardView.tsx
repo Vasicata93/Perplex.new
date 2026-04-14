@@ -5,6 +5,6 @@ interface DashboardViewProps {
   onClose?: () => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ onClose }) => {
-  return <PortfolioDashboard onClose={onClose} />;
+export const DashboardView: React.FC<DashboardViewProps> = () => {
+  return <PortfolioDashboard />;
 };

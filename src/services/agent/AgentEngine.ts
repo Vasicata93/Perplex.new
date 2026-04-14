@@ -320,10 +320,6 @@ EVENT DETECTION:
       addStepLog('layer-5', 'result', `Generated plan with ${plan.length} tasks.`);
       completeStep('layer-5', 'Plan created.');
       
-      // Step 4: TODO LIST ACTIVATION
-      // Maintained at the end of context during execution
-      let todoList = plan.map(p => `[ ] ${p.description}`).join('\n');
-      
       const executionResults: any[] = [];
       
       // Step 5: EXECUTE (Iterative)
@@ -346,9 +342,6 @@ EVENT DETECTION:
         store.updateTaskStatus(task.id, 'in_progress');
         store.addTaskLog(task.id, { type: 'thought', content: `Starting execution of task: ${task.description}` });
         addStepLog('layer-7', 'thought', `Executing task ${i+1}/${agentPlan.tasks.length}: ${task.description}`);
-        
-        // Update TODO List
-        todoList = plan.map((p, idx) => idx === i ? `[⟳] ${p.description}` : (idx < i ? `[✓] ${p.description}` : `[ ] ${p.description}`)).join('\n');
         
         let toolResultStr = '';
         let duration = 500;
@@ -666,9 +659,6 @@ Reply ONLY with "YES" or "NO: [reason]".
       
       completeStep('layer-7', 'All planned tasks executed.');
 
-      // Update TODO List to all complete
-      todoList = plan.map(p => `[✓] ${p.description}`).join('\n');
-
       // ==========================================
       // [9] RESPONSE GENERATION
       // ==========================================
@@ -694,68 +684,26 @@ User asked: "${text}"
 Execution Results:
 ${JSON.stringify(executionResults, null, 2)}
 
-Current TODO List State:
-${todoList}
+CRITICAL INSTRUCTIONS:
+1. Provide a final, conversational response based on the execution results.
+2. DO NOT output the raw plan, todo list, or any internal task IDs (e.g., task_1) to the user.
+3. DO NOT include any "Thinking Process", "Steps", or "Internal Reasoning" in your final response.
+4. If tools were used to find information, cite the sources clearly using [1][2] format.
+5. If a widget (chart, diagram, etc.) was generated in a previous step, do not repeat its configuration unless necessary for explanation.
+6. Respond in the same language as the user's request.
 
-CRITICAL INSTRUCTIONS (LAYER 8, 9, 10):
-You must perform the following steps internally before generating the final response:
-STEP 6 - PREDICT: Based on the execution results, what logically follows? What could go wrong? What will the user ask next? Prepare proactive answers.
-STEP 7 - VERIFY (Sanity Check): Check the correctness of the data obtained. Are there contradictions? Are there undeclared uncertainties? Do citations exist in the context?
-STEP 8 - CRITIQUE: Does this answer the real need (from Perception)? Is it actionable? Are there critical gaps? Revise if necessary.
-STEP 9 - SYNTHESIZE: Combine results, structure clearly. DO NOT output the raw plan or todo list to the user. The plan has already been executed. Provide a final conversational response based on the execution results.
-
-FORMAT SELECTION (Layer 9.1):
+FORMAT SELECTION:
 - Use Markdown for structured explanations.
-- **CHART GENERATION PROTOCOL:**
-  You have the ability to render interactive charts directly in the chat using Chart.js.
-  When the user asks for a chart, graph, or visualization, DO NOT try to draw it with text/ascii.
-  Instead, use a standard markdown code block with the language set to \`chart\` to generate a chart:
-  \`\`\`chart
-  {
-    "type": "bar",
-    "data": {
-      "labels": ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"],
-      "datasets": [{
-        "label": "# of Votes",
-        "data": [12, 19, 3, 5, 2, 3],
-        "borderWidth": 1
-      }]
-    },
-    "options": {
-      "scales": {
-        "y": {
-          "beginAtZero": true
-        }
-      }
-    }
-  }
-  \`\`\`
-  The content inside the block MUST be a valid JSON object representing a Chart.js configuration.
-  You can use any valid Chart.js type (line, bar, pie, doughnut, radar, polarArea, bubble, scatter).
-- To display diagrams, flowcharts, or state machines, use Mermaid.js via a \`\`\`mermaid code block.
-  Example:
-  \`\`\`mermaid
-  graph TD;
-    A[Start] --> B{Is it working?};
-    B -- Yes --> C[Great!];
-    B -- No --> D[Fix it];
-  \`\`\`
-- To display a professional portfolio dashboard widget, use:
-  \`\`\`widget
-  { "type": "portfolio-dashboard" }
-  \`\`\`
+- **CHART GENERATION PROTOCOL:** Use \`\`\`chart { ... } \`\`\` for Chart.js.
+- **DIAGRAM PROTOCOL:** Use \`\`\`mermaid ... \`\`\` for Mermaid.js.
+- **WIDGET PROTOCOL:** Use \`\`\`widget { "type": "portfolio-dashboard" } \`\`\` for special widgets.
 
-CITATIONS (Layer 9.4):
-- Use [1][2] format for citations if you used search tools. Never invent citations.
-
-LANGUAGE (Layer 9.5):
-- Always respond in the language of the user's last message.
-
-CONFIDENCE SCORE (Layer 9.2):
 Include a Confidence Score (High/Medium/Low) at the very end of your response in the format: "Confidence Score: [Score]".
+
+Final Response:
 `;
       
-      const finalResponse = await llmService.generateSimpleText(
+      let finalResponse = await llmService.generateSimpleText(
         finalPrompt,
         provider,
         openRouterKey,
@@ -765,6 +713,14 @@ Include a Confidence Score (High/Medium/Low) at the very end of your response in
         activeLocalModel,
         geminiApiKey
       );
+
+      // Post-processing cleanup to ensure no plan leakage
+      finalResponse = finalResponse
+        .replace(/### Plan:?[\s\S]*?(?=###|$)/gi, '')
+        .replace(/### Todo:?[\s\S]*?(?=###|$)/gi, '')
+        .replace(/Task \d+:[\s\S]*?(?=\n\n|$)/gi, '')
+        .replace(/\[\d+\]\s*[^:]+:\s*[\s\S]*?(?=\n\n|$)/gi, '')
+        .trim();
       
       // Extract Confidence Score (Mock implementation)
       const confidenceMatch = finalResponse.match(/Confidence Score:\s*(High|Medium|Low)/i);

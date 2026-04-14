@@ -61,10 +61,10 @@ Priority: ${routingDecision.priority}
 Tool State: ${routingDecision.toolState}
 
 CRITICAL INSTRUCTION:
-STEP 4 - TODO LIST ACTIVATION: Create an internal todo list. Order subtasks by dependencies.
+Create an INTERNAL plan. Order subtasks by dependencies.
 LANGUAGE: Always respond in the language of the user's last message.
 
-Output a JSON object with the following structure:
+Output ONLY a JSON object with the following structure:
 {
   "reasoning": "Explanation of why this plan is optimal",
   "tasks": [

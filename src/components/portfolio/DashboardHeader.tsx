@@ -2,62 +2,63 @@ import React from "react";
 import {
   Bell,
   Plus,
-  Download,
   TrendingUp,
   ArrowUpRight,
-  X,
+  Search,
 } from "lucide-react";
 
 export const PortfolioHeader: React.FC<{
-  onClose?: () => void;
-  activeTab?: "portfolio" | "analytics" | "markets" | "settings";
+  activeTab?: "portfolio" | "strategy" | "journal" | "research" | "settings";
   setActiveTab?: (
-    tab: "portfolio" | "analytics" | "markets" | "settings",
+    tab: "portfolio" | "strategy" | "journal" | "research" | "settings",
   ) => void;
   hasDock?: boolean;
-}> = ({ onClose, activeTab = "portfolio", setActiveTab, hasDock = false }) => {
+}> = ({ activeTab = "portfolio", setActiveTab, hasDock = false }) => {
   return (
-    <header className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-1.5 sm:py-2 bg-white dark:bg-pplx-primary border-b border-gray-100 dark:border-zinc-800 sticky top-0 z-30 transition-colors duration-300">
-      <div className="flex items-center gap-4 sm:gap-6 md:gap-8">
-        <div className="flex items-center gap-2 sm:gap-3">
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="p-1.5 sm:p-2 -ml-1.5 sm:-ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 hover:bg-gray-50 dark:hover:bg-pplx-hover rounded-lg sm:rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-zinc-800 active:scale-90"
-              title="Close Dashboard"
-            >
-              <X size={16} className="sm:w-5 sm:h-5" />
-            </button>
-          )}
-          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-zinc-900 dark:bg-zinc-100 rounded-lg sm:rounded-xl flex items-center justify-center text-white dark:text-zinc-900 text-sm sm:text-base font-black shadow-lg shadow-zinc-500/20 dark:shadow-none font-display">
-            R
-          </div>
-          <span className="text-base sm:text-lg font-black text-gray-900 dark:text-zinc-100 hidden xs:inline-block tracking-tighter font-display">
-            Robo Portfolio
-          </span>
-        </div>
-        <div className="h-6 w-px bg-gray-200 dark:bg-zinc-800 hidden md:block" />
-        <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-[0.15em] hidden lg:block">
-          Consolidated Dashboard
-        </span>
+    <header className="flex items-center justify-between px-4 sm:px-6 md:px-8 py-3 sm:py-4 bg-white dark:bg-pplx-primary z-30 transition-colors duration-300">
+      <div className="flex items-center flex-1">
+        <button
+          onClick={() => setActiveTab?.("portfolio")}
+          className="text-lg sm:text-xl font-black text-gray-900 dark:text-zinc-100 tracking-tighter font-display hover:text-gray-600 dark:hover:text-zinc-300 transition-colors whitespace-nowrap"
+        >
+          Dashboard Portofoliu
+        </button>
       </div>
 
-      <nav className="hidden md:flex items-center gap-6 lg:gap-10">
+      <nav className="hidden md:flex items-center justify-center gap-6 lg:gap-10 flex-1">
         {[
-          { id: "portfolio", label: "Portfolio" },
-          { id: "analytics", label: "Analytics" },
-          { id: "markets", label: "Markets" },
-          { id: "settings", label: "Settings" },
+          { id: "strategy", label: "Strategii" },
+          { id: "journal", label: "Jurnal" },
+          { id: "research", label: "Research" },
+          { id: "settings", label: "Setări" },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab?.(tab.id as any)}
-            className={`text-sm sm:text-base font-black transition-all relative py-1.5 font-display ${activeTab === tab.id ? "text-zinc-900 dark:text-zinc-100 after:absolute after:bottom-[-13px] sm:after:bottom-[-15px] after:left-0 after:right-0 after:h-0.5 sm:after:h-1 after:bg-zinc-900 dark:after:bg-zinc-100 after:rounded-full" : "text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300"}`}
+            className={`text-sm sm:text-base font-black transition-all relative py-1.5 font-display ${activeTab === tab.id ? "text-zinc-900 dark:text-zinc-100 after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-0.5 after:bg-zinc-900 dark:after:bg-zinc-100 after:rounded-full" : "text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300"}`}
           >
             {tab.label}
           </button>
         ))}
       </nav>
+
+      <div className="flex items-center justify-end gap-2 sm:gap-4 flex-1">
+        <button className="p-2 sm:p-2.5 text-gray-400 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-pplx-hover rounded-xl sm:rounded-2xl transition-colors border border-transparent hover:border-gray-200 dark:hover:border-zinc-800 active:scale-95">
+          <Bell size={20} className="sm:w-6 sm:h-6" />
+        </button>
+        
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-gray-100 dark:border-zinc-800 shadow-md shrink-0">
+          <img
+            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+            alt="User"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+
+        <div className="flex items-center gap-1 sm:gap-2 ml-1 sm:ml-2">
+          {/* Icons removed and moved to global header */}
+        </div>
+      </div>
 
       {/* Mobile Navigation */}
       <div
@@ -67,32 +68,19 @@ export const PortfolioHeader: React.FC<{
         }}
       >
         {[
-          { id: "portfolio", label: "Port" },
-          { id: "analytics", label: "Analyt" },
-          { id: "markets", label: "Mark" },
-          { id: "settings", label: "Set" },
+          { id: "strategy", label: "Strategii" },
+          { id: "journal", label: "Jurnal" },
+          { id: "research", label: "Research" },
+          { id: "settings", label: "Setări" },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab?.(tab.id as any)}
-            className={`text-xs font-black transition-all px-3 py-1.5 rounded-xl ${activeTab === tab.id ? "bg-zinc-100 dark:bg-pplx-card text-zinc-900 dark:text-zinc-100" : "text-gray-400 dark:text-zinc-500"}`}
+            className={`text-[10px] font-black transition-all px-2 py-1.5 rounded-lg ${activeTab === tab.id ? "bg-zinc-100 dark:bg-pplx-card text-zinc-900 dark:text-zinc-100" : "text-gray-400 dark:text-zinc-500"}`}
           >
             {tab.label}
           </button>
         ))}
-      </div>
-
-      <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
-        <button className="p-2 sm:p-3 text-gray-400 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-pplx-hover rounded-xl sm:rounded-2xl transition-colors border border-transparent hover:border-gray-200 dark:hover:border-zinc-800 active:scale-95">
-          <Bell size={18} className="sm:w-5 sm:h-5" />
-        </button>
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-gray-100 dark:border-zinc-800 shadow-md">
-          <img
-            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-            alt="User"
-            referrerPolicy="no-referrer"
-          />
-        </div>
       </div>
     </header>
   );
@@ -102,78 +90,84 @@ export const StatsOverview: React.FC<{
   totalValue: number;
   ytd: number;
   lastMonth: number;
-  volatility: number;
   onNewEntry: () => void;
-  onExport?: () => void;
-}> = ({ totalValue, ytd, lastMonth, volatility, onNewEntry, onExport }) => {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+}> = ({ totalValue, ytd, lastMonth, onNewEntry, searchQuery, setSearchQuery }) => {
   return (
-    <div className="py-4 sm:py-6 md:py-8">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 sm:gap-6 md:gap-10">
-        <div className="space-y-1 sm:space-y-2">
-          <span className="text-[9px] sm:text-[10px] md:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
-            Net Worth
-          </span>
-          <div className="flex items-baseline gap-2 sm:gap-3 md:gap-4">
-            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-gray-900 dark:text-gray-100 tracking-tighter font-display">
-              €
-              {totalValue.toLocaleString(undefined, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}
-            </h1>
-            <div className="flex items-center gap-1 text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg md:rounded-xl text-[10px] sm:text-xs md:sm font-black">
-              <ArrowUpRight size={14} className="sm:w-4 sm:h-4" />
+    <div className="flex flex-col gap-3 py-2 sm:py-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-12 flex-1">
+          {/* Net Worth Section */}
+          <div className="flex items-center justify-between lg:justify-start gap-4">
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Net Worth</span>
+              <h1 className="text-3xl sm:text-5xl font-black text-gray-900 dark:text-gray-100 tracking-tighter">
+                €{totalValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </h1>
+            </div>
+
+            {/* Mobile Search/Plus (Visible only on mobile/tablet) */}
+            <div className="flex lg:hidden items-center gap-2">
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-zinc-900 px-2 py-1.5 rounded-md border border-gray-200 dark:border-zinc-800 focus-within:ring-1 focus-within:ring-zinc-200 dark:focus-within:ring-zinc-700 transition-all">
+                <Search size={12} className="text-gray-400 dark:text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none outline-none text-[10px] text-gray-900 dark:text-zinc-100 w-12 placeholder:text-gray-400 dark:placeholder:text-zinc-600 font-medium"
+                />
+              </div>
+              <button onClick={onNewEntry} className="flex items-center justify-center p-1.5 text-white dark:text-zinc-900 bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white rounded-md transition-all active:scale-95 shadow-sm">
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>
+          
+          {/* Stats Section (Percentages, YTD, 1M) - Positioned between on Desktop */}
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 lg:mt-4">
+            <div className="flex items-center gap-1 text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg text-[11px] font-black">
+              <ArrowUpRight size={12} />
               <span>+2.4%</span>
             </div>
-          </div>
-          <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 dark:text-gray-500 font-medium">
-            Consolidated balance across 12 platforms
-          </p>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-8 md:gap-16">
-          <div className="space-y-0.5 sm:space-y-1 md:space-y-2">
-            <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-              YTD Returns
-            </span>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600 dark:text-emerald-400 font-black text-base sm:text-lg md:text-xl font-display">
-              <TrendingUp size={16} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
-              <span>+{ytd}%</span>
-            </div>
-          </div>
-          <div className="space-y-0.5 sm:space-y-1 md:space-y-2">
-            <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-              Last Month
-            </span>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600 dark:text-emerald-400 font-black text-base sm:text-lg md:text-xl font-display">
-              <TrendingUp size={16} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
-              <span>+{lastMonth}%</span>
-            </div>
-          </div>
-          <div className="space-y-0.5 sm:space-y-1 md:space-y-2 hidden sm:block">
-            <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-              Volatility
-            </span>
-            <div className="text-gray-900 dark:text-gray-100 font-black text-base sm:text-lg md:text-xl font-display">
-              {volatility}%
+            <div className="h-6 w-px bg-gray-200 dark:bg-zinc-800 hidden sm:block" />
+            
+            <div className="flex items-center gap-4 sm:gap-8">
+              <div className="space-y-0.5 flex items-center gap-2 sm:block">
+                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">YTD</span>
+                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-black text-sm sm:text-lg">
+                  <TrendingUp size={14} />
+                  <span>+{ytd}%</span>
+                </div>
+              </div>
+              <div className="space-y-0.5 flex items-center gap-2 sm:block">
+                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">1M</span>
+                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-black text-sm sm:text-lg">
+                  <TrendingUp size={14} />
+                  <span>+{lastMonth}%</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
-          <button
-            onClick={onExport}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-[10px] sm:text-xs md:text-sm font-black text-gray-600 dark:text-zinc-300 bg-white dark:bg-pplx-card border border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-pplx-hover rounded-lg sm:rounded-xl md:rounded-2xl transition-all shadow-sm active:scale-95"
-          >
-            <Download size={14} className="sm:w-4 sm:h-4" />
-            <span>Export</span>
-          </button>
-          <button
-            onClick={onNewEntry}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-[10px] sm:text-xs md:text-sm font-black text-white dark:text-zinc-900 bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white rounded-lg sm:rounded-xl md:rounded-2xl transition-all shadow-xl shadow-zinc-500/20 active:scale-95"
-          >
-            <Plus size={14} className="sm:w-4 sm:h-4" />
-            <span>New Asset</span>
+        {/* Desktop Search/Plus (Visible only on desktop) */}
+        <div className="hidden lg:flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-gray-50 dark:bg-zinc-900 px-3 py-1.5 rounded-md border border-gray-200 dark:border-zinc-800 focus-within:ring-1 focus-within:ring-zinc-200 dark:focus-within:ring-zinc-700 transition-all">
+            <Search size={14} className="text-gray-400 dark:text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none outline-none text-sm text-gray-900 dark:text-zinc-100 w-32 placeholder:text-gray-400 dark:placeholder:text-zinc-600 font-medium"
+            />
+          </div>
+          <button onClick={onNewEntry} className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white dark:text-zinc-900 bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white rounded-md transition-all active:scale-95 shadow-sm">
+            <Plus size={14} />
+            <span>New</span>
           </button>
         </div>
       </div>

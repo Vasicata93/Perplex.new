@@ -1,19 +1,22 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { PortfolioHeader, StatsOverview } from "./DashboardHeader";
-import { DashboardControls } from "./DashboardControls";
 import { AllocationChart } from "./AllocationChart";
 import { PerformanceChart } from "./PerformanceChart";
-import { AssetList, StrategyList } from "./AssetList";
+import { PortfolioValueChart } from "./PortfolioValueChart";
+import { AssetList } from "./AssetList";
 import { AssetModal } from "./AssetModal";
+import Journal from "./Journal";
+import Research from "./Research";
+import StrategyComponent from "./Strategy";
 import { portfolioService } from "../../services/portfolioService";
 import {
   Asset,
   Position,
-  Strategy,
   PerformancePoint,
+  HistoricalPoint,
 } from "../../types/portfolio";
 import { v4 as uuidv4 } from "uuid";
-import { RefreshCcw, Download } from "lucide-react";
+import { RefreshCcw, Download, LayoutGrid, List as ListIcon } from "lucide-react";
 
 declare global {
   interface Window {
@@ -35,18 +38,22 @@ declare global {
 }
 
 interface PortfolioDashboardProps {
-  onClose?: () => void;
   hasDock?: boolean;
 }
 
 export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
-  onClose,
   hasDock = false,
 }) => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [performance, setPerformance] = useState<PerformancePoint[]>([]);
+  const [historicalData, setHistoricalData] = useState<HistoricalPoint[]>([]);
+  const [journalEntries, setJournalEntries] = useState<any[]>([]);
+  const [moodLogs, setMoodLogs] = useState<any[]>([]);
+  const [psychologicalScores, setPsychologicalScores] = useState<any[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [objectives, setObjectives] = useState<any[]>([]);
+  const [rules, setRules] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPositionId, setEditingPositionId] = useState<string | null>(
     null,
@@ -57,7 +64,7 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
   const [sortBy] = useState<"value" | "name" | "performance">("value");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [activeTab, setActiveTab] = useState<
-    "portfolio" | "analytics" | "markets" | "settings"
+    "portfolio" | "strategy" | "journal" | "research" | "settings"
   >("portfolio");
 
   // AI Action Bridge
@@ -125,11 +132,17 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
     setIsLoading(true);
     try {
       await portfolioService.initializeDefaultData();
-      const [a, p, s, perf] = await Promise.all([
+      const [a, p, perf, hist, entries, moods, scores, plns, objs, rls] = await Promise.all([
         portfolioService.getAssets(),
         portfolioService.getPositions(),
-        portfolioService.getStrategies(),
         portfolioService.getPerformance(),
+        portfolioService.getHistoricalPortfolioData(),
+        portfolioService.getJournalEntries(),
+        portfolioService.getMoodLogs(),
+        portfolioService.getPsychologicalScores(),
+        portfolioService.getPlans(),
+        portfolioService.getObjectives(),
+        portfolioService.getRules(),
       ]);
       console.log("PortfolioDashboard: Loaded data:", {
         assets: a,
@@ -137,8 +150,14 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
       });
       setAssets(a);
       setPositions(p);
-      setStrategies(s);
       setPerformance(perf);
+      setHistoricalData(hist);
+      setJournalEntries(entries);
+      setMoodLogs(moods);
+      setPsychologicalScores(scores);
+      setPlans(plns);
+      setObjectives(objs);
+      setRules(rls);
     } catch (error) {
       console.error("PortfolioDashboard: Failed to load portfolio data", error);
     } finally {
@@ -200,7 +219,6 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
   // Mock metrics for now
   const ytd = 12.4;
   const lastMonth = 4.2;
-  const volatility = 8.4;
 
   const handleSave = async (asset: Asset, position: Position) => {
     let newAssets = [...assets];
@@ -282,256 +300,264 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
     setEditingPositionId(null);
   };
 
-  const handleExport = () => {
-    const headers = [
-      "Asset",
-      "Symbol",
-      "Type",
-      "Shares",
-      "Cost Basis",
-      "Current Price",
-      "Total Value",
-      "Profit/Loss",
-      "Profit %",
-    ];
-    const rows = positions.map((pos) => {
-      const asset = assets.find((a) => a.id === pos.assetId);
-      const value = pos.shares * pos.currentPrice;
-      const profit = (pos.currentPrice - pos.costBasis) * pos.shares;
-      const profitPercent =
-        ((pos.currentPrice - pos.costBasis) / pos.costBasis) * 100;
-      return [
-        asset?.name || "",
-        asset?.symbol || "",
-        asset?.type || "",
-        pos.shares,
-        pos.costBasis,
-        pos.currentPrice,
-        value,
-        profit,
-        profitPercent.toFixed(2),
-      ];
-    });
+  // --- Journal Handlers ---
+  const handleAddJournalEntry = async (entry: any) => {
+    const newEntries = [{ ...entry, id: uuidv4() }, ...journalEntries];
+    setJournalEntries(newEntries);
+    await portfolioService.saveJournalEntries(newEntries);
+  };
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.join(",")),
-    ].join("\n");
+  const handleUpdateJournalEntry = async (entry: any) => {
+    const newEntries = journalEntries.map(e => e.id === entry.id ? entry : e);
+    setJournalEntries(newEntries);
+    await portfolioService.saveJournalEntries(newEntries);
+  };
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `portfolio_export_${new Date().toISOString().split("T")[0]}.csv`,
-    );
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDeleteJournalEntry = async (id: string | number) => {
+    const newEntries = journalEntries.filter(e => e.id !== id);
+    setJournalEntries(newEntries);
+    await portfolioService.saveJournalEntries(newEntries);
+  };
+
+  const handleAddMoodLog = async (log: any) => {
+    const newLogs = [{ ...log, id: uuidv4() }, ...moodLogs];
+    setMoodLogs(newLogs);
+    await portfolioService.saveMoodLogs(newLogs);
+  };
+
+  const handleAddPsychologicalScore = async (score: any) => {
+    const newScores = [{ ...score, id: uuidv4() }, ...psychologicalScores];
+    setPsychologicalScores(newScores);
+    await portfolioService.savePsychologicalScores(newScores);
+  };
+
+  // --- Strategy Handlers ---
+  const handleAddPlan = async (plan: any) => {
+    const newPlans = [{ ...plan, id: uuidv4() }, ...plans];
+    setPlans(newPlans);
+    await portfolioService.savePlans(newPlans);
+  };
+
+  const handleUpdatePlan = async (plan: any) => {
+    const newPlans = plans.map(p => p.id === plan.id ? plan : p);
+    setPlans(newPlans);
+    await portfolioService.savePlans(newPlans);
+  };
+
+  const handleDeletePlan = async (id: string | number) => {
+    const newPlans = plans.filter(p => p.id !== id);
+    setPlans(newPlans);
+    await portfolioService.savePlans(newPlans);
+  };
+
+  const handleAddObjective = async (obj: any) => {
+    const newObjs = [...objectives, { ...obj, id: uuidv4() }];
+    setObjectives(newObjs);
+    await portfolioService.saveObjectives(newObjs);
+  };
+
+  const handleUpdateObjective = async (obj: any) => {
+    const newObjs = objectives.map(o => o.id === obj.id ? obj : o);
+    setObjectives(newObjs);
+    await portfolioService.saveObjectives(newObjs);
+  };
+
+  const handleDeleteObjective = async (id: string | number) => {
+    const newObjs = objectives.filter(o => o.id !== id);
+    setObjectives(newObjs);
+    await portfolioService.saveObjectives(newObjs);
+  };
+
+  const handleAddRule = async (rule: any) => {
+    const newRules = [...rules, { ...rule, id: uuidv4() }];
+    setRules(newRules);
+    await portfolioService.saveRules(newRules);
+  };
+
+  const handleUpdateRule = async (rule: any) => {
+    const newRules = rules.map(r => r.id === rule.id ? rule : r);
+    setRules(newRules);
+    await portfolioService.saveRules(newRules);
+  };
+
+  const handleDeleteRule = async (id: string | number) => {
+    const newRules = rules.filter(r => r.id !== id);
+    setRules(newRules);
+    await portfolioService.saveRules(newRules);
   };
 
   const renderContent = () => {
     switch (activeTab) {
-      case "analytics":
+      case "strategy":
         return (
-          <div className="space-y-10 animate-fadeIn">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <PerformanceChart data={performance} />
-              <AllocationChart assets={assets} positions={positions} />
-            </div>
-            <div className="bg-white dark:bg-pplx-card p-8 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm">
-              <h3 className="text-xl font-black text-gray-900 dark:text-zinc-100 mb-6 tracking-tight">
-                Risk Analysis
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="p-6 bg-gray-50 dark:bg-pplx-secondary rounded-2xl border border-gray-100 dark:border-zinc-800">
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-[0.2em] block mb-2">
-                    Sharpe Ratio
-                  </span>
-                  <div className="text-3xl font-black text-zinc-900 dark:text-zinc-100 tracking-tighter">
-                    1.84
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-2 font-medium">
-                    Excellent risk-adjusted return
-                  </p>
-                </div>
-                <div className="p-6 bg-gray-50 dark:bg-pplx-secondary rounded-2xl border border-gray-100 dark:border-zinc-800">
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-[0.2em] block mb-2">
-                    Max Drawdown
-                  </span>
-                  <div className="text-3xl font-black text-rose-600 dark:text-rose-400 tracking-tighter">
-                    -12.4%
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-2 font-medium">
-                    Last 12 months peak-to-trough
-                  </p>
-                </div>
-                <div className="p-6 bg-gray-50 dark:bg-pplx-secondary rounded-2xl border border-gray-100 dark:border-zinc-800">
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-[0.2em] block mb-2">
-                    Beta
-                  </span>
-                  <div className="text-3xl font-black text-gray-900 dark:text-zinc-100 tracking-tighter">
-                    0.85
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-2 font-medium">
-                    Lower volatility than S&P 500
-                  </p>
-                </div>
-              </div>
-            </div>
+          <div className="animate-fadeIn">
+            <StrategyComponent
+              positions={positions.map(p => ({
+                id: p.id,
+                name: assets.find(a => a.id === p.assetId)?.name || 'Unknown',
+                type: 'buy', // Default for now
+                category: assets.find(a => a.id === p.assetId)?.type || 'General',
+                entryPrice: p.avgCost,
+                targetPrice: p.currentPrice * 1.2, // Mock target
+                stopLoss: p.avgCost * 0.9, // Mock stop loss
+                riskRewardRatio: '1:2',
+                strategy: 'HODL',
+                status: 'in-progress',
+                dateAdded: new Date(p.lastUpdate).toISOString().split('T')[0]
+              }))}
+              hasDock={hasDock}
+              onAddPosition={async (posData) => {
+                const assetId = uuidv4();
+                const posId = uuidv4();
+                const newAsset: Asset = {
+                  id: assetId,
+                  name: posData.name,
+                  symbol: posData.name.substring(0, 4).toUpperCase(),
+                  type: (posData.category as any) || 'Equity',
+                  sector: '',
+                  emoji: '📈',
+                  color: '#6366f1'
+                };
+                const newPos: Position = {
+                  id: posId,
+                  assetId,
+                  shares: 0,
+                  avgCost: posData.entryPrice,
+                  costBasis: 0,
+                  currentPrice: posData.entryPrice,
+                  lastUpdate: Date.now(),
+                  targetPrice: posData.targetPrice,
+                  stopLoss: posData.stopLoss,
+                  riskRewardRatio: posData.riskRewardRatio,
+                  strategy: posData.strategy,
+                  status: posData.status,
+                  type: posData.type
+                };
+                const newAssets = [...assets, newAsset];
+                const newPositions = [...positions, newPos];
+                setAssets(newAssets);
+                setPositions(newPositions);
+                await portfolioService.saveAssets(newAssets);
+                await portfolioService.savePositions(newPositions);
+              }}
+              onUpdatePosition={async (posData) => {
+                const existingPos = positions.find(p => p.id === posData.id);
+                if (!existingPos) return;
+                const newPositions = positions.map(p => p.id === posData.id ? {
+                  ...p,
+                  avgCost: posData.entryPrice,
+                  targetPrice: posData.targetPrice,
+                  stopLoss: posData.stopLoss,
+                  riskRewardRatio: posData.riskRewardRatio,
+                  strategy: posData.strategy,
+                  status: posData.status,
+                  type: posData.type,
+                  lastUpdate: Date.now()
+                } : p);
+                setPositions(newPositions);
+                await portfolioService.savePositions(newPositions);
+              }}
+              onDeletePosition={(id) => handleDelete(id as string)}
+              plans={plans}
+              onAddPlan={handleAddPlan}
+              onUpdatePlan={handleUpdatePlan}
+              onDeletePlan={handleDeletePlan}
+              objectives={objectives}
+              onAddObjective={handleAddObjective}
+              onUpdateObjective={handleUpdateObjective}
+              onDeleteObjective={handleDeleteObjective}
+              rules={rules}
+              onAddRule={handleAddRule}
+              onUpdateRule={handleUpdateRule}
+              onDeleteRule={handleDeleteRule}
+              latestPsychologicalScore={psychologicalScores[0]}
+              onNavigate={(tab) => setActiveTab(tab as any)}
+            />
           </div>
         );
-      case "markets":
+      case "journal":
         return (
-          <div className="space-y-10 animate-fadeIn">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                {
-                  name: "S&P 500",
-                  price: "5,137.08",
-                  change: "+1.2%",
-                  color: "emerald",
-                },
-                {
-                  name: "Bitcoin",
-                  price: "$64,231.40",
-                  change: "+4.5%",
-                  color: "emerald",
-                },
-                {
-                  name: "Gold",
-                  price: "$2,114.30",
-                  change: "-0.3%",
-                  color: "rose",
-                },
-              ].map((m, i) => (
-                <div
-                  key={i}
-                  className="bg-white dark:bg-pplx-card p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm flex items-center justify-between"
-                >
-                  <div>
-                    <div className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-2">
-                      {m.name}
-                    </div>
-                    <div className="text-xl font-black text-gray-900 dark:text-zinc-100 tracking-tight">
-                      {m.price}
-                    </div>
-                  </div>
-                  <div
-                    className={`px-3 py-1 rounded-lg text-xs font-black ${m.change.startsWith("+") ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400"}`}
-                  >
-                    {m.change}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="bg-white dark:bg-pplx-card p-8 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm">
-              <h3 className="text-xl font-black text-gray-900 dark:text-zinc-100 mb-6 tracking-tight">
-                Market News
-              </h3>
-              <div className="space-y-6">
-                {[
-                  {
-                    title: "Fed Signals Potential Rate Cuts Later This Year",
-                    time: "2h ago",
-                    source: "Financial Times",
-                  },
-                  {
-                    title: "Tech Giants Rally as AI Demand Surges",
-                    time: "4h ago",
-                    source: "Bloomberg",
-                  },
-                  {
-                    title: "Crypto Markets Hit New Yearly Highs",
-                    time: "6h ago",
-                    source: "CoinDesk",
-                  },
-                ].map((n, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-6 group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 bg-gray-50 dark:bg-pplx-secondary rounded-xl flex items-center justify-center text-gray-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors border border-transparent group-hover:border-gray-200 dark:group-hover:border-pplx-hover">
-                      <RefreshCcw size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-black text-gray-900 dark:text-zinc-100 group-hover:text-zinc-900 dark:group-hover:text-zinc-400 transition-colors tracking-tight">
-                        {n.title}
-                      </h4>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                          {n.source}
-                        </span>
-                        <span className="text-[10px] text-gray-300 dark:text-zinc-800">
-                          •
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-medium">
-                          {n.time}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="animate-fadeIn">
+            <Journal
+              entries={journalEntries}
+              hasDock={hasDock}
+              onAddEntry={handleAddJournalEntry}
+              onUpdateEntry={handleUpdateJournalEntry}
+              onDeleteEntry={handleDeleteJournalEntry}
+              moodLogs={moodLogs}
+              onAddMoodLog={handleAddMoodLog}
+              psychologicalScores={psychologicalScores}
+              onAddPsychologicalScore={handleAddPsychologicalScore}
+              behavioralMetrics={{
+                fomoScore: journalEntries.filter(e => e.tags.includes('fomo')).length * 10,
+                fudScore: journalEntries.filter(e => e.tags.includes('fud')).length * 10,
+                disciplineScore: 85,
+                emotionalDecisions: journalEntries.filter(e => e.tags.includes('emotion')).length,
+                logicalDecisions: journalEntries.filter(e => e.tags.includes('decision')).length,
+              }}
+            />
+          </div>
+        );
+      case "research":
+        return (
+          <div className="animate-fadeIn">
+            <Research hasDock={hasDock} />
           </div>
         );
       case "settings":
         return (
           <div className="max-w-3xl mx-auto space-y-8 animate-fadeIn py-8">
-            <div className="bg-white dark:bg-pplx-card p-8 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm">
-              <h3 className="text-xl font-black text-gray-900 dark:text-zinc-100 mb-6 tracking-tight">
+            <div className="bg-white dark:bg-pplx-card p-8 rounded-[32px] border border-gray-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-zinc-100 mb-6 tracking-tight">
                 General Settings
               </h3>
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-base font-black text-gray-900 dark:text-zinc-100 tracking-tight">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-zinc-100 tracking-tight">
                       Base Currency
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-zinc-400 font-medium">
+                    <div className="text-xs text-gray-500 dark:text-zinc-400 font-medium mt-0.5">
                       Choose your primary currency for reporting
                     </div>
                   </div>
-                  <select className="bg-gray-50 dark:bg-pplx-secondary border border-gray-100 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-500 transition-all">
+                  <select className="bg-gray-50 dark:bg-zinc-900/50 border border-gray-200/50 dark:border-zinc-700/50 rounded-xl px-4 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-zinc-900/5 dark:focus:ring-white/10 transition-all">
                     <option value="EUR">EUR (€)</option>
                     <option value="USD">USD ($)</option>
                     <option value="GBP">GBP (£)</option>
                   </select>
                 </div>
-                <div className="h-px bg-gray-100 dark:bg-zinc-800" />
+                <div className="h-px bg-gray-100 dark:bg-zinc-800/50" />
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-base font-black text-gray-900 dark:text-zinc-100 tracking-tight">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-zinc-100 tracking-tight">
                       Dark Mode
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-zinc-400 font-medium">
+                    <div className="text-xs text-gray-500 dark:text-zinc-400 font-medium mt-0.5">
                       Toggle between light and dark themes
                     </div>
                   </div>
                   <div className="w-12 h-6 bg-zinc-900 dark:bg-zinc-100 rounded-full relative cursor-pointer shadow-inner">
-                    <div className="absolute right-1 top-1 w-4 h-4 bg-white dark:bg-pplx-primary rounded-full shadow-lg transition-all" />
+                    <div className="absolute right-1 top-1 w-4 h-4 bg-white dark:bg-pplx-primary rounded-full shadow-sm transition-all" />
                   </div>
                 </div>
               </div>
             </div>
-            <div className="bg-white dark:bg-pplx-card p-8 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm">
-              <h3 className="text-xl font-black text-gray-900 dark:text-zinc-100 mb-6 tracking-tight">
+            <div className="bg-white dark:bg-pplx-card p-8 rounded-[32px] border border-gray-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-zinc-100 mb-6 tracking-tight">
                 Data Management
               </h3>
               <div className="space-y-4">
-                <button className="w-full py-4 px-6 bg-gray-50 dark:bg-pplx-secondary hover:bg-gray-100 dark:hover:bg-pplx-hover rounded-xl text-sm font-black text-gray-900 dark:text-zinc-100 transition-all text-left flex items-center justify-between border border-transparent hover:border-gray-200 dark:hover:border-zinc-800">
+                <button className="w-full py-4 px-6 bg-gray-50 dark:bg-zinc-900/30 hover:bg-gray-100 dark:hover:bg-zinc-800/50 rounded-2xl text-sm font-semibold text-gray-900 dark:text-zinc-100 transition-all text-left flex items-center justify-between border border-gray-100 dark:border-zinc-800/50 hover:border-gray-200 dark:hover:border-zinc-700/50">
                   <span>Backup Data</span>
-                  <Download size={20} className="text-gray-400" />
+                  <Download size={18} className="text-gray-400 dark:text-zinc-500" />
                 </button>
                 <button
                   onClick={handleReset}
-                  className="w-full py-4 px-6 bg-rose-50 dark:bg-rose-900/10 hover:bg-rose-100 dark:hover:bg-rose-900/20 rounded-xl text-sm font-black text-rose-600 dark:text-rose-400 transition-all text-left flex items-center justify-between border border-transparent hover:border-rose-200 dark:hover:border-rose-800"
+                  className="w-full py-4 px-6 bg-rose-50 dark:bg-rose-500/5 hover:bg-rose-100 dark:hover:bg-rose-500/10 rounded-2xl text-sm font-semibold text-rose-600 dark:text-rose-400 transition-all text-left flex items-center justify-between border border-rose-100 dark:border-rose-500/10 hover:border-rose-200 dark:hover:border-rose-500/20"
                 >
                   <span>Reset All Data</span>
-                  <RefreshCcw size={20} />
+                  <RefreshCcw size={18} />
                 </button>
               </div>
             </div>
@@ -544,33 +570,49 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
               totalValue={totalValue}
               ytd={ytd}
               lastMonth={lastMonth}
-              volatility={volatility}
               onNewEntry={() => {
                 setEditingPositionId(null);
                 setIsModalOpen(true);
               }}
-              onExport={handleExport}
-            />
-
-            <DashboardControls
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              filterType={filterType}
-              setFilterType={setFilterType}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10 mt-6 md:mt-10">
-              {/* Main Content (Left 2/3) */}
-              <div className="lg:col-span-2 space-y-6 md:space-y-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10 mt-4 md:mt-10">
+              {/* Allocation Chart - Always First */}
+              <div className="lg:col-span-2 order-1">
                 <AllocationChart assets={assets} positions={positions} />
-                <PerformanceChart data={performance} />
               </div>
 
-              {/* Sidebar (Right 1/3) */}
-              <div className="space-y-6 md:space-y-10">
-                <StrategyList strategies={strategies} />
+              {/* Asset List Section - Second on Mobile, Sidebar on Desktop */}
+              <div className="lg:col-span-1 order-2 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 bg-gray-50 dark:bg-pplx-secondary p-1 rounded-xl border border-gray-100 dark:border-zinc-800">
+                    {["All", "Stock", "Crypto", "Cash"].map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setFilterType(type)}
+                        className={`px-2 py-1 text-[9px] font-bold rounded-lg transition-all whitespace-nowrap ${
+                          filterType === type
+                            ? "bg-white dark:bg-pplx-card text-zinc-900 dark:text-zinc-100 shadow-sm"
+                            : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-gray-50 dark:bg-pplx-secondary p-1 rounded-xl border border-gray-100 dark:border-zinc-800 hidden sm:flex">
+                    <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white dark:bg-pplx-card text-zinc-900 dark:text-zinc-100 shadow-sm" : "text-gray-400 hover:text-gray-900 dark:hover:text-zinc-100"}`}>
+                      <LayoutGrid size={14} />
+                    </button>
+                    <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white dark:bg-pplx-card text-zinc-900 dark:text-zinc-100 shadow-sm" : "text-gray-400 hover:text-gray-900 dark:hover:text-zinc-100"}`}>
+                      <ListIcon size={14} />
+                    </button>
+                  </div>
+                </div>
+
                 <AssetList
                   assets={assets}
                   positions={filteredAndSortedPositions as any}
@@ -580,6 +622,15 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
                   }}
                   viewMode={viewMode}
                 />
+              </div>
+
+              {/* Performance Chart - Third on Mobile, Main Column on Desktop */}
+              <div className="lg:col-span-3 order-3 space-y-6">
+                <PortfolioValueChart 
+                  data={historicalData} 
+                  currentTotalValue={totalValue} 
+                />
+                <PerformanceChart data={performance} />
               </div>
             </div>
           </>
@@ -619,19 +670,17 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
           __html: JSON.stringify({
             assets,
             positions,
-            strategies,
             performance,
           }),
         }}
       />
       <PortfolioHeader
-        onClose={onClose}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         hasDock={hasDock}
       />
 
-      <main className={`w-full p-4 md:p-12 ${hasDock ? "pb-40" : "pb-32"}`}>
+      <main className={`w-full p-3 md:p-12 ${hasDock ? "pb-40" : "pb-32"}`}>
         <div className="max-w-[1600px] mx-auto">{renderContent()}</div>
       </main>
 

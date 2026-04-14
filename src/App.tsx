@@ -60,7 +60,6 @@ import {
   FolderInput,
   Undo2,
   Brain,
-  ArrowRight,
   RefreshCw,
   Share2,
   FolderPlus,
@@ -68,7 +67,6 @@ import {
   Check,
   ArrowDown,
   MessageSquare,
-  ImageIcon,
   Plus,
 } from "lucide-react";
 import { db, STORES } from "./services/db";
@@ -257,6 +255,14 @@ function App() {
     null,
   );
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedCitations, setExpandedCitations] = useState<Record<string, boolean>>({});
+
+  const toggleCitations = (msgId: string) => {
+    setExpandedCitations((prev) => ({
+      ...prev,
+      [msgId]: !prev[msgId],
+    }));
+  };
 
   // Tab & Navigation State
   const [openNoteIds, setOpenNoteIds] = useState<string[]>(() => {
@@ -1916,7 +1922,6 @@ function App() {
                           content: response.text,
                           citations: response.citations,
                           relatedQuestions: response.relatedQuestions,
-                          searchImages: response.searchImages,
                           isThinking: false,
                           reasoning: response.reasoning, // Capture reasoning
                         }
@@ -1980,6 +1985,65 @@ function App() {
         }),
       );
     }
+  };
+
+  const handleAddMessage = (role: Role, content: string, threadIdOverride?: string) => {
+    let threadId = threadIdOverride || activeThreadId;
+    
+    if (!threadId) {
+      const newThread: Thread = {
+        id: generateId(),
+        title: "Voice Conversation",
+        messages: [],
+        updatedAt: Date.now(),
+        spaceId: activeSpaceId || undefined,
+      };
+      setThreads((prev) => [newThread, ...prev]);
+      threadId = newThread.id;
+      setActiveThreadId(threadId);
+      db.set(STORES.THREADS, newThread.id, newThread);
+    }
+
+    const id = generateId();
+    const newMsg: Message = {
+      id,
+      role,
+      content,
+      timestamp: Date.now(),
+    };
+
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === threadId
+          ? {
+              ...t,
+              messages: [...t.messages, newMsg],
+              updatedAt: Date.now(),
+            }
+          : t,
+      ),
+    );
+    setTimeout(scrollToBottom, 50);
+    return id;
+  };
+
+  const handleUpdateMessage = (id: string, content: string, threadIdOverride?: string) => {
+    const threadId = threadIdOverride || activeThreadId;
+    if (!threadId) return;
+
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === threadId
+          ? {
+              ...t,
+              messages: t.messages.map((m) =>
+                m.id === id ? { ...m, content } : m
+              ),
+              updatedAt: Date.now(),
+            }
+          : t,
+      ),
+    );
   };
 
   const handleSendMessage = async (
@@ -2334,7 +2398,6 @@ function App() {
                           content: response.text, // Final clean text (related questions json removed)
                           citations: response.citations,
                           relatedQuestions: response.relatedQuestions,
-                          searchImages: response.searchImages,
                           isThinking: false,
                           reasoning: response.reasoning, // Capture reasoning
                         }
@@ -2900,6 +2963,15 @@ function App() {
                       </>
                     )}
                   </button>
+                  {activeNote?.tags?.includes("portfolio") && (
+                    <button
+                      onClick={() => setActiveNoteId(null)}
+                      className="p-1.5 rounded text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-all duration-150 ml-1"
+                      title="Close Portfolio"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -3029,7 +3101,6 @@ function App() {
             {activeNote?.tags?.includes("portfolio") ? (
               <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar">
                 <PortfolioDashboard
-                  onClose={() => setActiveNoteId(null)}
                   hasDock={settings.enableMobileDock && window.innerWidth < 640}
                 />
               </div>
@@ -3092,7 +3163,7 @@ function App() {
           </div>
         ) : viewToRender === "portfolio" ? (
           <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar">
-            <PortfolioDashboard onClose={() => setActiveView("chat")} />
+            <PortfolioDashboard />
           </div>
         ) : (
           <>
@@ -3445,35 +3516,6 @@ function App() {
                             </div>
                           )}
 
-                          {/* Search Images Grid */}
-                          {msg.role === Role.MODEL &&
-                            msg.searchImages &&
-                            msg.searchImages.length > 0 && (
-                              <div className="mb-4 mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 w-full">
-                                {msg.searchImages
-                                  .slice(0, 4)
-                                  .map((imgUrl, i) => (
-                                    <div
-                                      key={i}
-                                      className="relative aspect-video rounded-lg overflow-hidden border border-pplx-border group cursor-pointer bg-pplx-secondary"
-                                    >
-                                      <img
-                                        src={imgUrl}
-                                        alt={`Search Result ${i}`}
-                                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-150"
-                                        loading="lazy"
-                                      />
-                                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <ImageIcon
-                                          size={20}
-                                          className="text-white drop-shadow-lg"
-                                        />
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
-
                           {/* Text Content Bubble OR Edit Mode */}
                           {editingMessageId === msg.id ? (
                             <div className="w-full bg-pplx-secondary border border-pplx-border rounded-2xl p-4 mt-1 animate-fadeIn">
@@ -3516,15 +3558,13 @@ function App() {
                             </div>
                           )}
 
-                          {/* Sources - MODIFIED: Compact Grid instead of Flex List (30% Smaller) */}
+                          {/* Sources - MODIFIED: Hidden behind a toggle button */}
                           {msg.role === Role.MODEL &&
                             msg.citations &&
-                            msg.citations.length > 0 && (
+                            msg.citations.length > 0 &&
+                            expandedCitations[msg.id] && (
                               <div className="mt-2 w-full pt-2">
-                                <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-pplx-muted mb-1.5 tracking-widest opacity-80">
-                                  <BookOpen size={9} /> <span>Sources</span>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                                   {msg.citations.map((cit, idx) => (
                                     <a
                                       key={idx}
@@ -3557,7 +3597,23 @@ function App() {
                           {/* AI FOOTER ACTIONS (Regenerate, Copy, Share, Add to Workspace) */}
                           {msg.role === Role.MODEL && !msg.isThinking && (
                             // UPDATED: Added flex-nowrap and mobile optimizations for button layout
-                            <div className="flex items-center justify-between md:justify-start gap-1 md:gap-2 mt-4 border-t border-pplx-border/30 pt-2 w-full flex-nowrap">
+                            <div className="flex items-center justify-between md:justify-start gap-1 md:gap-2 mt-4 border-t border-pplx-border/30 pt-2 w-full flex-nowrap overflow-x-auto no-scrollbar">
+                              {msg.citations && msg.citations.length > 0 && (
+                                <button
+                                  onClick={() => toggleCitations(msg.id)}
+                                  className={`flex items-center justify-center gap-1.5 px-2 md:px-2.5 py-1.5 text-xs transition-colors flex-1 md:flex-none rounded-lg border ${expandedCitations[msg.id] ? "bg-pplx-accent/10 border-pplx-accent/30 text-pplx-accent" : "text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover border-transparent"}`}
+                                  title="Show Sources"
+                                >
+                                  <BookOpen
+                                    size={13}
+                                    className={`shrink-0 ${expandedCitations[msg.id] ? "text-pplx-accent" : ""}`}
+                                  />
+                                  <span className="font-bold text-[10px] md:text-xs truncate uppercase tracking-tight">
+                                    Surse
+                                  </span>
+                                </button>
+                              )}
+
                               <button
                                 onClick={() => handleRegenerate(msg.id)}
                                 className="flex items-center justify-center gap-1.5 px-2 md:px-2.5 py-1.5 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors flex-1 md:flex-none"
@@ -3667,12 +3723,15 @@ function App() {
                             </div>
                           )}
 
-                          {/* Compact Related Questions */}
+                          {/* Compact Related Questions - Clickable Text */}
                           {msg.role === Role.MODEL &&
                             msg.relatedQuestions &&
                             msg.relatedQuestions.length > 0 && (
                               <div className="mt-4 w-full pt-2">
-                                <div className="flex flex-col gap-1">
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-[11px] font-bold uppercase text-pplx-muted tracking-wider mb-1 opacity-70">
+                                    Întrebări sugerate
+                                  </span>
                                   {msg.relatedQuestions.map((q, i) => (
                                     <button
                                       key={i}
@@ -3684,15 +3743,9 @@ function App() {
                                           [],
                                         )
                                       }
-                                      className="flex items-center justify-between w-full py-1.5 px-1 text-left text-[13px] italic text-pplx-muted hover:text-pplx-text transition-colors group relative pl-3 border-l-2 border-transparent hover:border-pplx-accent/50"
+                                      className="text-[13px] italic text-pplx-muted hover:text-pplx-text transition-colors text-left leading-relaxed"
                                     >
-                                      <div className="flex items-center gap-2 truncate">
-                                        <span className="truncate">{q}</span>
-                                      </div>
-                                      <ArrowRight
-                                        size={14}
-                                        className="text-pplx-muted opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-150"
-                                      />
+                                      {q}
                                     </button>
                                   ))}
                                 </div>
@@ -3745,6 +3798,9 @@ function App() {
                   <InputArea
                     key={activeThreadId || "home"}
                     onSendMessage={handleSendMessage}
+                    onAddMessage={handleAddMessage}
+                    onUpdateMessage={handleUpdateMessage}
+                    onSelectView={setActiveView}
                     onStop={handleStopGeneration}
                     isThinking={isThinking}
                     settings={settings}
@@ -3761,6 +3817,7 @@ function App() {
                     setIsAgentProMode={setInputIsAgentProMode}
                     isLongThinking={inputIsLongThinking}
                     setIsLongThinking={setInputIsLongThinking}
+                    activeThread={activeThread}
                   />
                 </div>
               </div>

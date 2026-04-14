@@ -1273,7 +1273,6 @@ export class LLMService {
     text: string;
     citations: Citation[];
     relatedQuestions: string[];
-    searchImages: string[];
     pendingAction?: PendingAction;
     reasoning?: string;
   }> {
@@ -1426,7 +1425,6 @@ export class LLMService {
     // Stage 2: Executor
     let researchContext = "";
     let finalCitations: Citation[] = [];
-    let finalSearchImages: string[] = [];
     let pendingAction: PendingAction | undefined = undefined;
 
     if (plan.steps && plan.steps.length > 0) {
@@ -1482,10 +1480,6 @@ export class LLMService {
         finalCitations = [
           ...finalCitations,
           ...(researchResult.citations || []),
-        ];
-        finalSearchImages = [
-          ...finalSearchImages,
-          ...(researchResult.searchImages || []),
         ];
         if (researchResult.pendingAction)
           pendingAction = researchResult.pendingAction;
@@ -1570,10 +1564,6 @@ export class LLMService {
           ...finalCitations,
           ...(researchResult.citations || []),
         ];
-        finalSearchImages = [
-          ...finalSearchImages,
-          ...(researchResult.searchImages || []),
-        ];
         if (researchResult.pendingAction)
           pendingAction = researchResult.pendingAction;
       } else {
@@ -1590,7 +1580,6 @@ export class LLMService {
         text: "Oprit de utilizator.",
         citations: [],
         relatedQuestions: [],
-        searchImages: [],
       };
     }
 
@@ -1697,7 +1686,6 @@ export class LLMService {
     finalResult.citations = Array.from(
       new Map(finalCitations.map((c) => [c.uri, c])).values(),
     );
-    finalResult.searchImages = Array.from(new Set(finalSearchImages));
     if (pendingAction) finalResult.pendingAction = pendingAction;
     finalResult.reasoning =
       accumulatedReasoning + (finalResult.reasoning || "");
@@ -1741,7 +1729,6 @@ export class LLMService {
     text: string;
     citations: Citation[];
     relatedQuestions: string[];
-    searchImages: string[];
     pendingAction?: PendingAction;
     reasoning?: string;
   }> {
@@ -1846,14 +1833,12 @@ export class LLMService {
       text: string;
       citations: Citation[];
       relatedQuestions: string[];
-      searchImages: string[];
       pendingAction?: PendingAction;
       reasoning?: string;
     } = {
       text: "",
       citations: [] as Citation[],
       relatedQuestions: [] as string[],
-      searchImages: [] as string[],
     };
 
     // 4. Route to Provider
@@ -1883,7 +1868,6 @@ export class LLMService {
         text: localResult.text,
         citations: [],
         relatedQuestions: [],
-        searchImages: [],
       };
     } else if (provider === ModelProvider.GEMINI) {
       result = await this.generateGeminiResponse(
@@ -1969,19 +1953,19 @@ export class LLMService {
     cleanText: string;
     questions: string[];
   } {
-    const jsonBlockRegex =
-      /```json\s*(\[\s*".*?"\s*(?:,\s*".*?"\s*)*\])\s*```$/s;
-    const match = text.match(jsonBlockRegex);
+    // Look for "Întrebări sugerate:" or "Related Questions:" at the end
+    const markerRegex = /(?:Întrebări sugerate:|Related Questions:)\s*\n?((?:[-*•]\s*.*(?:\n|$)){1,5})/i;
+    const match = text.match(markerRegex);
     let questions: string[] = [];
     let cleanText = text;
 
     if (match) {
-      try {
-        questions = JSON.parse(match[1]);
-        cleanText = text.replace(match[0], "").trim();
-      } catch (e) {
-        // Failed to parse
-      }
+      const questionsText = match[1];
+      questions = questionsText
+        .split("\n")
+        .map((q) => q.replace(/^[-*•]\s*/, "").trim())
+        .filter((q) => q.length > 0);
+      cleanText = text.replace(match[0], "").trim();
     }
     return { cleanText, questions };
   }
@@ -2100,7 +2084,6 @@ export class LLMService {
     text: string;
     citations: Citation[];
     relatedQuestions: string[];
-    searchImages: string[];
     pendingAction?: PendingAction;
     reasoning?: string;
   }> {
@@ -2113,7 +2096,6 @@ export class LLMService {
           text: "Error: Invalid Gemini API Key.",
           citations: [],
           relatedQuestions: [],
-          searchImages: [],
         };
       }
     }
@@ -2123,7 +2105,6 @@ export class LLMService {
         text: "Eroare: API Key pentru Gemini nu este configurat.",
         citations: [],
         relatedQuestions: [],
-        searchImages: [],
       };
     }
 
@@ -2232,7 +2213,6 @@ export class LLMService {
 
       let finalResponseText = "";
       let citations: Citation[] = [];
-      let searchImages: string[] = [];
       let pendingAction: PendingAction | undefined = undefined;
       let reasoning = "";
       let turns = 0;
@@ -2769,7 +2749,6 @@ export class LLMService {
           new Map(citations.map((c) => [c.uri, c])).values(),
         ),
         relatedQuestions: questions,
-        searchImages: searchImages,
         pendingAction,
         reasoning,
       };
@@ -2779,7 +2758,6 @@ export class LLMService {
         text: `Error: ${(error as any).message || "Request Failed"}`,
         citations: [],
         relatedQuestions: [],
-        searchImages: [],
       };
     }
   }
@@ -2804,7 +2782,6 @@ export class LLMService {
     text: string;
     citations: Citation[];
     relatedQuestions: string[];
-    searchImages: string[];
     pendingAction?: PendingAction;
     reasoning?: string;
   }> {
@@ -3481,7 +3458,6 @@ export class LLMService {
             text: "Oprit de utilizator.",
             citations: [],
             relatedQuestions: [],
-            searchImages: [],
           };
         }
         console.error("Generic API Loop Error:", error);
@@ -3504,7 +3480,6 @@ export class LLMService {
           text: `⚠️ **Eroare:**\n\n${errorMsg}`,
           citations: [],
           relatedQuestions: [],
-          searchImages: [],
         };
       }
     } // End While
@@ -3531,13 +3506,11 @@ export class LLMService {
     const uniqueCitations = Array.from(
       new Map(collectedCitations.map((item) => [item.uri, item])).values(),
     );
-    const uniqueImages = Array.from(new Set(collectedImages));
 
     return {
       text: finalContent || "",
       citations: uniqueCitations,
       relatedQuestions: extracted.questions,
-      searchImages: uniqueImages,
       pendingAction,
       reasoning: finalReasoning,
     };
@@ -3864,7 +3837,7 @@ To display a professional portfolio dashboard widget, use:
 
     // Instruction to generate related questions
     parts.push(
-      '\n\nIMPORTANT: After your main response (and after </thinking> if applicable), generate 3 relevant follow-up questions. Return them as a JSON array in a markdown code block at the very end, e.g., ```json\n["Q1?", "Q2?"]\n```.',
+      '\n\nIMPORTANT: After your main response (and after </thinking> if applicable), generate 3 relevant follow-up questions. Format them as a simple list at the very end, starting with "Întrebări sugerate:". Example:\nÎntrebări sugerate:\n- Question 1?\n- Question 2?\n- Question 3?',
     );
 
     return parts.join("\n");

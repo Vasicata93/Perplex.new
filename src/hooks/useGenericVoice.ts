@@ -1,0 +1,184 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Thread, Role } from '../types';
+
+interface UseGenericVoiceProps {
+  onSendMessage: (text: string) => void;
+  isThinking: boolean;
+  activeThread?: Thread;
+  enabled: boolean;
+}
+
+export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabled }: UseGenericVoiceProps) => {
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [volume, setVolume] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const recognitionRef = useRef<any>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const isThinkingRef = useRef(isThinking);
+  const enabledRef = useRef(enabled);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      synthRef.current = window.speechSynthesis;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = 'en-US'; // Default, could be mapped to settings.interfaceLanguage
+
+        recognitionRef.current.onresult = (event: any) => {
+          let currentTranscript = '';
+          let isFinal = false;
+          
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            currentTranscript += event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              isFinal = true;
+            }
+          }
+          
+          setTranscript(currentTranscript);
+
+          if (isFinal && currentTranscript.trim()) {
+            onSendMessage(currentTranscript.trim());
+            setTranscript('');
+            setIsListening(false);
+          }
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          if (event.error !== 'no-speech') {
+            console.error('Speech recognition error', event.error);
+            if (event.error === 'not-allowed') {
+              setError("Microphone access denied. Please allow permissions in browser settings (check if you are in Private/Incognito mode).");
+            } else {
+              setError(`Speech recognition error: ${event.error}`);
+            }
+            setIsListening(false);
+          }
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+          // Auto-restart if still enabled, not thinking, and not speaking
+          if (enabledRef.current && !isThinkingRef.current && !synthRef.current?.speaking) {
+             try {
+               recognitionRef.current?.start();
+               setIsListening(true);
+             } catch (e) {}
+          }
+        };
+      } else {
+        setError("Speech Recognition API is not supported in this browser.");
+      }
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if (synthRef.current) {
+        synthRef.current.cancel();
+      }
+    };
+  }, [onSendMessage]);
+
+  // Handle TTS when thinking stops
+  useEffect(() => {
+    const wasThinking = isThinkingRef.current;
+    isThinkingRef.current = isThinking;
+
+    if (wasThinking && !isThinking && enabled && activeThread) {
+      // Model just finished generating
+      const messages = activeThread.messages;
+      const lastMessage = messages[messages.length - 1];
+      
+      if (lastMessage && lastMessage.role === Role.MODEL && lastMessage.content) {
+        speak(lastMessage.content);
+      } else if (enabled) {
+        startListening();
+      }
+    }
+  }, [isThinking, activeThread, enabled]);
+
+  const speak = useCallback((text: string) => {
+    if (!synthRef.current) return;
+    
+    // Clean up markdown before speaking
+    const cleanText = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
+    
+    setIsSpeaking(true);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (enabledRef.current) {
+        startListening();
+      }
+    };
+    
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      if (enabledRef.current) {
+        startListening();
+      }
+    };
+
+    synthRef.current.speak(utterance);
+  }, []);
+
+  const startListening = useCallback(() => {
+    if (recognitionRef.current && !synthRef.current?.speaking && !isThinkingRef.current) {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        setError(null);
+      } catch (e) {
+        // Already started
+      }
+    }
+  }, []);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+    if (synthRef.current) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
+    }
+  }, []);
+
+  // Fake volume for visualizer
+  useEffect(() => {
+    let interval: any;
+    if (isListening || isSpeaking) {
+      interval = setInterval(() => {
+        setVolume(Math.random() * 0.4 + 0.1);
+      }, 100);
+    } else {
+      setVolume(0);
+    }
+    return () => clearInterval(interval);
+  }, [isListening, isSpeaking]);
+
+  return {
+    startListening,
+    stopListening,
+    isConnected: isListening || isSpeaking || isThinking,
+    isSpeaking,
+    transcript,
+    volume,
+    error
+  };
+};
