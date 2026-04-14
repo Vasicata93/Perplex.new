@@ -210,7 +210,13 @@ registerProcessor('audio-processor', AudioProcessor);
 
     } catch (err: any) {
       console.error('LiveVoice: Failed to connect:', err);
-      setError(err.message || 'Failed to connect to Live API');
+      let errorMessage = err.message || 'Failed to connect to Live API';
+      if (err.name === 'NotFoundError' || errorMessage.includes('Requested device not found')) {
+        errorMessage = 'Microphone not found. Please connect a microphone and try again.';
+      } else if (err.name === 'NotAllowedError' || errorMessage.includes('Permission denied')) {
+        errorMessage = 'Microphone access denied. Please allow permissions in browser settings.';
+      }
+      setError(errorMessage);
       disconnect();
     }
   }, [apiKey, onTranscript]);

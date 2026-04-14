@@ -19,9 +19,14 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const isThinkingRef = useRef(isThinking);
   const enabledRef = useRef(enabled);
+  const hasFatalErrorRef = useRef(false);
 
   useEffect(() => {
     enabledRef.current = enabled;
+    if (!enabled) {
+      hasFatalErrorRef.current = false;
+      setError(null);
+    }
   }, [enabled]);
 
   useEffect(() => {
@@ -60,6 +65,10 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
             console.error('Speech recognition error', event.error);
             if (event.error === 'not-allowed') {
               setError("Microphone access denied. Please allow permissions in browser settings (check if you are in Private/Incognito mode).");
+              hasFatalErrorRef.current = true;
+            } else if (event.error === 'audio-capture') {
+              setError("No microphone found. Please ensure a microphone is connected.");
+              hasFatalErrorRef.current = true;
             } else {
               setError(`Speech recognition error: ${event.error}`);
             }
@@ -69,8 +78,8 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
 
         recognitionRef.current.onend = () => {
           setIsListening(false);
-          // Auto-restart if still enabled, not thinking, and not speaking
-          if (enabledRef.current && !isThinkingRef.current && !synthRef.current?.speaking) {
+          // Auto-restart if still enabled, not thinking, not speaking, and no fatal error
+          if (enabledRef.current && !isThinkingRef.current && !synthRef.current?.speaking && !hasFatalErrorRef.current) {
              try {
                recognitionRef.current?.start();
                setIsListening(true);
