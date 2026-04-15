@@ -37,10 +37,15 @@ import {
   Camera,
   ChevronRight,
   ArrowLeft,
-  Flame,
   Download,
   Smartphone,
   AlertTriangle,
+  Plug,
+  Github,
+  Triangle,
+  Mail,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import {
   AppSettings,
@@ -52,15 +57,18 @@ import {
 import { MemoryService } from "../services/memoryService";
 import { UI_STRINGS, AVAILABLE_OFFLINE_MODELS } from "../constants";
 import { checkLocalModelSupport } from "../services/localLlmService";
+import { useIntegrationStore } from "../store/integrationStore";
+import { connectorManager } from "../services/integration/ConnectorManager";
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: AppSettings;
   onSave: (newSettings: AppSettings) => void;
+  initialTab?: TabType;
 }
 
-type TabType = "profile" | "general" | "models" | "memory";
+type TabType = "profile" | "general" | "models" | "memory" | "connectors" | "skills";
 
 // --- CONSTANTS ---
 const OPENROUTER_PRESETS = [
@@ -380,9 +388,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   settings,
   onSave,
+  initialTab = "general",
 }) => {
   const [formData, setFormData] = useState<AppSettings>(settings);
-  const [activeTab, setActiveTab] = useState<TabType>("general");
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [modelType, setModelType] = useState<"cloud" | "local">("cloud");
 
@@ -403,6 +412,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [downloadProgress, setDownloadProgress] = useState<{
     [key: string]: number;
   }>({});
+
+  // Integrations State
+  const { connectors, skills, toggleSkill } = useIntegrationStore();
+  const [editingConnector, setEditingConnector] = useState<string | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+
+  const handleConnect = async (connectorId: string) => {
+    const connector = connectors[connectorId];
+    if (connector.authType === "api_key") {
+      setEditingConnector(connectorId);
+      setApiKeyInput("");
+    } else {
+      await connector.connect();
+    }
+  };
+
+  const handleSaveApiKey = async () => {
+    if (editingConnector && apiKeyInput) {
+      await connectorManager.saveCredentials({
+        connectorId: editingConnector,
+        apiKey: apiKeyInput,
+      });
+      setEditingConnector(null);
+    }
+  };
+
+  const handleDisconnect = async (connectorId: string) => {
+    await connectorManager.disconnect(connectorId);
+  };
+
+  const renderIcon = (iconName: string) => {
+    switch (iconName) {
+      case "github":
+        return <Github className="w-5 h-5" />;
+      case "vercel":
+        return <Triangle className="w-5 h-5" />;
+      case "google":
+        return <Mail className="w-5 h-5" />;
+      case "search":
+        return <Search className="w-5 h-5" />;
+      default:
+        return <Plug className="w-5 h-5" />;
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -436,7 +489,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     setFormData(settings);
     if (isOpen) {
-      setIsMobileDetail(false);
+      setActiveTab(initialTab);
+      setIsMobileDetail(initialTab !== "general"); // Open detail view directly if not general on mobile
       setIsCategoriesCollapsed(false);
 
       if (settings.modelProvider === ModelProvider.LOCAL) {
@@ -721,11 +775,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 description="Long-term knowledge"
                 onClick={() => handleMobileNav("memory")}
               />
+
+              <div className="px-2 py-3 mt-6 text-[11px] font-bold text-pplx-muted uppercase tracking-widest opacity-50">
+                Integrations
+              </div>
               <MobileMenuItem
-                icon={User}
-                label={t.profile}
-                description="Identity & instructions"
-                onClick={() => handleMobileNav("profile")}
+                icon={Plug}
+                label="Connectors"
+                description="External services"
+                onClick={() => handleMobileNav("connectors")}
+              />
+              <MobileMenuItem
+                icon={Zap}
+                label="Skills"
+                description="Agent capabilities"
+                onClick={() => handleMobileNav("skills")}
               />
             </div>
 
@@ -759,16 +823,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onSelect={setActiveTab}
             />
             <SidebarItem
-              id="profile"
-              label={t.profile}
-              icon={User}
+              id="memory"
+              label={t.memory}
+              icon={Brain}
+              activeTab={activeTab}
+              onSelect={setActiveTab}
+            />
+            <div className="my-2 border-t border-pplx-border/50" />
+            <SidebarItem
+              id="connectors"
+              label="Connectors"
+              icon={Plug}
               activeTab={activeTab}
               onSelect={setActiveTab}
             />
             <SidebarItem
-              id="memory"
-              label={t.memory}
-              icon={Brain}
+              id="skills"
+              label="Skills"
+              icon={Zap}
               activeTab={activeTab}
               onSelect={setActiveTab}
             />
@@ -989,98 +1061,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       title={t.models}
                       desc="Configure AI sources."
                     />
-                  </div>
-
-                  {/* Real-Time Data Search Configuration */}
-                  <div className="bg-pplx-card rounded-3xl p-6 mb-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-2.5 bg-pplx-secondary rounded-xl text-pplx-text">
-                        <Search size={18} />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-pplx-text">
-                          Real Time Data Search
-                        </h4>
-                        <p className="text-[11px] text-pplx-muted opacity-70">
-                          Select your real-time search provider
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 mb-4 bg-pplx-secondary/30 p-1 rounded-xl">
-                      <button
-                        onClick={() =>
-                          setFormData({ ...formData, searchProvider: "tavily" })
-                        }
-                        className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-150 ${
-                          formData.searchProvider === "tavily"
-                            ? "bg-pplx-text text-pplx-primary shadow-md transform scale-[1.02]"
-                            : "bg-transparent text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary/50"
-                        }`}
-                      >
-                        Tavily
-                      </button>
-                      <button
-                        onClick={() =>
-                          setFormData({ ...formData, searchProvider: "brave" })
-                        }
-                        className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-150 ${
-                          formData.searchProvider === "brave"
-                            ? "bg-pplx-text text-pplx-primary shadow-md transform scale-[1.02]"
-                            : "bg-transparent text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary/50"
-                        }`}
-                      >
-                        Brave
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {formData.searchProvider === "tavily" ? (
-                        <div className="relative group/input animate-fadeIn">
-                          <Key
-                            className="absolute left-4 top-4 text-pplx-muted opacity-50"
-                            size={16}
-                          />
-                          <input
-                            type="password"
-                            value={formData.tavilyApiKey}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                tavilyApiKey: e.target.value,
-                              })
-                            }
-                            placeholder="tvly-..."
-                            className="w-full bg-pplx-input rounded-2xl pl-11 pr-4 py-3.5 text-sm text-pplx-text placeholder-pplx-muted/40 outline-none transition-all font-mono"
-                          />
-                          <div className="absolute right-4 top-4 text-[10px] text-pplx-muted font-bold opacity-50 uppercase">
-                            Tavily Key
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="relative group/input animate-fadeIn">
-                          <Flame
-                            className="absolute left-4 top-4 text-pplx-muted opacity-50"
-                            size={16}
-                          />
-                          <input
-                            type="password"
-                            value={formData.braveApiKey || ""}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                braveApiKey: e.target.value,
-                              })
-                            }
-                            placeholder="BSA-..."
-                            className="w-full bg-pplx-input rounded-2xl pl-11 pr-4 py-3.5 text-sm text-pplx-text placeholder-pplx-muted/40 outline-none transition-all font-mono"
-                          />
-                          <div className="absolute right-4 top-4 text-[10px] text-pplx-muted font-bold opacity-50 uppercase">
-                            Brave Key
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
 
                   <div className="flex justify-center mb-8">
@@ -1815,6 +1795,200 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         placeholder="You are a helpful assistant. Be concise..."
                       />
                     </InputGroup>
+                  </div>
+                </div>
+              )}
+
+              {/* --- CONNECTORS TAB --- */}
+              {activeTab === "connectors" && (
+                <div className="space-y-8 animate-fadeIn">
+                  <div className="hidden md:block">
+                    <SectionHeader
+                      title="Connectors"
+                      desc="Connect external services to your AI agent."
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2">
+                    <div className="border border-pplx-border rounded-2xl p-5 bg-pplx-card flex flex-col transition-all hover:border-pplx-border/80 shadow-sm">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="p-2.5 bg-pplx-hover text-pplx-text rounded-xl shadow-sm">
+                          <Search className="w-5 h-5" />
+                        </div>
+                        {(formData.searchProvider === "tavily" && formData.tavilyApiKey) || (formData.searchProvider === "brave" && formData.braveApiKey) ? (
+                          <span className="flex items-center text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            <CheckCircle className="w-3 h-3 mr-1.5" /> Connected
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-[11px] font-bold text-pplx-muted bg-pplx-hover px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            <XCircle className="w-3 h-3 mr-1.5" /> Disconnected
+                          </span>
+                        )}
+                      </div>
+                      
+                      <h3 className="text-lg font-medium text-pplx-text mb-1">Real Time Data Search</h3>
+                      <p className="text-sm text-pplx-muted mb-6 flex-1 leading-relaxed">
+                        Select your real-time search provider
+                      </p>
+
+                      <div className="mt-auto space-y-3">
+                        <div className="flex gap-2 bg-pplx-secondary/30 p-1 rounded-xl">
+                          <button
+                            onClick={() => setFormData({ ...formData, searchProvider: "tavily" })}
+                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-150 ${formData.searchProvider === "tavily" ? "bg-pplx-text text-pplx-primary shadow-md" : "bg-transparent text-pplx-muted hover:text-pplx-text"}`}
+                          >
+                            Tavily
+                          </button>
+                          <button
+                            onClick={() => setFormData({ ...formData, searchProvider: "brave" })}
+                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-150 ${formData.searchProvider === "brave" ? "bg-pplx-text text-pplx-primary shadow-md" : "bg-transparent text-pplx-muted hover:text-pplx-text"}`}
+                          >
+                            Brave
+                          </button>
+                        </div>
+                        
+                        {formData.searchProvider === "tavily" ? (
+                          <input
+                            type="password"
+                            value={formData.tavilyApiKey}
+                            onChange={(e) => setFormData({ ...formData, tavilyApiKey: e.target.value })}
+                            placeholder="tvly-..."
+                            className="w-full px-3 py-2.5 bg-pplx-input border border-pplx-border rounded-xl text-sm text-pplx-text focus:outline-none focus:border-pplx-accent placeholder-pplx-muted transition-colors font-mono"
+                          />
+                        ) : (
+                          <input
+                            type="password"
+                            value={formData.braveApiKey || ""}
+                            onChange={(e) => setFormData({ ...formData, braveApiKey: e.target.value })}
+                            placeholder="BSA-..."
+                            className="w-full px-3 py-2.5 bg-pplx-input border border-pplx-border rounded-xl text-sm text-pplx-text focus:outline-none focus:border-pplx-accent placeholder-pplx-muted transition-colors font-mono"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {Object.values(connectors).map((connector) => (
+                      <div key={connector.id} className="border border-pplx-border rounded-2xl p-5 bg-pplx-card flex flex-col transition-all hover:border-pplx-border/80 shadow-sm">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="p-2.5 bg-pplx-hover text-pplx-text rounded-xl shadow-sm">
+                            {renderIcon(connector.icon)}
+                          </div>
+                          {connector.status === 'connected' ? (
+                            <span className="flex items-center text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                              <CheckCircle className="w-3 h-3 mr-1.5" /> Connected
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-[11px] font-bold text-pplx-muted bg-pplx-hover px-2.5 py-1 rounded-full uppercase tracking-wider">
+                              <XCircle className="w-3 h-3 mr-1.5" /> Disconnected
+                            </span>
+                          )}
+                        </div>
+                        
+                        <h3 className="text-lg font-medium text-pplx-text mb-1">{connector.name}</h3>
+                        <p className="text-sm text-pplx-muted mb-6 flex-1 leading-relaxed">
+                          {connector.description}
+                        </p>
+
+                        {editingConnector === connector.id ? (
+                          <div className="mt-auto space-y-3">
+                            <input
+                              type="password"
+                              placeholder="Enter API Key"
+                              value={apiKeyInput}
+                              onChange={(e) => setApiKeyInput(e.target.value)}
+                              className="w-full px-3 py-2.5 bg-pplx-input border border-pplx-border rounded-xl text-sm text-pplx-text focus:outline-none focus:border-pplx-accent placeholder-pplx-muted transition-colors"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleSaveApiKey}
+                                className="flex-1 bg-pplx-accent hover:opacity-90 text-white px-3 py-2.5 rounded-xl text-sm font-medium transition-opacity"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingConnector(null)}
+                                className="flex-1 bg-pplx-hover hover:bg-pplx-border text-pplx-text px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-auto">
+                            {connector.status === 'connected' ? (
+                              <button
+                                onClick={() => handleDisconnect(connector.id)}
+                                className="w-full py-2.5 px-4 border border-pplx-border text-pplx-text hover:bg-pplx-hover rounded-xl text-sm font-medium transition-colors"
+                              >
+                                Disconnect
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleConnect(connector.id)}
+                                className="w-full py-2.5 px-4 bg-pplx-text text-pplx-primary hover:opacity-90 rounded-xl text-sm font-medium transition-opacity flex items-center justify-center gap-2"
+                              >
+                                <Key className="w-4 h-4" /> Connect
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* --- SKILLS TAB --- */}
+              {activeTab === "skills" && (
+                <div className="space-y-8 animate-fadeIn">
+                  <div className="hidden md:block">
+                    <SectionHeader
+                      title="Skills"
+                      desc="Enable specific capabilities for your AI agent."
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    {Object.values(skills).map((skill) => {
+                      const missingConnectors = skill.requiredConnectors.filter(
+                        (connId) => connectors[connId]?.status !== 'connected'
+                      );
+                      
+                      return (
+                        <div key={skill.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-5 border border-pplx-border rounded-2xl bg-pplx-card shadow-sm gap-4">
+                          <div className="flex items-start gap-4 flex-1 min-w-0">
+                            <div className="p-2.5 bg-pplx-hover text-pplx-text rounded-xl shadow-sm mt-0.5 shrink-0">
+                              {renderIcon(skill.icon)}
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-base font-medium text-pplx-text flex flex-wrap items-center gap-2">
+                                {skill.name}
+                                {missingConnectors.length > 0 && (
+                                  <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    Requires: {missingConnectors.map(id => connectors[id]?.name || id).join(', ')}
+                                  </span>
+                                )}
+                              </h3>
+                              <p className="text-sm text-pplx-muted mt-1 leading-relaxed">
+                                {skill.description}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="sm:ml-4 flex-shrink-0 self-end sm:self-center">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={skill.isActive}
+                                onChange={(e) => toggleSkill(skill.id, e.target.checked)}
+                              />
+                              <div className="w-11 h-6 bg-pplx-hover peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pplx-accent"></div>
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

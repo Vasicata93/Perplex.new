@@ -8,7 +8,6 @@ import { ChatHeader } from "./components/ChatHeader";
 import { DashboardView } from "./components/DashboardView";
 import { CalendarView } from "./components/CalendarView";
 import { PortfolioDashboard } from "./components/portfolio/PortfolioDashboard";
-import { IntegrationsView } from "./components/IntegrationsView";
 import SafeDigitalPage from "./components/safedigital/SafeDigitalPage";
 import { SearchView } from "./components/SearchView";
 import { ActionConfirmation } from "./components/ActionConfirmation";
@@ -141,7 +140,7 @@ function App() {
 
   // UI State - Initialize from LocalStorage to persist on refresh and closure
   const [activeView, setActiveView] = useState<
-    "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations"
+    "chat" | "library" | "calendar" | "search" | "portfolio"
   >(
     () =>
       (localStorage.getItem("pplx_activeView") as
@@ -149,11 +148,10 @@ function App() {
         | "library"
         | "calendar"
         | "search"
-        | "portfolio"
-        | "integrations") || "chat",
+        | "portfolio") || "chat",
   );
   const [previousViewBeforeSearch, setPreviousViewBeforeSearch] = useState<
-    "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations"
+    "chat" | "library" | "calendar" | "search" | "portfolio"
   >("chat");
 
   // Update isDashboardMode based on activeView
@@ -348,6 +346,7 @@ function App() {
 
   // Modals
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<"profile" | "general" | "models" | "memory" | "connectors" | "skills">("general");
   const [spacesModalOpen, setSpacesModalOpen] = useState(false);
   const [spaceModalInitialId, setSpaceModalInitialId] = useState<string | null>(
     null,
@@ -2579,7 +2578,7 @@ function App() {
           }
           pushToHistory();
           setActiveView(
-            view as "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations",
+            view as "chat" | "library" | "calendar" | "search" | "portfolio",
           );
         }}
         onNewThread={handleNewThread}
@@ -2601,7 +2600,10 @@ function App() {
         }}
         onDuplicateSpace={handleDuplicateSpace}
         onDeleteSpace={handleDeleteSpace}
-        openSettings={() => setSettingsOpen(true)}
+        openSettings={(tab?: string) => {
+          setSettingsInitialTab((tab as any) || "general");
+          setSettingsOpen(true);
+        }}
         onDeleteThread={handleDeleteThread}
         onDuplicateNote={handleDuplicateNote}
         onMoveNote={handleMoveTo}
@@ -3170,10 +3172,6 @@ function App() {
         ) : viewToRender === "portfolio" ? (
           <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar">
             <PortfolioDashboard />
-          </div>
-        ) : viewToRender === "integrations" ? (
-          <div className="flex-1 overflow-hidden bg-pplx-primary">
-            <IntegrationsView />
           </div>
         ) : (
           <>
@@ -3840,6 +3838,7 @@ function App() {
           onClose={() => setSettingsOpen(false)}
           settings={settings}
           onSave={setSettings}
+          initialTab={settingsInitialTab}
         />
         <SpacesModal
           isOpen={spacesModalOpen}

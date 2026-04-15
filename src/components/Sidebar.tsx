@@ -34,13 +34,13 @@ interface SidebarProps {
   activeThreadId: string | null;
   activeSpaceId: string | null;
   activeNoteId: string | null;
-  activeView: "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations";
+  activeView: "chat" | "library" | "calendar" | "search" | "portfolio";
   onSelectThread: (id: string) => void;
   onSelectSpace: (id: string | null) => void; // null = home/default
   onSelectNote: (id: string) => void;
   onSelectEvent: (id: string) => void;
   onChangeView: (
-    view: "chat" | "library" | "calendar" | "search" | "portfolio" | "integrations",
+    view: "chat" | "library" | "calendar" | "search" | "portfolio",
   ) => void;
   onNewThread: () => void;
   onNewNote: (parentId?: string) => void;
@@ -51,7 +51,7 @@ interface SidebarProps {
   onManageSpaces: (id?: string) => void;
   onDuplicateSpace: (id: string) => void;
   onDeleteSpace: (id: string) => void;
-  openSettings: () => void;
+  openSettings: (tab?: string) => void;
   onDeleteThread: (id: string) => void;
   onDuplicateNote: (id: string) => void;
   onMoveNote: (id: string) => void;
@@ -731,22 +731,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
 
-          {/* Integrations Button */}
-          <div
-            className={`pb-1 ${isCollapsed ? "flex justify-center px-0" : "px-3"}`}
-          >
-            <NavItem
-              icon={<Settings size={20} />}
-              label="Integrations"
-              active={activeView === "integrations"}
-              onClick={() => {
-                onChangeView("integrations");
-                if (window.innerWidth < 768) setSidebarOpen(false);
-              }}
-              isCollapsed={isCollapsed}
-            />
-          </div>
-
           {/* Footer User Section - Hidden on Mobile */}
           <div
             className={`hidden md:block py-1.5 mt-auto bg-pplx-sidebar ${isCollapsed ? "flex justify-center px-0" : "px-2"} h-[56px] shrink-0`}
@@ -754,7 +738,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div
               onClick={(e) => {
                 e.stopPropagation();
-                openSettings();
+                openSettings("profile");
               }}
               className={`text-xs text-pplx-muted hover:text-pplx-text flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-2"} py-2 cursor-pointer rounded-lg hover:bg-pplx-hover transition-colors group active:scale-95`}
             >

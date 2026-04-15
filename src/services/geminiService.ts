@@ -25,6 +25,8 @@ import { TavilyService } from "./tavilyService";
 import { db, STORES } from "./db";
 import { getHolidays } from "./holidayService";
 import { skillManager } from "./integration/SkillManager";
+import { portfolioService } from "./portfolioService";
+import { safeDigitalService } from "./safeDigitalService";
 
 // --- Tool Definitions ---
 
@@ -555,6 +557,28 @@ const updateTableToolGemini: FunctionDeclaration = {
   },
 };
 
+const readComplexModuleToolGemini: FunctionDeclaration = {
+  name: "read_complex_module",
+  description:
+    "Reads data from complex application modules like Safe Digital or Portfolio. Use this to get information about assets, positions, documents, etc.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      module: {
+        type: Type.STRING,
+        enum: ["safe_digital", "portfolio"],
+        description: "The name of the complex module to read from.",
+      },
+      target: {
+        type: Type.STRING,
+        description:
+          'What to read. For portfolio: "assets", "positions", "strategies", "performance", "historical", "all". For safe_digital: "documents", "notes", "tasks", "all".',
+      },
+    },
+    required: ["module", "target"],
+  },
+};
+
 const manageComplexModuleToolGemini: FunctionDeclaration = {
   name: "manage_complex_module",
   description:
@@ -589,6 +613,31 @@ const manageComplexModuleToolGemini: FunctionDeclaration = {
       },
     },
     required: ["module", "action", "data"],
+  },
+};
+
+const readComplexModuleToolGeneric = {
+  type: "function",
+  function: {
+    name: "read_complex_module",
+    description:
+      "Reads data from complex application modules like Safe Digital or Portfolio. Use this to get information about assets, positions, documents, etc.",
+    parameters: {
+      type: "object",
+      properties: {
+        module: {
+          type: "string",
+          enum: ["safe_digital", "portfolio"],
+          description: "The name of the complex module to read from.",
+        },
+        target: {
+          type: "string",
+          description:
+            'What to read. For portfolio: "assets", "positions", "strategies", "performance", "historical", "all". For safe_digital: "documents", "notes", "tasks", "all".',
+        },
+      },
+      required: ["module", "target"],
+    },
   },
 };
 
@@ -2137,6 +2186,7 @@ export class LLMService {
         deleteCalendarEventTool,
         getCurrentTimeToolGemini,
         getCalendarHolidaysToolGemini,
+        readComplexModuleToolGemini,
         manageComplexModuleToolGemini,
         ...dynamicSkills
       ],
@@ -2562,6 +2612,50 @@ export class LLMService {
               });
               if (onChunk)
                 onChunk("", `\n📅 Checked holidays for ${year}...\n`);
+            } else if (fc.name === "read_complex_module") {
+              let data = null;
+              try {
+                if (fc.args.module === 'portfolio') {
+                  switch (fc.args.target) {
+                    case 'assets': data = await portfolioService.getAssets(); break;
+                    case 'positions': data = await portfolioService.getPositions(); break;
+                    case 'strategies': data = await portfolioService.getStrategies(); break;
+                    case 'performance': data = await portfolioService.getPerformance(); break;
+                    case 'historical': data = await portfolioService.getHistoricalPortfolioData(); break;
+                    case 'all': 
+                      data = {
+                        assets: await portfolioService.getAssets(),
+                        positions: await portfolioService.getPositions(),
+                        strategies: await portfolioService.getStrategies()
+                      };
+                      break;
+                  }
+                } else if (fc.args.module === 'safe_digital') {
+                  switch (fc.args.target) {
+                    case 'documents': data = await safeDigitalService.getDocuments(); break;
+                    case 'notes': data = await safeDigitalService.getNotes(); break;
+                    case 'tasks': data = await safeDigitalService.getTasks(); break;
+                    case 'all':
+                      data = {
+                        documents: await safeDigitalService.getDocuments(),
+                        notes: await safeDigitalService.getNotes(),
+                        tasks: await safeDigitalService.getTasks()
+                      };
+                      break;
+                  }
+                }
+              } catch (e) {
+                console.error("Error reading complex module:", e);
+              }
+              
+              toolResponses.push({
+                functionResponse: {
+                  name: fc.name,
+                  response: { content: data ? JSON.stringify(data) : "No data found or error occurred." },
+                },
+              });
+              if (onChunk)
+                onChunk("", `\n🔍 Citit informații din ${fc.args.module}...\n`);
             } else if (fc.name === "manage_complex_module") {
               pendingAction = {
                 type: "complex_module_action",
@@ -2881,6 +2975,7 @@ export class LLMService {
       deleteCalendarEventToolGeneric,
       getCurrentTimeToolGeneric,
       getCalendarHolidaysToolGeneric,
+      readComplexModuleToolGeneric,
       manageComplexModuleToolGeneric,
     );
     if (useReadFiles)
@@ -3359,6 +3454,44 @@ export class LLMService {
                 originalToolCallId: toolCall.id,
               };
               toolResultContent = "Action pending user confirmation.";
+            } else if (toolCall.function.name === "read_complex_module") {
+              let data = null;
+              try {
+                if (args.module === 'portfolio') {
+                  switch (args.target) {
+                    case 'assets': data = await portfolioService.getAssets(); break;
+                    case 'positions': data = await portfolioService.getPositions(); break;
+                    case 'strategies': data = await portfolioService.getStrategies(); break;
+                    case 'performance': data = await portfolioService.getPerformance(); break;
+                    case 'historical': data = await portfolioService.getHistoricalPortfolioData(); break;
+                    case 'all': 
+                      data = {
+                        assets: await portfolioService.getAssets(),
+                        positions: await portfolioService.getPositions(),
+                        strategies: await portfolioService.getStrategies()
+                      };
+                      break;
+                  }
+                } else if (args.module === 'safe_digital') {
+                  switch (args.target) {
+                    case 'documents': data = await safeDigitalService.getDocuments(); break;
+                    case 'notes': data = await safeDigitalService.getNotes(); break;
+                    case 'tasks': data = await safeDigitalService.getTasks(); break;
+                    case 'all':
+                      data = {
+                        documents: await safeDigitalService.getDocuments(),
+                        notes: await safeDigitalService.getNotes(),
+                        tasks: await safeDigitalService.getTasks()
+                      };
+                      break;
+                  }
+                }
+              } catch (e) {
+                console.error("Error reading complex module:", e);
+              }
+              toolResultContent = data ? JSON.stringify(data) : "No data found or error occurred.";
+              if (onChunk)
+                onChunk("", `\n🔍 Citit informații din ${args.module}...\n`);
             } else if (toolCall.function.name === "manage_complex_module") {
               pendingAction = {
                 type: "complex_module_action",
