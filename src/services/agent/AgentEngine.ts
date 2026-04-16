@@ -356,7 +356,10 @@ EVENT DETECTION:
           
           // 6.1 WRITE OPERATION GUARD
           const writeTools = systemContextData.toolDefinitions.writeTools;
-          const isWriteOperation = writeTools.includes(task.tool);
+          const isWriteOperation = writeTools.includes(task.tool) || 
+                                   (task.tool === 'portfolio_tool' && task.toolArgs?.action && !task.toolArgs.action.startsWith('read_')) ||
+                                   (task.tool === 'safe_digital_tool' && task.toolArgs?.action && !task.toolArgs.action.startsWith('read_')) ||
+                                   (task.tool === 'calendar_tool' && task.toolArgs?.action && !task.toolArgs.action.startsWith('read_'));
           const isExecuteCode = task.tool === 'execute_code';
           
           if (isWriteOperation && !isExecuteCode) {
@@ -364,25 +367,34 @@ EVENT DETECTION:
             store.addTaskLog(task.id, { type: 'action', content: `Delegating write operation (${task.tool}) to UI for confirmation.` });
             
             let pendingAction: any = null;
-            if (task.tool === 'save_to_library') {
-               pendingAction = {
-                  type: task.toolArgs?.action === 'update' ? 'update_page' : 'create_page',
-                  data: { title: task.toolArgs?.title || task.description, content: task.toolArgs?.content || "" }
-               };
-            } else if (['insert_block', 'replace_block', 'delete_block', 'update_table_cell'].includes(task.tool)) {
-               pendingAction = {
-                  type: 'block_operation',
-                  data: { operation: task.tool, args: task.toolArgs || {} }
-               };
-            } else if (['add_calendar_event', 'update_calendar_event', 'delete_calendar_event'].includes(task.tool)) {
+            if (task.tool === 'library_tool') {
+               const action = task.toolArgs?.action;
+               const payload = task.toolArgs?.payload || {};
+               if (action === 'save_page') {
+                 pendingAction = {
+                    type: payload.action === 'update' ? 'update_page' : 'create_page',
+                    data: { title: payload.title || task.description, content: payload.content || "" }
+                 };
+               } else if (['insert_block', 'replace_block', 'delete_block', 'update_table_cell'].includes(action)) {
+                 pendingAction = {
+                    type: 'block_operation',
+                    data: { operation: action, args: payload }
+                 };
+               }
+            } else if (task.tool === 'calendar_tool') {
                pendingAction = {
                   type: 'calendar_event',
-                  data: { operation: task.tool.replace('_calendar_event', ''), args: task.toolArgs || {} }
+                  data: { operation: task.toolArgs?.action.replace('_event', ''), args: task.toolArgs?.payload || {} }
                };
-            } else if (task.tool === 'manage_complex_module') {
+            } else if (task.tool === 'portfolio_tool') {
                pendingAction = {
                   type: 'complex_module_action',
-                  data: { module: task.toolArgs?.module, action: task.toolArgs?.action, data: task.toolArgs?.data }
+                  data: { module: 'portfolio', action: task.toolArgs?.action, data: task.toolArgs?.payload }
+               };
+            } else if (task.tool === 'safe_digital_tool') {
+               pendingAction = {
+                  type: 'complex_module_action',
+                  data: { module: 'safe_digital', action: task.toolArgs?.action, data: task.toolArgs?.payload }
                };
             }
             

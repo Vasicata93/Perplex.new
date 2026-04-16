@@ -60,25 +60,14 @@ export class SystemContext {
       toolDefinitions: {
         readTools: [
           "perform_search",
-          "search_workspace_files",
-          "read_workspace_files",
-          "get_workspace_map",
-          "semantic_search_workspace",
-          "list_calendar_events",
+          "workspace_tool",
+          "calendar_tool",
           "get_calendar_holidays",
-          "get_page_structure",
-          "read_complex_module"
+          "portfolio_tool",
+          "safe_digital_tool"
         ],
         writeTools: [
-          "save_to_library",
-          "insert_block",
-          "replace_block",
-          "delete_block",
-          "update_table_cell",
-          "add_calendar_event",
-          "update_calendar_event",
-          "delete_calendar_event",
-          "manage_complex_module"
+          "library_tool"
         ]
       }
     };

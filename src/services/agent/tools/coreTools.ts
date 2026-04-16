@@ -32,54 +32,6 @@ export function registerCoreTools() {
 
   ToolRegistry.register(
     {
-      name: 'search_workspace_files',
-      description: 'Search files and data in the workspace.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description: 'The search query.'
-          }
-        },
-        required: ['query']
-      }
-    },
-    async (args: { query: string }, context?: any) => {
-      if (!context?.llmService) {
-        return {
-          success: false,
-          error: "LLMService not available in context",
-          summary: "Failed to search workspace files."
-        };
-      }
-      
-      const files = context.llmService.getWorkspaceFiles();
-      const query = args.query.toLowerCase();
-      let foundCount = 0;
-      const results: string[] = [];
-
-      files.forEach((f: any) => {
-        if (!f.content) return;
-        const lines = f.content.split("\n");
-        lines.forEach((line: string, idx: number) => {
-          if (line.toLowerCase().includes(query)) {
-            foundCount++;
-            results.push(`File: ${f.name}, Line ${idx + 1}: ${line.trim()}`);
-          }
-        });
-      });
-
-      return {
-        success: true,
-        data: { results, foundCount },
-        summary: `Found ${foundCount} matches for "${args.query}" in workspace files.`
-      };
-    }
-  );
-
-  ToolRegistry.register(
-    {
       name: 'perform_search',
       description: 'Searches the web for real-time information. REQUIRED for current events, news, weather, or specific facts not in your training data.',
       parameters: {
@@ -134,98 +86,152 @@ export function registerCoreTools() {
 
   ToolRegistry.register(
     {
-      name: 'save_to_library',
-      description: 'CRITICAL: ONLY call this tool if the user explicitly types "save this", "create a page", or "remember this".',
+      name: 'library_tool',
+      description: 'Gestionează paginile și conținutul din librăria utilizatorului.',
       parameters: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: 'Title of the page.' },
-          content: { type: 'string', description: 'Markdown content.' },
-          action: { type: 'string', enum: ['create', 'update'], description: 'Action type.' }
+          action: { type: 'string' },
+          payload: { type: 'object' }
         },
-        required: ['title', 'content', 'action']
+        required: ['action']
       }
     },
-    async (args: { title: string, content: string, action: string }) => {
+    async (args: { action: string, payload?: any }) => {
       return {
         success: true,
-        data: { saved: true, title: args.title },
-        summary: `Saved page "${args.title}" to library.`
+        data: { action: args.action, payload: args.payload },
+        summary: `Executed ${args.action} on library.`
       };
     }
   );
 
   ToolRegistry.register(
     {
-      name: 'read_workspace_files',
-      description: 'Reads the full content of specific files from the workspace knowledge base.',
+      name: 'workspace_tool',
+      description: 'Gestionează interacțiunea cu fișierele din workspace (knowledge base).',
       parameters: {
         type: 'object',
         properties: {
-          filenames: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'The exact names of the files to read.'
-          }
+          action: { type: 'string' },
+          payload: { type: 'object' }
         },
-        required: ['filenames']
+        required: ['action']
       }
     },
-    async (args: { filenames?: string[] }, context?: any) => {
-      const files = args.filenames || [];
+    async (args: { action: string, payload?: any }, context?: any) => {
       if (!context?.llmService) {
         return {
           success: false,
           error: "LLMService not available in context",
-          summary: "Failed to read workspace files."
+          summary: "Failed to access workspace."
         };
       }
 
       const workspaceFiles = context.llmService.getWorkspaceFiles();
-      const readResults: Record<string, string> = {};
-      let notFound: string[] = [];
+      
+      if (args.action === 'read_files') {
+        const files = args.payload?.filenames || [];
+        const readResults: Record<string, string> = {};
+        let notFound: string[] = [];
 
-      files.forEach(filename => {
-        const file = workspaceFiles.find((f: any) => f.name === filename);
-        if (file && file.content) {
-          readResults[filename] = file.content;
-        } else {
-          notFound.push(filename);
-        }
-      });
+        files.forEach((filename: string) => {
+          const file = workspaceFiles.find((f: any) => f.name === filename);
+          if (file && file.content) {
+            readResults[filename] = file.content;
+          } else {
+            notFound.push(filename);
+          }
+        });
+
+        return {
+          success: true,
+          data: { filesRead: readResults, notFound },
+          summary: `Read content of ${Object.keys(readResults).length} files. ${notFound.length > 0 ? `Not found: ${notFound.join(', ')}` : ''}`
+        };
+      } else if (args.action === 'search_files') {
+        const queries = (args.payload?.queries || []).map((q: string) => q.toLowerCase());
+        let foundCount = 0;
+        const results: string[] = [];
+
+        workspaceFiles.forEach((f: any) => {
+          if (!f.content) return;
+          const lines = f.content.split("\n");
+          lines.forEach((line: string, idx: number) => {
+            if (queries.some((q: string) => line.toLowerCase().includes(q))) {
+              foundCount++;
+              results.push(`File: ${f.name}, Line ${idx + 1}: ${line.trim()}`);
+            }
+          });
+        });
+
+        return {
+          success: true,
+          data: { results, foundCount },
+          summary: `Searched workspace files. Found ${foundCount} matches.`
+        };
+      } else if (args.action === 'get_map') {
+        const map = workspaceFiles.map((f: any) => f.name).join('\n');
+        return {
+          success: true,
+          data: { map: `Workspace contains ${workspaceFiles.length} files:\n${map}` },
+          summary: `Retrieved workspace map with ${workspaceFiles.length} files.`
+        };
+      } else if (args.action === 'semantic_search') {
+        const query = (args.payload?.query || '').toLowerCase();
+        let foundCount = 0;
+        const results: string[] = [];
+
+        workspaceFiles.forEach((f: any) => {
+          if (!f.content) return;
+          const lines = f.content.split("\n");
+          lines.forEach((line: string, idx: number) => {
+            if (line.toLowerCase().includes(query)) {
+              foundCount++;
+              results.push(`File: ${f.name}, Line ${idx + 1}: ${line.trim()}`);
+            }
+          });
+        });
+
+        return {
+          success: true,
+          data: { results, foundCount },
+          summary: `Performed semantic search for "${args.payload?.query}". Found ${foundCount} matches.`
+        };
+      }
 
       return {
-        success: true,
-        data: { filesRead: readResults, notFound },
-        summary: `Read content of ${Object.keys(readResults).length} files. ${notFound.length > 0 ? `Not found: ${notFound.join(', ')}` : ''}`
+        success: false,
+        error: `Unknown action: ${args.action}`,
+        summary: `Failed to perform action on workspace.`
       };
     }
   );
 
   ToolRegistry.register(
     {
-      name: 'read_complex_module',
-      description: 'Reads data from complex application modules like Safe Digital or Portfolio. Use this to get information about assets, positions, documents, etc.',
+      name: 'portfolio_tool',
+      description: 'Gestionează portofoliul financiar al utilizatorului. Folosește acest tool pentru a citi date (\'read_assets\', \'read_positions\', \'read_performance\') sau pentru a face modificări (\'add_asset\', \'update_asset\', \'delete_asset\', \'add_position\', etc.).',
       parameters: {
         type: 'object',
         properties: {
-          module: { type: 'string', enum: ['safe_digital', 'portfolio'] },
-          target: { type: 'string', description: 'What to read. For portfolio: "assets", "positions", "strategies", "performance", "historical", "all". For safe_digital: "documents", "notes", "tasks", "all".' }
+          action: { type: 'string', description: 'The action to perform (e.g., "read_assets", "add_asset", "update_position").' },
+          payload: { type: 'object', description: 'The data for the action.' }
         },
-        required: ['module', 'target']
+        required: ['action']
       }
     },
-    async (args: { module: string, target: string }) => {
+    async (args: { action: string, payload?: any }) => {
       try {
-        if (args.module === 'portfolio') {
+        if (args.action.startsWith('read_')) {
           let data;
-          switch (args.target) {
-            case 'assets': data = await portfolioService.getAssets(); break;
-            case 'positions': data = await portfolioService.getPositions(); break;
-            case 'strategies': data = await portfolioService.getStrategies(); break;
-            case 'performance': data = await portfolioService.getPerformance(); break;
-            case 'historical': data = await portfolioService.getHistoricalPortfolioData(); break;
-            case 'all': 
+          switch (args.action) {
+            case 'read_assets': data = await portfolioService.getAssets(); break;
+            case 'read_positions': data = await portfolioService.getPositions(); break;
+            case 'read_strategies': data = await portfolioService.getStrategies(); break;
+            case 'read_performance': data = await portfolioService.getPerformance(); break;
+            case 'read_historical': data = await portfolioService.getHistoricalPortfolioData(); break;
+            case 'read_all': 
               data = {
                 assets: await portfolioService.getAssets(),
                 positions: await portfolioService.getPositions(),
@@ -235,22 +241,51 @@ export function registerCoreTools() {
             default: 
               return { 
                 success: false, 
-                error: `Invalid target "${args.target}" for portfolio module.`,
-                summary: `Failed to read ${args.target} from portfolio.`
+                error: `Invalid action "${args.action}" for portfolio tool.`,
+                summary: `Failed to execute ${args.action} on portfolio.`
               };
           }
           return {
             success: true,
             data: data,
-            summary: `Successfully read ${args.target} from portfolio.`
+            summary: `Successfully executed ${args.action} on portfolio.`
           };
-        } else if (args.module === 'safe_digital') {
+        } else {
+           // Write actions are handled by UI confirmation, this is just a fallback return
+           return {
+            success: true,
+            data: { action: args.action, payload: args.payload },
+            summary: `Successfully performed ${args.action} on portfolio.`
+          };
+        }
+      } catch (error) {
+        return { success: false, error: String(error), summary: `Failed to execute ${args.action} on portfolio.` };
+      }
+    }
+  );
+
+  ToolRegistry.register(
+    {
+      name: 'safe_digital_tool',
+      description: 'Gestionează seiful digital (Safe Digital) al utilizatorului. Folosește acest tool pentru a citi informații (\'read_documents\', \'read_notes\', \'read_tasks\') sau pentru a gestiona fișierele (\'add_document\', \'update_document\', \'delete_document\').',
+      parameters: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', description: 'The action to perform (e.g., "read_documents", "add_document", "update_task").' },
+          payload: { type: 'object', description: 'The data for the action.' }
+        },
+        required: ['action']
+      }
+    },
+    async (args: { action: string, payload?: any }) => {
+      try {
+        if (args.action.startsWith('read_')) {
           let data;
-          switch (args.target) {
-            case 'documents': data = await safeDigitalService.getDocuments(); break;
-            case 'notes': data = await safeDigitalService.getNotes(); break;
-            case 'tasks': data = await safeDigitalService.getTasks(); break;
-            case 'all':
+          switch (args.action) {
+            case 'read_documents': data = await safeDigitalService.getDocuments(); break;
+            case 'read_notes': data = await safeDigitalService.getNotes(); break;
+            case 'read_tasks': data = await safeDigitalService.getTasks(); break;
+            case 'read_all':
               data = {
                 documents: await safeDigitalService.getDocuments(),
                 notes: await safeDigitalService.getNotes(),
@@ -260,47 +295,26 @@ export function registerCoreTools() {
             default:
               return { 
                 success: false, 
-                error: `Invalid target "${args.target}" for safe_digital module.`,
-                summary: `Failed to read ${args.target} from safe_digital.`
+                error: `Invalid action "${args.action}" for safe_digital tool.`,
+                summary: `Failed to execute ${args.action} on safe_digital.`
               };
           }
           return {
             success: true,
             data: data,
-            summary: `Successfully read ${args.target} from safe_digital.`
+            summary: `Successfully executed ${args.action} on safe_digital.`
+          };
+        } else {
+           // Write actions are handled by UI confirmation, this is just a fallback return
+           return {
+            success: true,
+            data: { action: args.action, payload: args.payload },
+            summary: `Successfully performed ${args.action} on safe_digital.`
           };
         }
-        return { 
-          success: false, 
-          error: `Module "${args.module}" not supported for reading.`,
-          summary: `Failed to read from ${args.module}`
-        };
       } catch (error) {
-        return { success: false, error: String(error), summary: `Failed to read from ${args.module}.` };
+        return { success: false, error: String(error), summary: `Failed to execute ${args.action} on safe_digital.` };
       }
-    }
-  );
-
-  ToolRegistry.register(
-    {
-      name: 'manage_complex_module',
-      description: 'Performs WRITE actions (add, update, delete) on complex application modules like Safe Digital or Portfolio. These actions require user confirmation.',
-      parameters: {
-        type: 'object',
-        properties: {
-          module: { type: 'string', enum: ['safe_digital', 'portfolio'] },
-          action: { type: 'string', description: 'The action to perform (e.g., "add_asset", "update_position", "delete_document").' },
-          data: { type: 'object', description: 'The data for the action.' }
-        },
-        required: ['module', 'action', 'data']
-      }
-    },
-    async (args: any) => {
-      return {
-        success: true,
-        data: { action: args.action, module: args.module },
-        summary: `Successfully performed ${args.action} on ${args.module}.`
-      };
     }
   );
 
@@ -335,92 +349,31 @@ export function registerCoreTools() {
 
   ToolRegistry.register(
     {
-      name: 'get_workspace_map',
-      description: 'Provides a high-level semantic map of the workspace knowledge base.',
-      parameters: { type: 'object', properties: {} }
-    },
-    async (_args: any, context?: any) => {
-      if (!context?.llmService) {
-        return {
-          success: false,
-          error: "LLMService not available in context",
-          summary: "Failed to get workspace map."
-        };
-      }
-      
-      const files = context.llmService.getWorkspaceFiles();
-      const map = files.map((f: any) => f.name).join('\n');
-      
-      return {
-        success: true,
-        data: { map: `Workspace contains ${files.length} files:\n${map}` },
-        summary: `Retrieved workspace map with ${files.length} files.`
-      };
-    }
-  );
-
-  ToolRegistry.register(
-    {
-      name: 'semantic_search_workspace',
-      description: 'Performs a deep semantic search across the workspace knowledge base.',
-      parameters: {
-        type: 'object',
-        properties: { query: { type: 'string' } },
-        required: ['query']
-      }
-    },
-    async (args: { query: string }, context?: any) => {
-      if (!context?.llmService) {
-        return {
-          success: false,
-          error: "LLMService not available in context",
-          summary: "Failed to search workspace files."
-        };
-      }
-      
-      const files = context.llmService.getWorkspaceFiles();
-      const query = args.query.toLowerCase();
-      let foundCount = 0;
-      const results: string[] = [];
-
-      files.forEach((f: any) => {
-        if (!f.content) return;
-        const lines = f.content.split("\n");
-        lines.forEach((line: string, idx: number) => {
-          if (line.toLowerCase().includes(query)) {
-            foundCount++;
-            results.push(`File: ${f.name}, Line ${idx + 1}: ${line.trim()}`);
-          }
-        });
-      });
-
-      return {
-        success: true,
-        data: { results, foundCount },
-        summary: `Performed semantic search for "${args.query}". Found ${foundCount} matches.`
-      };
-    }
-  );
-
-  ToolRegistry.register(
-    {
-      name: 'list_calendar_events',
-      description: 'List calendar events for a specific date range.',
+      name: 'calendar_tool',
+      description: 'Gestionează evenimentele din calendarul utilizatorului. Folosește acest tool pentru a citi (\'read_events\') sau a modifica (\'add_event\', \'update_event\', \'delete_event\') calendarul.',
       parameters: {
         type: 'object',
         properties: {
-          startDate: { type: 'string' },
-          endDate: { type: 'string' }
+          action: { type: 'string' },
+          payload: { type: 'object' }
         },
-        required: ['startDate', 'endDate']
+        required: ['action']
       }
     },
-    async (args: { startDate: string, endDate: string }) => {
-      return {
-        success: true,
-        data: { events: [] },
-        summary: `Listed calendar events from ${args.startDate} to ${args.endDate}.`
-      };
+    async (args: { action: string, payload?: any }) => {
+      if (args.action === 'read_events') {
+        return {
+          success: true,
+          data: { events: [] },
+          summary: `Listed calendar events.`
+        };
+      } else {
+        return {
+          success: true,
+          data: { action: args.action },
+          summary: `Performed ${args.action} on calendar.`
+        };
+      }
     }
   );
 
@@ -443,181 +396,6 @@ export function registerCoreTools() {
     }
   );
 
-  ToolRegistry.register(
-    {
-      name: 'get_page_structure',
-      description: 'Retrieves the structured block representation of a page.',
-      parameters: {
-        type: 'object',
-        properties: { pageTitle: { type: 'string' } },
-        required: ['pageTitle']
-      }
-    },
-    async (args: { pageTitle: string }) => {
-      return {
-        success: true,
-        data: { structure: `Structure of ${args.pageTitle}` },
-        summary: `Retrieved page structure for "${args.pageTitle}".`
-      };
-    }
-  );
 
-  ToolRegistry.register(
-    {
-      name: 'insert_block',
-      description: 'Inserts a new content block into a page.',
-      parameters: {
-        type: 'object',
-        properties: {
-          pageTitle: { type: 'string' },
-          targetBlockId: { type: 'string' },
-          content: { type: 'string' },
-          type: { type: 'string' }
-        },
-        required: ['pageTitle', 'targetBlockId', 'content', 'type']
-      }
-    },
-    async (args: any) => {
-      return {
-        success: true,
-        data: { inserted: true },
-        summary: `Inserted block into "${args.pageTitle}".`
-      };
-    }
-  );
 
-  ToolRegistry.register(
-    {
-      name: 'replace_block',
-      description: 'Updates the content of a specific block.',
-      parameters: {
-        type: 'object',
-        properties: {
-          pageTitle: { type: 'string' },
-          blockId: { type: 'string' },
-          newContent: { type: 'string' }
-        },
-        required: ['pageTitle', 'blockId', 'newContent']
-      }
-    },
-    async (args: any) => {
-      return {
-        success: true,
-        data: { replaced: true },
-        summary: `Replaced block in "${args.pageTitle}".`
-      };
-    }
-  );
-
-  ToolRegistry.register(
-    {
-      name: 'delete_block',
-      description: 'Removes a specific block from a page.',
-      parameters: {
-        type: 'object',
-        properties: {
-          pageTitle: { type: 'string' },
-          blockId: { type: 'string' }
-        },
-        required: ['pageTitle', 'blockId']
-      }
-    },
-    async (args: any) => {
-      return {
-        success: true,
-        data: { deleted: true },
-        summary: `Deleted block from "${args.pageTitle}".`
-      };
-    }
-  );
-
-  ToolRegistry.register(
-    {
-      name: 'update_table_cell',
-      description: 'Updates a specific cell in a markdown table.',
-      parameters: {
-        type: 'object',
-        properties: {
-          pageTitle: { type: 'string' },
-          tableBlockId: { type: 'string' },
-          rowIndex: { type: 'number' },
-          colIndex: { type: 'number' },
-          newValue: { type: 'string' }
-        },
-        required: ['pageTitle', 'tableBlockId', 'rowIndex', 'colIndex', 'newValue']
-      }
-    },
-    async (args: any) => {
-      return {
-        success: true,
-        data: { updated: true },
-        summary: `Updated table cell in "${args.pageTitle}".`
-      };
-    }
-  );
-
-  ToolRegistry.register(
-    {
-      name: 'add_calendar_event',
-      description: 'Add a new event to the calendar.',
-      parameters: {
-        type: 'object',
-        properties: {
-          title: { type: 'string' },
-          startDate: { type: 'string' },
-          endDate: { type: 'string' }
-        },
-        required: ['title', 'startDate', 'endDate']
-      }
-    },
-    async (args: any) => {
-      return {
-        success: true,
-        data: { added: true },
-        summary: `Added calendar event "${args.title}".`
-      };
-    }
-  );
-
-  ToolRegistry.register(
-    {
-      name: 'update_calendar_event',
-      description: 'Update an existing calendar event.',
-      parameters: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' }
-        },
-        required: ['id']
-      }
-    },
-    async (args: any) => {
-      return {
-        success: true,
-        data: { updated: true },
-        summary: `Updated calendar event ${args.id}.`
-      };
-    }
-  );
-
-  ToolRegistry.register(
-    {
-      name: 'delete_calendar_event',
-      description: 'Delete a calendar event.',
-      parameters: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' }
-        },
-        required: ['id']
-      }
-    },
-    async (args: any) => {
-      return {
-        success: true,
-        data: { deleted: true },
-        summary: `Deleted calendar event ${args.id}.`
-      };
-    }
-  );
 }

@@ -51,552 +51,132 @@ const searchToolGeneric = {
   },
 };
 
-const saveToolGeneric = {
+const libraryToolGeneric = {
   type: "function",
   function: {
-    name: "save_to_library",
+    name: "library_tool",
     description:
-      "CRITICAL: ONLY call this tool if the user explicitly types 'save this', 'create a page', or 'remember this'. DO NOT call this automatically after answering a question or doing research.",
+      "Gestionează paginile și conținutul din librăria utilizatorului. Folosește acest tool pentru a citi structura ('get_structure') sau pentru a modifica pagini ('save_page', 'insert_block', 'replace_block', 'delete_block', 'update_table_cell'). CRITICAL: ONLY call 'save_page' if the user explicitly types 'save this', 'create a page', or 'remember this'.",
     parameters: {
       type: "object",
       properties: {
-        title: {
-          type: "string",
-          description: "Title of the page.",
-        },
-        content: {
-          type: "string",
-          description: "Markdown content.",
-        },
         action: {
           type: "string",
-          enum: ["create", "update"],
-          description: "Action type.",
-        },
-      },
-      required: ["title", "content", "action"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const saveToolGemini: FunctionDeclaration = {
-  name: "save_to_library",
-  description:
-    "CRITICAL: ONLY call this tool if the user explicitly types 'save this', 'create a page', or 'remember this'. DO NOT call this automatically after answering a question or doing research.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      title: {
-        type: Type.STRING,
-        description:
-          "The title of the page to create or update. If updating, try to match an existing topic.",
-      },
-      content: {
-        type: Type.STRING,
-        description: "The full markdown content to save.",
-      },
-      action: {
-        type: Type.STRING,
-        enum: ["create", "update"],
-        description:
-          "Whether to create a completely new page or update an existing one.",
-      },
-    },
-    required: ["title", "content", "action"],
-  },
-};
-
-const readFilesToolGemini: FunctionDeclaration = {
-  name: "read_workspace_files",
-  description:
-    "Reads the full content of specific files from the workspace knowledge base. Use this when you need detailed information from one or more files listed in the context. DO NOT use this if you already have the content.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      filenames: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description:
-          "The exact names of the files to read as listed in the context.",
-      },
-    },
-    required: ["filenames"],
-  },
-};
-
-const readFilesToolGeneric = {
-  type: "function",
-  function: {
-    name: "read_workspace_files",
-    description:
-      "Reads the full content of specific files from the workspace knowledge base. Use this when you need detailed information from one or more files listed in the context. DO NOT use this if you already have the content.",
-    parameters: {
-      type: "object",
-      properties: {
-        filenames: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "The exact names of the files to read as listed in the context.",
-        },
-      },
-      required: ["filenames"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const searchFilesToolGemini: FunctionDeclaration = {
-  name: "search_workspace_files",
-  description:
-    "Searches for specific keywords, phrases, or synonyms within the workspace knowledge base files. Returns snippets of text containing the matches. Use multiple synonyms to ensure semantic coverage (e.g., ['Steuer', 'Tax ID', 'Fiscal Code']).",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      queries: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "A list of keywords or synonyms to search for.",
-      },
-    },
-    required: ["queries"],
-  },
-};
-
-const searchFilesToolGeneric = {
-  type: "function",
-  function: {
-    name: "search_workspace_files",
-    description:
-      "Searches for specific keywords, phrases, or synonyms within the workspace knowledge base files. Returns snippets of text containing the matches. Use multiple synonyms to ensure semantic coverage (e.g., ['Steuer', 'Tax ID', 'Fiscal Code']).",
-    parameters: {
-      type: "object",
-      properties: {
-        queries: {
-          type: "array",
-          items: { type: "string" },
-          description: "A list of keywords or synonyms to search for.",
-        },
-      },
-      required: ["queries"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const getWorkspaceMapToolGemini: FunctionDeclaration = {
-  name: "get_workspace_map",
-  description:
-    "Provides a high-level semantic map of the workspace knowledge base. Returns a summary of each file's purpose, main topics, and key entities (names, dates, document types). Use this first to understand where specific information might be located based on context.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {},
-    required: [],
-  },
-};
-
-const getWorkspaceMapToolGeneric = {
-  type: "function",
-  function: {
-    name: "get_workspace_map",
-    description:
-      "Provides a high-level semantic map of the workspace knowledge base. Returns a summary of each file's purpose, main topics, and key entities (names, dates, document types). Use this first to understand where specific information might be located based on context.",
-    parameters: {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const semanticSearchToolGemini: FunctionDeclaration = {
-  name: "semantic_search_workspace",
-  description:
-    "Performs a deep semantic search across the workspace knowledge base. Unlike keyword search, this finds information based on meaning and context. Use this for complex questions where exact keywords might not match (e.g., 'What are my financial obligations?' to find tax documents).",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      query: {
-        type: Type.STRING,
-        description:
-          "The natural language query describing the information you need.",
-      },
-    },
-    required: ["query"],
-  },
-};
-
-const semanticSearchToolGeneric = {
-  type: "function",
-  function: {
-    name: "semantic_search_workspace",
-    description:
-      "Performs a deep semantic search across the workspace knowledge base. Unlike keyword search, this finds information based on meaning and context. Use this for complex questions where exact keywords might not match (e.g., 'What are my financial obligations?' to find tax documents).",
-    parameters: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "The natural language query describing the information you need.",
-        },
-      },
-      required: ["query"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const insertBlockToolGeneric = {
-  type: "function",
-  function: {
-    name: "insert_block",
-    description:
-      "Inserts a new content block (paragraph, heading, list item, code block) into a page at a specific position. Use this to add new sections or ideas without rewriting the whole page.",
-    parameters: {
-      type: "object",
-      properties: {
-        pageTitle: {
-          type: "string",
-          description: "The exact title of the page to modify.",
-        },
-        targetBlockId: {
-          type: "string",
-          description:
-            "The ID of the block AFTER which to insert the new content. Use 'start' to insert at the top.",
-        },
-        content: {
-          type: "string",
-          description: "The text content of the new block.",
-        },
-        type: {
-          type: "string",
           enum: [
-            "paragraph",
-            "heading_1",
-            "heading_2",
-            "heading_3",
-            "bullet_list",
-            "numbered_list",
-            "todo_list",
-            "code",
-            "quote",
-            "callout",
-            "divider",
+            "save_page",
+            "insert_block",
+            "replace_block",
+            "delete_block",
+            "get_structure",
+            "update_table_cell",
           ],
-          description: "The type of block to insert.",
+          description: "The action to perform.",
+        },
+        payload: {
+          type: "object",
+          description: "The structured data for the action. Varies based on the action.",
         },
       },
-      required: ["pageTitle", "targetBlockId", "content", "type"],
+      required: ["action"],
       additionalProperties: false,
     },
     strict: true,
   },
 };
 
-const insertBlockToolGemini: FunctionDeclaration = {
-  name: "insert_block",
+const libraryToolGemini: FunctionDeclaration = {
+  name: "library_tool",
   description:
-    "Inserts a new content block (paragraph, heading, list item, code block) into a page at a specific position. Use this to add new sections or ideas without rewriting the whole page.",
+    "Gestionează paginile și conținutul din librăria utilizatorului. Folosește acest tool pentru a citi structura ('get_structure') sau pentru a modifica pagini ('save_page', 'insert_block', 'replace_block', 'delete_block', 'update_table_cell'). CRITICAL: ONLY call 'save_page' if the user explicitly types 'save this', 'create a page', or 'remember this'.",
   parameters: {
     type: Type.OBJECT,
     properties: {
-      pageTitle: {
-        type: Type.STRING,
-        description: "The exact title of the page to modify.",
-      },
-      targetBlockId: {
-        type: Type.STRING,
-        description:
-          "The ID of the block AFTER which to insert the new content. Use 'start' to insert at the top.",
-      },
-      content: {
-        type: Type.STRING,
-        description: "The text content of the new block.",
-      },
-      type: {
-        type: Type.STRING,
-        enum: [
-          "paragraph",
-          "heading_1",
-          "heading_2",
-          "heading_3",
-          "bullet_list",
-          "numbered_list",
-          "todo_list",
-          "code",
-          "quote",
-          "callout",
-          "divider",
-        ],
-        description: "The type of block to insert.",
-      },
-    },
-    required: ["pageTitle", "targetBlockId", "content", "type"],
-  },
-};
-
-const replaceBlockToolGeneric = {
-  type: "function",
-  function: {
-    name: "replace_block",
-    description:
-      "Updates the content of a specific block. Use this to correct typos, update facts, or rewrite a specific paragraph.",
-    parameters: {
-      type: "object",
-      properties: {
-        pageTitle: {
-          type: "string",
-          description: "The exact title of the page to modify.",
-        },
-        blockId: {
-          type: "string",
-          description: "The ID of the block to update.",
-        },
-        newContent: {
-          type: "string",
-          description: "The new text content for the block.",
-        },
-      },
-      required: ["pageTitle", "blockId", "newContent"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const replaceBlockToolGemini: FunctionDeclaration = {
-  name: "replace_block",
-  description:
-    "Updates the content of a specific block. Use this to correct typos, update facts, or rewrite a specific paragraph.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      pageTitle: {
-        type: Type.STRING,
-        description: "The exact title of the page to modify.",
-      },
-      blockId: {
-        type: Type.STRING,
-        description: "The ID of the block to update.",
-      },
-      newContent: {
-        type: Type.STRING,
-        description: "The new text content for the block.",
-      },
-    },
-    required: ["pageTitle", "blockId", "newContent"],
-  },
-};
-
-const deleteBlockToolGeneric = {
-  type: "function",
-  function: {
-    name: "delete_block",
-    description:
-      "Removes a specific block from a page. Use this to delete outdated information or empty sections.",
-    parameters: {
-      type: "object",
-      properties: {
-        pageTitle: {
-          type: "string",
-          description: "The exact title of the page to modify.",
-        },
-        blockId: {
-          type: "string",
-          description: "The ID of the block to delete.",
-        },
-      },
-      required: ["pageTitle", "blockId"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const deleteBlockToolGemini: FunctionDeclaration = {
-  name: "delete_block",
-  description:
-    "Removes a specific block from a page. Use this to delete outdated information or empty sections.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      pageTitle: {
-        type: Type.STRING,
-        description: "The exact title of the page to modify.",
-      },
-      blockId: {
-        type: Type.STRING,
-        description: "The ID of the block to delete.",
-      },
-    },
-    required: ["pageTitle", "blockId"],
-  },
-};
-
-const getPageStructureToolGeneric = {
-  type: "function",
-  function: {
-    name: "get_page_structure",
-    description:
-      "Retrieves the structured block representation of a page, including Block IDs. YOU MUST CALL THIS before using insert_block, replace_block, or delete_block to get the correct IDs. Returns a detailed map of the page content.",
-    parameters: {
-      type: "object",
-      properties: {
-        pageTitle: {
-          type: "string",
-          description: "The exact title of the page to read.",
-        },
-      },
-      required: ["pageTitle"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const getPageStructureToolGemini: FunctionDeclaration = {
-  name: "get_page_structure",
-  description:
-    "Retrieves the structured block representation of a page, including Block IDs. YOU MUST CALL THIS before using insert_block, replace_block, or delete_block to get the correct IDs. Returns a detailed map of the page content.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      pageTitle: {
-        type: Type.STRING,
-        description: "The exact title of the page to read.",
-      },
-    },
-    required: ["pageTitle"],
-  },
-};
-
-const updateTableToolGeneric = {
-  type: "function",
-  function: {
-    name: "update_table_cell",
-    description:
-      "Updates a specific cell in a markdown table within a page. Use this to modify data in tables without rewriting the whole table.",
-    parameters: {
-      type: "object",
-      properties: {
-        pageTitle: {
-          type: "string",
-          description: "The exact title of the page containing the table.",
-        },
-        tableBlockId: {
-          type: "string",
-          description:
-            "The ID of the table block (get this from get_page_structure).",
-        },
-        rowIndex: {
-          type: "number",
-          description:
-            "The 0-based index of the row to update (excluding header).",
-        },
-        colIndex: {
-          type: "number",
-          description: "The 0-based index of the column to update.",
-        },
-        newValue: {
-          type: "string",
-          description: "The new value for the cell.",
-        },
-      },
-      required: [
-        "pageTitle",
-        "tableBlockId",
-        "rowIndex",
-        "colIndex",
-        "newValue",
-      ],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const updateTableToolGemini: FunctionDeclaration = {
-  name: "update_table_cell",
-  description:
-    "Updates a specific cell in a markdown table within a page. Use this to modify data in tables without rewriting the whole table.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      pageTitle: {
-        type: Type.STRING,
-        description: "The exact title of the page containing the table.",
-      },
-      tableBlockId: {
-        type: Type.STRING,
-        description:
-          "The ID of the table block (get this from get_page_structure).",
-      },
-      rowIndex: {
-        type: Type.NUMBER,
-        description:
-          "The 0-based index of the row to update (excluding header).",
-      },
-      colIndex: {
-        type: Type.NUMBER,
-        description: "The 0-based index of the column to update.",
-      },
-      newValue: {
-        type: Type.STRING,
-        description: "The new value for the cell.",
-      },
-    },
-    required: ["pageTitle", "tableBlockId", "rowIndex", "colIndex", "newValue"],
-  },
-};
-
-const readComplexModuleToolGemini: FunctionDeclaration = {
-  name: "read_complex_module",
-  description:
-    "Reads data from complex application modules like Safe Digital or Portfolio. Use this to get information about assets, positions, documents, etc.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      module: {
-        type: Type.STRING,
-        enum: ["safe_digital", "portfolio"],
-        description: "The name of the complex module to read from.",
-      },
-      target: {
-        type: Type.STRING,
-        description:
-          'What to read. For portfolio: "assets", "positions", "strategies", "performance", "historical", "all". For safe_digital: "documents", "notes", "tasks", "all".',
-      },
-    },
-    required: ["module", "target"],
-  },
-};
-
-const manageComplexModuleToolGemini: FunctionDeclaration = {
-  name: "manage_complex_module",
-  description:
-    "Performs actions on complex application modules like 'Safe Digital' or 'Portfolio'. Use this to add, update, or delete structured data (documents, assets, positions) that are not simple page blocks.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      module: {
-        type: Type.STRING,
-        enum: ["safe_digital", "portfolio"],
-        description: "The name of the complex module to interact with.",
-      },
       action: {
         type: Type.STRING,
         enum: [
-          "add_document",
-          "update_document",
-          "delete_document",
+          "save_page",
+          "insert_block",
+          "replace_block",
+          "delete_block",
+          "get_structure",
+          "update_table_cell",
+        ],
+        description: "The action to perform.",
+      },
+      payload: {
+        type: Type.OBJECT,
+        description: "The structured data for the action. Varies based on the action.",
+      },
+    },
+    required: ["action"],
+  },
+};
+
+const workspaceToolGemini: FunctionDeclaration = {
+  name: "workspace_tool",
+  description:
+    "Gestionează interacțiunea cu fișierele din workspace (knowledge base). Folosește acest tool pentru a citi fișiere ('read_files'), a căuta text ('search_files'), a obține harta semantică ('get_map') sau a face căutare semantică ('semantic_search').",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: ["read_files", "search_files", "get_map", "semantic_search"],
+        description: "The specific action to perform on the workspace.",
+      },
+      payload: {
+        type: Type.OBJECT,
+        description:
+          "The structured data for the action. For 'read_files', provide 'filenames' (array). For 'search_files', provide 'queries' (array). For 'semantic_search', provide 'query' (string). For 'get_map', leave empty.",
+      },
+    },
+    required: ["action"],
+  },
+};
+
+const workspaceToolGeneric = {
+  type: "function",
+  function: {
+    name: "workspace_tool",
+    description:
+      "Gestionează interacțiunea cu fișierele din workspace (knowledge base). Folosește acest tool pentru a citi fișiere ('read_files'), a căuta text ('search_files'), a obține harta semantică ('get_map') sau a face căutare semantică ('semantic_search').",
+    parameters: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["read_files", "search_files", "get_map", "semantic_search"],
+          description: "The specific action to perform on the workspace.",
+        },
+        payload: {
+          type: "object",
+          description:
+            "The structured data for the action. For 'read_files', provide 'filenames' (array). For 'search_files', provide 'queries' (array). For 'semantic_search', provide 'query' (string). For 'get_map', leave empty.",
+        },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+};
+
+const portfolioToolGemini: FunctionDeclaration = {
+  name: "portfolio_tool",
+  description:
+    "Gestionează portofoliul financiar al utilizatorului. Folosește acest tool pentru a citi date ('read_assets', 'read_positions', 'read_performance') sau pentru a face modificări ('add_asset', 'update_asset', 'delete_asset', 'add_position', etc.).",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: [
+          "read_assets",
+          "read_positions",
+          "read_strategies",
+          "read_performance",
+          "read_historical",
+          "read_all",
           "add_asset",
           "update_asset",
           "delete_asset",
@@ -604,63 +184,66 @@ const manageComplexModuleToolGemini: FunctionDeclaration = {
           "update_position",
           "delete_position",
         ],
-        description: "The specific action to perform.",
+        description: "The specific action to perform on the portfolio.",
       },
-      data: {
+      payload: {
         type: Type.OBJECT,
         description:
-          "The structured data for the action. For 'add' actions, provide the full object. For 'update' or 'delete', include the 'id'.",
+          "The structured data for the action. For 'add' actions, provide the full object. For 'update' or 'delete', include the 'id'. Optional for 'read' actions.",
       },
     },
-    required: ["module", "action", "data"],
+    required: ["action"],
   },
 };
 
-const readComplexModuleToolGeneric = {
-  type: "function",
-  function: {
-    name: "read_complex_module",
-    description:
-      "Reads data from complex application modules like Safe Digital or Portfolio. Use this to get information about assets, positions, documents, etc.",
-    parameters: {
-      type: "object",
-      properties: {
-        module: {
-          type: "string",
-          enum: ["safe_digital", "portfolio"],
-          description: "The name of the complex module to read from.",
-        },
-        target: {
-          type: "string",
-          description:
-            'What to read. For portfolio: "assets", "positions", "strategies", "performance", "historical", "all". For safe_digital: "documents", "notes", "tasks", "all".',
-        },
+const safeDigitalToolGemini: FunctionDeclaration = {
+  name: "safe_digital_tool",
+  description:
+    "Gestionează seiful digital (Safe Digital) al utilizatorului. Folosește acest tool pentru a citi informații ('read_documents', 'read_notes', 'read_tasks') sau pentru a gestiona fișierele ('add_document', 'update_document', 'delete_document').",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: [
+          "read_documents",
+          "read_notes",
+          "read_tasks",
+          "read_all",
+          "add_document",
+          "update_document",
+          "delete_document",
+        ],
+        description: "The specific action to perform on the safe digital.",
       },
-      required: ["module", "target"],
+      payload: {
+        type: Type.OBJECT,
+        description:
+          "The structured data for the action. For 'add' actions, provide the full object. For 'update' or 'delete', include the 'id'. Optional for 'read' actions.",
+      },
     },
+    required: ["action"],
   },
 };
 
-const manageComplexModuleToolGeneric = {
+const portfolioToolGeneric = {
   type: "function",
   function: {
-    name: "manage_complex_module",
+    name: "portfolio_tool",
     description:
-      "Performs actions on complex application modules like 'Safe Digital' or 'Portfolio'. Use this to add, update, or delete structured data (documents, assets, positions) that are not simple page blocks.",
+      "Gestionează portofoliul financiar al utilizatorului. Folosește acest tool pentru a citi date ('read_assets', 'read_positions', 'read_performance') sau pentru a face modificări ('add_asset', 'update_asset', 'delete_asset', 'add_position', etc.).",
     parameters: {
       type: "object",
       properties: {
-        module: {
-          type: "string",
-          enum: ["safe_digital", "portfolio"],
-          description: "The name of the complex module to interact with.",
-        },
         action: {
           type: "string",
           enum: [
-            "add_document",
-            "update_document",
-            "delete_document",
+            "read_assets",
+            "read_positions",
+            "read_strategies",
+            "read_performance",
+            "read_historical",
+            "read_all",
             "add_asset",
             "update_asset",
             "delete_asset",
@@ -668,15 +251,50 @@ const manageComplexModuleToolGeneric = {
             "update_position",
             "delete_position",
           ],
-          description: "The specific action to perform.",
+          description: "The specific action to perform on the portfolio.",
         },
-        data: {
+        payload: {
           type: "object",
           description:
-            "The structured data for the action. For 'add' actions, provide the full object. For 'update' or 'delete', include the 'id'.",
+            "The structured data for the action. For 'add' actions, provide the full object. For 'update' or 'delete', include the 'id'. Optional for 'read' actions.",
         },
       },
-      required: ["module", "action", "data"],
+      required: ["action"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+};
+
+const safeDigitalToolGeneric = {
+  type: "function",
+  function: {
+    name: "safe_digital_tool",
+    description:
+      "Gestionează seiful digital (Safe Digital) al utilizatorului. Folosește acest tool pentru a citi informații ('read_documents', 'read_notes', 'read_tasks') sau pentru a gestiona fișierele ('add_document', 'update_document', 'delete_document').",
+    parameters: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: [
+            "read_documents",
+            "read_notes",
+            "read_tasks",
+            "read_all",
+            "add_document",
+            "update_document",
+            "delete_document",
+          ],
+          description: "The specific action to perform on the safe digital.",
+        },
+        payload: {
+          type: "object",
+          description:
+            "The structured data for the action. For 'add' actions, provide the full object. For 'update' or 'delete', include the 'id'. Optional for 'read' actions.",
+        },
+      },
+      required: ["action"],
       additionalProperties: false,
     },
     strict: true,
@@ -720,189 +338,51 @@ const getCalendarHolidaysToolGeneric = {
   },
 };
 
-const listCalendarEventsTool: FunctionDeclaration = {
-  name: "list_calendar_events",
+const calendarToolGemini: FunctionDeclaration = {
+  name: "calendar_tool",
   description:
-    "List calendar events for a specific date range. Use this to check the user's schedule. REQUIRED before any update/move operation.",
+    "Gestionează evenimentele din calendarul utilizatorului. Folosește acest tool pentru a citi ('read_events') sau a modifica ('add_event', 'update_event', 'delete_event') calendarul.",
   parameters: {
     type: Type.OBJECT,
     properties: {
-      startDate: {
+      action: {
         type: Type.STRING,
-        description:
-          "Start date in ISO format (YYYY-MM-DD). If checking 'today', use the current date.",
+        enum: ["read_events", "add_event", "update_event", "delete_event"],
+        description: "The specific action to perform on the calendar.",
       },
-      endDate: {
-        type: Type.STRING,
-        description: "End date in ISO format (YYYY-MM-DD).",
+      payload: {
+        type: Type.OBJECT,
+        description:
+          "The structured data for the action. For 'read_events', provide 'startDate' and 'endDate'. For 'add_event', provide 'title', 'startDate', 'endDate', etc. For 'update_event' or 'delete_event', include the 'id'.",
       },
     },
-    required: ["startDate", "endDate"],
-  },
-};
-
-const addCalendarEventTool: FunctionDeclaration = {
-  name: "add_calendar_event",
-  description: "Add a new event to the calendar.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      title: { type: Type.STRING, description: "Title of the event." },
-      startDate: {
-        type: Type.STRING,
-        description:
-          "Start date/time in ISO 8601 format (YYYY-MM-DDTHH:mm:ss).",
-      },
-      endDate: {
-        type: Type.STRING,
-        description: "End date/time in ISO 8601 format (YYYY-MM-DDTHH:mm:ss).",
-      },
-      description: {
-        type: Type.STRING,
-        description: "Description of the event.",
-      },
-      location: { type: Type.STRING, description: "Location of the event." },
-      allDay: {
-        type: Type.BOOLEAN,
-        description: "Whether it is an all-day event.",
-      },
-    },
-    required: ["title", "startDate", "endDate"],
-  },
-};
-
-const updateCalendarEventTool: FunctionDeclaration = {
-  name: "update_calendar_event",
-  description:
-    "Update an existing calendar event. You MUST provide the event ID retrieved from list_calendar_events.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      id: { type: Type.STRING, description: "The ID of the event to update." },
-      title: { type: Type.STRING, description: "New title." },
-      startDate: {
-        type: Type.STRING,
-        description:
-          "New start date/time in ISO 8601 format (YYYY-MM-DDTHH:mm:ss).",
-      },
-      endDate: {
-        type: Type.STRING,
-        description:
-          "New end date/time in ISO 8601 format (YYYY-MM-DDTHH:mm:ss).",
-      },
-      description: { type: Type.STRING, description: "New description." },
-      location: { type: Type.STRING, description: "New location." },
-    },
-    required: ["id"],
-  },
-};
-
-const deleteCalendarEventTool: FunctionDeclaration = {
-  name: "delete_calendar_event",
-  description: "Delete a calendar event.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      id: { type: Type.STRING, description: "The ID of the event to delete." },
-    },
-    required: ["id"],
+    required: ["action"],
   },
 };
 
 // --- Generic Calendar Tools ---
 
-const listCalendarEventsToolGeneric = {
+const calendarToolGeneric = {
   type: "function",
   function: {
-    name: "list_calendar_events",
+    name: "calendar_tool",
     description:
-      "List calendar events for a specific date range. Use this to check the user's schedule.",
+      "Gestionează evenimentele din calendarul utilizatorului. Folosește acest tool pentru a citi ('read_events') sau a modifica ('add_event', 'update_event', 'delete_event') calendarul.",
     parameters: {
       type: "object",
       properties: {
-        startDate: {
+        action: {
           type: "string",
-          description: "Start date in ISO format (YYYY-MM-DD).",
+          enum: ["read_events", "add_event", "update_event", "delete_event"],
+          description: "The specific action to perform on the calendar.",
         },
-        endDate: {
-          type: "string",
-          description: "End date in ISO format (YYYY-MM-DD).",
+        payload: {
+          type: "object",
+          description:
+            "The structured data for the action. For 'read_events', provide 'startDate' and 'endDate'. For 'add_event', provide 'title', 'startDate', 'endDate', etc. For 'update_event' or 'delete_event', include the 'id'.",
         },
       },
-      required: ["startDate", "endDate"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const addCalendarEventToolGeneric = {
-  type: "function",
-  function: {
-    name: "add_calendar_event",
-    description: "Add a new event to the calendar.",
-    parameters: {
-      type: "object",
-      properties: {
-        title: { type: "string", description: "Title of the event." },
-        startDate: {
-          type: "string",
-          description: "Start date/time in ISO format.",
-        },
-        endDate: {
-          type: "string",
-          description: "End date/time in ISO format.",
-        },
-        description: {
-          type: "string",
-          description: "Description of the event.",
-        },
-        location: { type: "string", description: "Location of the event." },
-        allDay: {
-          type: "boolean",
-          description: "Whether it is an all-day event.",
-        },
-      },
-      required: ["title", "startDate", "endDate"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const updateCalendarEventToolGeneric = {
-  type: "function",
-  function: {
-    name: "update_calendar_event",
-    description: "Update an existing calendar event.",
-    parameters: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "The ID of the event to update." },
-        title: { type: "string", description: "New title." },
-        startDate: { type: "string", description: "New start date/time." },
-        endDate: { type: "string", description: "New end date/time." },
-        description: { type: "string", description: "New description." },
-        location: { type: "string", description: "New location." },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-};
-
-const deleteCalendarEventToolGeneric = {
-  type: "function",
-  function: {
-    name: "delete_calendar_event",
-    description: "Delete a calendar event.",
-    parameters: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "The ID of the event to delete." },
-      },
-      required: ["id"],
+      required: ["action"],
       additionalProperties: false,
     },
     strict: true,
@@ -1860,7 +1340,7 @@ export class LLMService {
         kbSummary += `- ${f.name} (${sizeKb} KB)\n`;
       });
       kbSummary +=
-        "\n**IMPORTANT:** The full content of these files is NOT currently in your context to save tokens. If you need to read a specific file to answer the user's question accurately, you **MUST** use the `read_workspace_files` tool. Do not guess the content.";
+        "\n**IMPORTANT:** The full content of these files is NOT currently in your context to save tokens. If you need to read a specific file to answer the user's question accurately, you **MUST** use the `workspace_tool` with action `read_files`. Do not guess the content.";
     } else {
       // Keep files in direct context, but also available in workspaceFiles for tools
     }
@@ -2172,35 +1652,23 @@ export class LLMService {
     
     const dynamicSkills = skillManager.getAvailableSkills().map(skill => skillManager.getGeminiTool(skill));
     
-    tools.push({
-      functionDeclarations: [
-        saveToolGemini,
-        insertBlockToolGemini,
-        replaceBlockToolGemini,
-        deleteBlockToolGemini,
-        getPageStructureToolGemini,
-        updateTableToolGemini,
-        listCalendarEventsTool,
-        addCalendarEventTool,
-        updateCalendarEventTool,
-        deleteCalendarEventTool,
-        getCurrentTimeToolGemini,
-        getCalendarHolidaysToolGemini,
-        readComplexModuleToolGemini,
-        manageComplexModuleToolGemini,
-        ...dynamicSkills
-      ],
-    });
+    const allFunctionDeclarations = [
+      libraryToolGemini,
+      calendarToolGemini,
+      getCurrentTimeToolGemini,
+      getCalendarHolidaysToolGemini,
+      portfolioToolGemini,
+      safeDigitalToolGemini,
+      ...dynamicSkills
+    ];
+
     if (useReadFiles) {
-      tools.push({
-        functionDeclarations: [
-          readFilesToolGemini,
-          searchFilesToolGemini,
-          getWorkspaceMapToolGemini,
-          semanticSearchToolGemini,
-        ],
-      });
+      allFunctionDeclarations.push(workspaceToolGemini);
     }
+
+    tools.push({
+      functionDeclarations: allFunctionDeclarations,
+    });
 
     let thinkingConfig = undefined;
     if (
@@ -2400,203 +1868,207 @@ export class LLMService {
           const toolResponses: any[] = [];
 
           for (const fc of functionCalls) {
-            if (fc.name === "save_to_library") {
-              pendingAction = {
-                type:
-                  fc.args.action === "update" ? "update_page" : "create_page",
-                data: {
-                  title: fc.args.title as string,
-                  content: fc.args.content as string,
-                },
-                originalToolCallId: "gemini-fc",
-              };
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: { content: "Action pending user confirmation." },
-                },
-              });
-            } else if (fc.name === "get_page_structure") {
-              const title = fc.args.pageTitle as string;
-              const pageAttachment = attachments.find(
-                (a) => a.name === title || a.name === title + ".md",
-              );
-              if (pageAttachment && pageAttachment.content) {
-                const page = BlockService.fromMarkdown(
-                  pageAttachment.content,
-                  title,
+            if (fc.name === "library_tool") {
+              const action = fc.args.action;
+              const payload = fc.args.payload || {};
+              
+              if (action === "save_page") {
+                pendingAction = {
+                  type: payload.action === "update" ? "update_page" : "create_page",
+                  data: {
+                    title: payload.title as string,
+                    content: payload.content as string,
+                  },
+                  originalToolCallId: "gemini-fc",
+                };
+                toolResponses.push({
+                  functionResponse: {
+                    name: fc.name,
+                    response: { content: "Action pending user confirmation." },
+                  },
+                });
+              } else if (action === "get_structure") {
+                const title = payload.pageTitle as string;
+                const pageAttachment = attachments.find(
+                  (a) => a.name === title || a.name === title + ".md",
                 );
-                // Enhanced Structure View: Include context snippet for better identification
-                const structure = page.blocks
-                  .map((b, idx) => {
-                    let context = "";
-                    if (b.type === "table") {
-                      context = `[TABLE] Rows: ${b.content.split("\n").length}`;
-                    } else {
-                      context =
-                        b.content.length > 60
-                          ? b.content.substring(0, 60) + "..."
-                          : b.content;
+                if (pageAttachment && pageAttachment.content) {
+                  const page = BlockService.fromMarkdown(
+                    pageAttachment.content,
+                    title,
+                  );
+                  const structure = page.blocks
+                    .map((b, idx) => {
+                      let context = "";
+                      if (b.type === "table") {
+                        context = `[TABLE] Rows: ${b.content.split("\n").length}`;
+                      } else {
+                        context =
+                          b.content.length > 60
+                            ? b.content.substring(0, 60) + "..."
+                            : b.content;
+                      }
+                      return `Block ${idx + 1}: [ID: ${b.id}] (${b.type}) -> ${context}`;
+                    })
+                    .join("\n");
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: {
+                        content: `STRUCTURE OF PAGE "${title}":\n${structure}`,
+                      },
+                    },
+                  });
+                } else {
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: {
+                        content:
+                          "Error: Page not found in current context. Please ask user to open the page first.",
+                      },
+                    },
+                  });
+                }
+              } else if (
+                action === "insert_block" ||
+                action === "replace_block" ||
+                action === "delete_block" ||
+                action === "update_table_cell"
+              ) {
+                pendingAction = {
+                  type: "block_operation",
+                  data: {
+                    operation: action,
+                    args: payload,
+                  },
+                  originalToolCallId: "gemini-fc",
+                };
+                toolResponses.push({
+                  functionResponse: {
+                    name: fc.name,
+                    response: {
+                      content: "Block operation pending user confirmation.",
+                    },
+                  },
+                });
+              }
+            } else if (fc.name === "calendar_tool") {
+              if (fc.args.action === "read_events") {
+                const allEvents =
+                  (await db.get<CalendarEvent[]>(
+                    STORES.CALENDAR,
+                    "all_events",
+                  )) || [];
+
+                // Default: Start from beginning of today, End 7 days from now
+                let startDate = new Date();
+                startDate.setHours(0, 0, 0, 0);
+
+                let endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + 7);
+                endDate.setHours(23, 59, 59, 999);
+
+                const payload = fc.args.payload || {};
+
+                if (payload.startDate) {
+                  const parsedStart = new Date(payload.startDate as string);
+                  if (!isNaN(parsedStart.getTime())) {
+                    startDate = parsedStart;
+                  }
+                }
+                if (payload.endDate) {
+                  const parsedEnd = new Date(payload.endDate as string);
+                  if (!isNaN(parsedEnd.getTime())) {
+                    endDate = parsedEnd;
+                    // If startDate and endDate are the same day (or close), expand endDate to end of day
+                    if (
+                      endDate.getTime() <= startDate.getTime() + 86400000 &&
+                      endDate.getHours() === 0
+                    ) {
+                      endDate.setHours(23, 59, 59, 999);
                     }
-                    return `Block ${idx + 1}: [ID: ${b.id}] (${b.type}) -> ${context}`;
+                  }
+                }
+
+                const relevantEvents = allEvents
+                  .filter((e) => {
+                    const eStart = new Date(e.startDate);
+                    const eEnd = new Date(e.endDate);
+                    return eStart <= endDate && eEnd >= startDate;
                   })
-                  .join("\n");
+                  .sort((a, b) => a.startDate - b.startDate);
+
+                let responseContent = `CALENDAR EVENTS (Range: ${startDate.toLocaleString()} - ${endDate.toLocaleString()}):\n`;
+                if (relevantEvents.length === 0) {
+                  responseContent += "No events found in this range.";
+                } else {
+                  relevantEvents.forEach((e) => {
+                    const startObj = new Date(e.startDate);
+                    const endObj = new Date(e.endDate);
+
+                    if (e.allDay) {
+                      // For all-day events, show just the date
+                      const dateStr = startObj.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      });
+                      responseContent += `\n- [ID: ${e.id}] "${e.title}"\n  TYPE: All-day Event\n  DATE: ${dateStr}\n  Location: ${e.location || "N/A"}\n  Description: ${e.description || "N/A"}`;
+                    } else {
+                      const startStr = startObj.toLocaleString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZoneName: "short",
+                      });
+                      const endStr = endObj.toLocaleString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZoneName: "short",
+                      });
+                      responseContent += `\n- [ID: ${e.id}] "${e.title}"\n  SCHEDULED START: ${startStr}\n  SCHEDULED END: ${endStr}\n  Location: ${e.location || "N/A"}\n  Description: ${e.description || "N/A"}`;
+                    }
+                  });
+                }
+                toolResponses.push({
+                  functionResponse: {
+                    name: fc.name,
+                    response: { content: responseContent },
+                  },
+                });
+                if (onChunk)
+                  onChunk(
+                    "",
+                    `\n📅 Checked calendar: ${relevantEvents.length} events found.\n`,
+                  );
+              } else {
+                // Write actions
+                pendingAction = {
+                  type: "calendar_event",
+                  data: {
+                    operation: fc.args.action.replace("_event", ""),
+                    args: fc.args.payload || {},
+                  },
+                  originalToolCallId: "gemini-fc",
+                };
                 toolResponses.push({
                   functionResponse: {
                     name: fc.name,
                     response: {
-                      content: `STRUCTURE OF PAGE "${title}":\n${structure}`,
-                    },
-                  },
-                });
-              } else {
-                toolResponses.push({
-                  functionResponse: {
-                    name: fc.name,
-                    response: {
-                      content:
-                        "Error: Page not found in current context. Please ask user to open the page first.",
+                      content: "Calendar action pending user confirmation.",
                     },
                   },
                 });
               }
-            } else if (
-              fc.name === "insert_block" ||
-              fc.name === "replace_block" ||
-              fc.name === "delete_block" ||
-              fc.name === "update_table_cell"
-            ) {
-              pendingAction = {
-                type: "block_operation",
-                data: {
-                  operation: fc.name,
-                  args: fc.args,
-                },
-                originalToolCallId: "gemini-fc",
-              };
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: {
-                    content: "Block operation pending user confirmation.",
-                  },
-                },
-              });
-            } else if (fc.name === "list_calendar_events") {
-              const allEvents =
-                (await db.get<CalendarEvent[]>(
-                  STORES.CALENDAR,
-                  "all_events",
-                )) || [];
-
-              // Default: Start from beginning of today, End 7 days from now
-              let startDate = new Date();
-              startDate.setHours(0, 0, 0, 0);
-
-              let endDate = new Date(startDate);
-              endDate.setDate(endDate.getDate() + 7);
-              endDate.setHours(23, 59, 59, 999);
-
-              if (fc.args.startDate) {
-                const parsedStart = new Date(fc.args.startDate as string);
-                if (!isNaN(parsedStart.getTime())) {
-                  startDate = parsedStart;
-                }
-              }
-              if (fc.args.endDate) {
-                const parsedEnd = new Date(fc.args.endDate as string);
-                if (!isNaN(parsedEnd.getTime())) {
-                  endDate = parsedEnd;
-                  // If startDate and endDate are the same day (or close), expand endDate to end of day
-                  if (
-                    endDate.getTime() <= startDate.getTime() + 86400000 &&
-                    endDate.getHours() === 0
-                  ) {
-                    endDate.setHours(23, 59, 59, 999);
-                  }
-                }
-              }
-
-              const relevantEvents = allEvents
-                .filter((e) => {
-                  const eStart = new Date(e.startDate);
-                  const eEnd = new Date(e.endDate);
-                  return eStart <= endDate && eEnd >= startDate;
-                })
-                .sort((a, b) => a.startDate - b.startDate);
-
-              let responseContent = `CALENDAR EVENTS (Range: ${startDate.toLocaleString()} - ${endDate.toLocaleString()}):\n`;
-              if (relevantEvents.length === 0) {
-                responseContent += "No events found in this range.";
-              } else {
-                relevantEvents.forEach((e) => {
-                  const startObj = new Date(e.startDate);
-                  const endObj = new Date(e.endDate);
-
-                  if (e.allDay) {
-                    // For all-day events, show just the date
-                    const dateStr = startObj.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    });
-                    responseContent += `\n- [ID: ${e.id}] "${e.title}"\n  TYPE: All-day Event\n  DATE: ${dateStr}\n  Location: ${e.location || "N/A"}\n  Description: ${e.description || "N/A"}`;
-                  } else {
-                    const startStr = startObj.toLocaleString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZoneName: "short",
-                    });
-                    const endStr = endObj.toLocaleString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZoneName: "short",
-                    });
-                    responseContent += `\n- [ID: ${e.id}] "${e.title}"\n  SCHEDULED START: ${startStr}\n  SCHEDULED END: ${endStr}\n  Location: ${e.location || "N/A"}\n  Description: ${e.description || "N/A"}`;
-                  }
-                });
-              }
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: { content: responseContent },
-                },
-              });
-              if (onChunk)
-                onChunk(
-                  "",
-                  `\n📅 Checked calendar: ${relevantEvents.length} events found.\n`,
-                );
-            } else if (
-              fc.name === "add_calendar_event" ||
-              fc.name === "update_calendar_event" ||
-              fc.name === "delete_calendar_event"
-            ) {
-              pendingAction = {
-                type: "calendar_event",
-                data: {
-                  operation: fc.name.replace("_calendar_event", ""),
-                  args: fc.args,
-                },
-                originalToolCallId: "gemini-fc",
-              };
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: {
-                    content: "Calendar action pending user confirmation.",
-                  },
-                },
-              });
             } else if (fc.name === "get_calendar_holidays") {
               const year = (fc.args.year as number) || new Date().getFullYear();
               const holidays = getHolidays(year);
@@ -2612,17 +2084,17 @@ export class LLMService {
               });
               if (onChunk)
                 onChunk("", `\n📅 Checked holidays for ${year}...\n`);
-            } else if (fc.name === "read_complex_module") {
+            } else if (fc.name === "portfolio_tool") {
               let data = null;
               try {
-                if (fc.args.module === 'portfolio') {
-                  switch (fc.args.target) {
-                    case 'assets': data = await portfolioService.getAssets(); break;
-                    case 'positions': data = await portfolioService.getPositions(); break;
-                    case 'strategies': data = await portfolioService.getStrategies(); break;
-                    case 'performance': data = await portfolioService.getPerformance(); break;
-                    case 'historical': data = await portfolioService.getHistoricalPortfolioData(); break;
-                    case 'all': 
+                if (fc.args.action.startsWith('read_')) {
+                  switch (fc.args.action) {
+                    case 'read_assets': data = await portfolioService.getAssets(); break;
+                    case 'read_positions': data = await portfolioService.getPositions(); break;
+                    case 'read_strategies': data = await portfolioService.getStrategies(); break;
+                    case 'read_performance': data = await portfolioService.getPerformance(); break;
+                    case 'read_historical': data = await portfolioService.getHistoricalPortfolioData(); break;
+                    case 'read_all': 
                       data = {
                         assets: await portfolioService.getAssets(),
                         positions: await portfolioService.getPositions(),
@@ -2630,12 +2102,53 @@ export class LLMService {
                       };
                       break;
                   }
-                } else if (fc.args.module === 'safe_digital') {
-                  switch (fc.args.target) {
-                    case 'documents': data = await safeDigitalService.getDocuments(); break;
-                    case 'notes': data = await safeDigitalService.getNotes(); break;
-                    case 'tasks': data = await safeDigitalService.getTasks(); break;
-                    case 'all':
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: { content: data ? JSON.stringify(data) : "No data found or error occurred." },
+                    },
+                  });
+                  if (onChunk)
+                    onChunk("", `\n🔍 Citit informații din portofoliu...\n`);
+                } else {
+                  pendingAction = {
+                    type: "complex_module_action",
+                    data: {
+                      module: "portfolio",
+                      action: fc.args.action,
+                      data: fc.args.payload,
+                    },
+                    originalToolCallId: "gemini-fc",
+                  };
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: {
+                        content: "Portfolio action pending user confirmation.",
+                      },
+                    },
+                  });
+                  if (onChunk)
+                    onChunk("", `\n⚙️ Pregătit acțiune pentru portofoliu...\n`);
+                }
+              } catch (e) {
+                console.error("Error executing portfolio tool:", e);
+                toolResponses.push({
+                  functionResponse: {
+                    name: fc.name,
+                    response: { content: "Error occurred." },
+                  },
+                });
+              }
+            } else if (fc.name === "safe_digital_tool") {
+              let data = null;
+              try {
+                if (fc.args.action.startsWith('read_')) {
+                  switch (fc.args.action) {
+                    case 'read_documents': data = await safeDigitalService.getDocuments(); break;
+                    case 'read_notes': data = await safeDigitalService.getNotes(); break;
+                    case 'read_tasks': data = await safeDigitalService.getTasks(); break;
+                    case 'read_all':
                       data = {
                         documents: await safeDigitalService.getDocuments(),
                         notes: await safeDigitalService.getNotes(),
@@ -2643,42 +2156,44 @@ export class LLMService {
                       };
                       break;
                   }
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: { content: data ? JSON.stringify(data) : "No data found or error occurred." },
+                    },
+                  });
+                  if (onChunk)
+                    onChunk("", `\n🔍 Citit informații din safe digital...\n`);
+                } else {
+                  pendingAction = {
+                    type: "complex_module_action",
+                    data: {
+                      module: "safe_digital",
+                      action: fc.args.action,
+                      data: fc.args.payload,
+                    },
+                    originalToolCallId: "gemini-fc",
+                  };
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: {
+                        content: "Safe Digital action pending user confirmation.",
+                      },
+                    },
+                  });
+                  if (onChunk)
+                    onChunk("", `\n⚙️ Pregătit acțiune pentru safe digital...\n`);
                 }
               } catch (e) {
-                console.error("Error reading complex module:", e);
-              }
-              
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: { content: data ? JSON.stringify(data) : "No data found or error occurred." },
-                },
-              });
-              if (onChunk)
-                onChunk("", `\n🔍 Citit informații din ${fc.args.module}...\n`);
-            } else if (fc.name === "manage_complex_module") {
-              pendingAction = {
-                type: "complex_module_action",
-                data: {
-                  module: fc.args.module,
-                  action: fc.args.action,
-                  data: fc.args.data,
-                },
-                originalToolCallId: "gemini-fc",
-              };
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: {
-                    content: "Complex module action pending user confirmation.",
+                console.error("Error executing safe digital tool:", e);
+                toolResponses.push({
+                  functionResponse: {
+                    name: fc.name,
+                    response: { content: "Error occurred." },
                   },
-                },
-              });
-              if (onChunk)
-                onChunk(
-                  "",
-                  `\n⚙️ Pregătit acțiune pentru ${fc.args.module}...\n`,
-                );
+                });
+              }
             } else if (fc.name === "get_current_time") {
               const now = new Date();
               const timeString = now.toLocaleString("en-US", {
@@ -2696,119 +2211,104 @@ export class LLMService {
                 },
               });
               if (onChunk) onChunk("", `\n🕒 Time: ${timeString}...\n`);
-            } else if (fc.name === "read_workspace_files") {
-              const filenames = fc.args.filenames as string[];
-              const requestedFiles = this.workspaceFiles.filter((f) =>
-                filenames.includes(f.name),
-              );
-
+            } else if (fc.name === "workspace_tool") {
+              const action = fc.args.action;
+              const payload = fc.args.payload || {};
               let responseContent = "";
-              if (requestedFiles.length > 0) {
-                requestedFiles.forEach((f) => {
-                  responseContent += `\n[File: ${f.name}]\n${f.content}\n`;
-                });
-              } else {
-                responseContent =
-                  "Error: Requested files not found in workspace.";
-              }
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: { content: responseContent },
-                },
-              });
-            } else if (fc.name === "search_workspace_files") {
-              const queries = (fc.args.queries as string[]).map((q) =>
-                q.toLowerCase(),
-              );
-              let responseContent = `Search results for [${queries.join(", ")}] in workspace files:\n`;
-              let foundCount = 0;
 
-              this.workspaceFiles.forEach((f) => {
-                if (!f.content) return;
-                const lines = f.content.split("\n");
-                lines.forEach((line, idx) => {
-                  const lowerLine = line.toLowerCase();
-                  if (queries.some((q) => lowerLine.includes(q))) {
-                    foundCount++;
-                    const start = Math.max(0, idx - 1);
-                    const end = Math.min(lines.length - 1, idx + 1);
-                    responseContent += `\n[File: ${f.name}, Line ${idx + 1}]\n`;
-                    for (let i = start; i <= end; i++) {
-                      responseContent += `${i === idx ? ">> " : "   "}${lines[i]}\n`;
-                    }
-                  }
-                });
-              });
-
-              if (foundCount === 0)
-                responseContent = `No matches found for any of the queries in workspace files.`;
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: { content: responseContent },
-                },
-              });
-              if (onChunk)
-                onChunk(
-                  "",
-                  `\n🔍 Căutat ${queries.length} termeni în workspace...\n`,
+              if (action === "read_files") {
+                const filenames = (payload.filenames || []) as string[];
+                const requestedFiles = this.workspaceFiles.filter((f) =>
+                  filenames.includes(f.name),
                 );
-            } else if (fc.name === "get_workspace_map") {
-              let responseContent = "WORKSPACE KNOWLEDGE BASE MAP:\n";
 
-              this.workspaceFiles.forEach((f) => {
-                // Extract a semantic snippet (first 500 chars) and key terms
-                const snippet = (f.content || "")
-                  .substring(0, 500)
-                  .replace(/\n/g, " ");
-                const sizeKb = Math.round((f.content?.length || 0) / 1024);
-
-                // Simple heuristic for "topics" - could be improved with another LLM call but let's keep it local for now
-                responseContent += `\n- FILE: ${f.name} (${sizeKb} KB)\n`;
-                responseContent += `  PREVIEW: ${snippet}...\n`;
-                responseContent += `  CONTEXT: This file appears to contain ${f.mimeType || "text"} data. Use search to find specific entities.\n`;
-              });
-
-              toolResponses.push({
-                functionResponse: {
-                  name: fc.name,
-                  response: { content: responseContent },
-                },
-              });
-              if (onChunk)
-                onChunk("", `\n🗺️ Mapat structura workspace-ului...\n`);
-            } else if (fc.name === "semantic_search_workspace") {
-              const query = fc.args.query as string;
-              let responseContent = `Semantic search results for "${query}":\n`;
-
-              // 1. Generate embedding for query
-              const queryEmbedding = await this.generateEmbedding(query);
-
-              if (!queryEmbedding) {
-                responseContent =
-                  "Error: Could not generate embedding for query.";
-              } else {
-                // 2. Search in workspace chunks
-                const results = await this.searchInWorkspace(queryEmbedding);
-
-                if (results.length > 0) {
-                  results.forEach((res, idx) => {
-                    responseContent += `\n[Result ${idx + 1} - File: ${res.filename} (Score: ${res.score.toFixed(2)})]\n${res.content}\n`;
+                if (requestedFiles.length > 0) {
+                  requestedFiles.forEach((f) => {
+                    responseContent += `\n[File: ${f.name}]\n${f.content}\n`;
                   });
                 } else {
                   responseContent =
-                    "No semantically relevant information found.";
+                    "Error: Requested files not found in workspace.";
                 }
+                if (onChunk)
+                  onChunk("", `\n📖 Citit ${filenames.length} fișiere din workspace...\n`);
+              } else if (action === "search_files") {
+                const queries = ((payload.queries || []) as string[]).map((q) =>
+                  q.toLowerCase(),
+                );
+                responseContent = `Search results for [${queries.join(", ")}] in workspace files:\n`;
+                let foundCount = 0;
+
+                this.workspaceFiles.forEach((f) => {
+                  if (!f.content) return;
+                  const lines = f.content.split("\n");
+                  lines.forEach((line, idx) => {
+                    const lowerLine = line.toLowerCase();
+                    if (queries.some((q) => lowerLine.includes(q))) {
+                      foundCount++;
+                      const start = Math.max(0, idx - 1);
+                      const end = Math.min(lines.length - 1, idx + 1);
+                      responseContent += `\n[File: ${f.name}, Line ${idx + 1}]\n`;
+                      for (let i = start; i <= end; i++) {
+                        responseContent += `${i === idx ? ">> " : "   "}${lines[i]}\n`;
+                      }
+                    }
+                  });
+                });
+
+                if (foundCount === 0)
+                  responseContent = `No matches found for any of the queries in workspace files.`;
+                if (onChunk)
+                  onChunk(
+                    "",
+                    `\n🔍 Căutat ${queries.length} termeni în workspace...\n`,
+                  );
+              } else if (action === "get_map") {
+                responseContent = "WORKSPACE KNOWLEDGE BASE MAP:\n";
+
+                this.workspaceFiles.forEach((f) => {
+                  const snippet = (f.content || "")
+                    .substring(0, 500)
+                    .replace(/\n/g, " ");
+                  const sizeKb = Math.round((f.content?.length || 0) / 1024);
+
+                  responseContent += `\n- FILE: ${f.name} (${sizeKb} KB)\n`;
+                  responseContent += `  PREVIEW: ${snippet}...\n`;
+                  responseContent += `  CONTEXT: This file appears to contain ${f.mimeType || "text"} data. Use search to find specific entities.\n`;
+                });
+                if (onChunk)
+                  onChunk("", `\n🗺️ Mapat structura workspace-ului...\n`);
+              } else if (action === "semantic_search") {
+                const query = payload.query as string;
+                responseContent = `Semantic search results for "${query}":\n`;
+
+                const queryEmbedding = await this.generateEmbedding(query);
+
+                if (!queryEmbedding) {
+                  responseContent =
+                    "Error: Could not generate embedding for query.";
+                } else {
+                  const results = await this.searchInWorkspace(queryEmbedding);
+
+                  if (results.length > 0) {
+                    results.forEach((res, idx) => {
+                      responseContent += `\n[Result ${idx + 1} - File: ${res.filename} (Score: ${res.score.toFixed(2)})]\n${res.content}\n`;
+                    });
+                  } else {
+                    responseContent =
+                      "No semantically relevant information found.";
+                  }
+                }
+                if (onChunk)
+                  onChunk("", `\n🧠 Căutare semantică: "${query}"...\n`);
               }
+
               toolResponses.push({
                 functionResponse: {
                   name: fc.name,
                   response: { content: responseContent },
                 },
               });
-              if (onChunk)
-                onChunk("", `\n🧠 Căutare semantică: "${query}"...\n`);
             } else {
               // Check if it's a dynamic skill
               const availableSkills = skillManager.getAvailableSkills();
@@ -2962,28 +2462,21 @@ export class LLMService {
     // 2. Prepare Tools
     const tools = [];
     if (useSearch && searchApiKey) tools.push(searchToolGeneric);
+    
+    const dynamicSkillsGeneric = skillManager.getAvailableSkills().map(skill => skillManager.getGenericTool(skill));
+    
     tools.push(
-      saveToolGeneric,
-      insertBlockToolGeneric,
-      replaceBlockToolGeneric,
-      deleteBlockToolGeneric,
-      getPageStructureToolGeneric,
-      updateTableToolGeneric,
-      listCalendarEventsToolGeneric,
-      addCalendarEventToolGeneric,
-      updateCalendarEventToolGeneric,
-      deleteCalendarEventToolGeneric,
+      libraryToolGeneric,
+      calendarToolGeneric,
       getCurrentTimeToolGeneric,
       getCalendarHolidaysToolGeneric,
-      readComplexModuleToolGeneric,
-      manageComplexModuleToolGeneric,
+      portfolioToolGeneric,
+      safeDigitalToolGeneric,
+      ...dynamicSkillsGeneric
     );
     if (useReadFiles)
       tools.push(
-        readFilesToolGeneric,
-        searchFilesToolGeneric,
-        getWorkspaceMapToolGeneric,
-        semanticSearchToolGeneric,
+        workspaceToolGeneric,
       );
 
     let finalContent = "";
@@ -3319,69 +2812,87 @@ export class LLMService {
                   console.warn(`[Generic] Search returned no results.`);
                 }
               }
-            } else if (toolCall.function.name === "save_to_library") {
-              // Intercept Save
-              pendingAction = {
-                type: args.action === "update" ? "update_page" : "create_page",
-                data: { title: args.title, content: args.content },
-                originalToolCallId: toolCall.id,
-              };
-              toolResultContent = "Action pending user confirmation.";
-            } else if (toolCall.function.name === "get_page_structure") {
-              const title = args.pageTitle as string;
-              const pageAttachment = attachments.find(
-                (a) => a.name === title || a.name === title + ".md",
-              );
-              if (pageAttachment && pageAttachment.content) {
-                const page = BlockService.fromMarkdown(
-                  pageAttachment.content,
-                  title,
+            } else if (toolCall.function.name === "library_tool") {
+              const action = args.action;
+              const payload = args.payload || {};
+              
+              if (action === "save_page") {
+                pendingAction = {
+                  type: payload.action === "update" ? "update_page" : "create_page",
+                  data: { title: payload.title, content: payload.content },
+                  originalToolCallId: toolCall.id,
+                };
+                toolResultContent = "Action pending user confirmation.";
+              } else if (action === "get_structure") {
+                const title = payload.pageTitle as string;
+                const pageAttachment = attachments.find(
+                  (a) => a.name === title || a.name === title + ".md",
                 );
-                const structure = page.blocks
-                  .map((b, idx) => {
-                    let context = "";
-                    if (b.type === "table") {
-                      context = `[TABLE] Rows: ${b.content.split("\n").length}`;
-                    } else {
-                      context =
-                        b.content.length > 60
-                          ? b.content.substring(0, 60) + "..."
-                          : b.content;
-                    }
-                    return `Block ${idx + 1}: [ID: ${b.id}] (${b.type}) -> ${context}`;
-                  })
-                  .join("\n");
-                toolResultContent = `STRUCTURE OF PAGE "${title}":\n${structure}`;
-              } else {
-                toolResultContent =
-                  "Error: Page not found in current context. Please ask user to open the page first.";
+                if (pageAttachment && pageAttachment.content) {
+                  const page = BlockService.fromMarkdown(
+                    pageAttachment.content,
+                    title,
+                  );
+                  const structure = page.blocks
+                    .map((b, idx) => {
+                      let context = "";
+                      if (b.type === "table") {
+                        context = `[TABLE] Rows: ${b.content.split("\n").length}`;
+                      } else {
+                        context =
+                          b.content.length > 60
+                            ? b.content.substring(0, 60) + "..."
+                            : b.content;
+                      }
+                      return `Block ${idx + 1}: [ID: ${b.id}] (${b.type}) -> ${context}`;
+                    })
+                    .join("\n");
+                  toolResultContent = `STRUCTURE OF PAGE "${title}":\n${structure}`;
+                } else {
+                  toolResultContent =
+                    "Error: Page not found in current context. Please ask user to open the page first.";
+                }
+              } else if (
+                action === "insert_block" ||
+                action === "replace_block" ||
+                action === "delete_block" ||
+                action === "update_table_cell"
+              ) {
+                pendingAction = {
+                  type: "block_operation",
+                  data: {
+                    operation: action,
+                    args: payload,
+                  },
+                  originalToolCallId: toolCall.id,
+                };
+                toolResultContent = "Block operation pending user confirmation.";
               }
-            } else if (
-              toolCall.function.name === "insert_block" ||
-              toolCall.function.name === "replace_block" ||
-              toolCall.function.name === "delete_block" ||
-              toolCall.function.name === "update_table_cell"
-            ) {
-              pendingAction = {
-                type: "block_operation",
-                data: {
-                  operation: toolCall.function.name,
-                  args: args,
-                },
-                originalToolCallId: toolCall.id,
-              };
-              toolResultContent = "Block operation pending user confirmation.";
-            } else if (toolCall.function.name === "list_calendar_events") {
-              if (!args.startDate || !args.endDate) {
-                toolResultContent =
-                  "Error: startDate and endDate are required.";
-              } else {
-                let startDate = new Date(args.startDate);
-                let endDate = new Date(args.endDate);
+            } else if (toolCall.function.name === "calendar_tool") {
+              if (args.action === "read_events") {
+                const payload = args.payload || {};
+                let startDate = new Date();
+                startDate.setHours(0, 0, 0, 0);
 
-                // If startDate and endDate are the same day (00:00:00), expand endDate to end of day
-                if (endDate.getTime() === startDate.getTime()) {
-                  endDate.setHours(23, 59, 59, 999);
+                let endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + 7);
+                endDate.setHours(23, 59, 59, 999);
+
+                if (payload.startDate) {
+                  const parsedStart = new Date(payload.startDate as string);
+                  if (!isNaN(parsedStart.getTime())) {
+                    startDate = parsedStart;
+                  }
+                }
+                if (payload.endDate) {
+                  const parsedEnd = new Date(payload.endDate as string);
+                  if (!isNaN(parsedEnd.getTime())) {
+                    endDate = parsedEnd;
+                    // If startDate and endDate are the same day (00:00:00), expand endDate to end of day
+                    if (endDate.getTime() === startDate.getTime()) {
+                      endDate.setHours(23, 59, 59, 999);
+                    }
+                  }
                 }
 
                 const allEvents =
@@ -3423,48 +2934,29 @@ export class LLMService {
                     "",
                     `\n📅 Checking calendar for ${startDate.toLocaleString()} to ${endDate.toLocaleString()}...\n`,
                   );
+              } else {
+                // Write actions
+                pendingAction = {
+                  type: "calendar_event",
+                  data: {
+                    operation: args.action.replace("_event", ""),
+                    args: args.payload || {},
+                  },
+                  originalToolCallId: toolCall.id,
+                };
+                toolResultContent = "Action pending user confirmation.";
               }
-            } else if (toolCall.function.name === "add_calendar_event") {
-              pendingAction = {
-                type: "calendar_event",
-                data: {
-                  operation: "add",
-                  args: args,
-                },
-                originalToolCallId: toolCall.id,
-              };
-              toolResultContent = "Action pending user confirmation.";
-            } else if (toolCall.function.name === "update_calendar_event") {
-              pendingAction = {
-                type: "calendar_event",
-                data: {
-                  operation: "update",
-                  args: args,
-                },
-                originalToolCallId: toolCall.id,
-              };
-              toolResultContent = "Action pending user confirmation.";
-            } else if (toolCall.function.name === "delete_calendar_event") {
-              pendingAction = {
-                type: "calendar_event",
-                data: {
-                  operation: "delete",
-                  args: args,
-                },
-                originalToolCallId: toolCall.id,
-              };
-              toolResultContent = "Action pending user confirmation.";
-            } else if (toolCall.function.name === "read_complex_module") {
+            } else if (toolCall.function.name === "portfolio_tool") {
               let data = null;
               try {
-                if (args.module === 'portfolio') {
-                  switch (args.target) {
-                    case 'assets': data = await portfolioService.getAssets(); break;
-                    case 'positions': data = await portfolioService.getPositions(); break;
-                    case 'strategies': data = await portfolioService.getStrategies(); break;
-                    case 'performance': data = await portfolioService.getPerformance(); break;
-                    case 'historical': data = await portfolioService.getHistoricalPortfolioData(); break;
-                    case 'all': 
+                if (args.action.startsWith('read_')) {
+                  switch (args.action) {
+                    case 'read_assets': data = await portfolioService.getAssets(); break;
+                    case 'read_positions': data = await portfolioService.getPositions(); break;
+                    case 'read_strategies': data = await portfolioService.getStrategies(); break;
+                    case 'read_performance': data = await portfolioService.getPerformance(); break;
+                    case 'read_historical': data = await portfolioService.getHistoricalPortfolioData(); break;
+                    case 'read_all': 
                       data = {
                         assets: await portfolioService.getAssets(),
                         positions: await portfolioService.getPositions(),
@@ -3472,12 +2964,36 @@ export class LLMService {
                       };
                       break;
                   }
-                } else if (args.module === 'safe_digital') {
-                  switch (args.target) {
-                    case 'documents': data = await safeDigitalService.getDocuments(); break;
-                    case 'notes': data = await safeDigitalService.getNotes(); break;
-                    case 'tasks': data = await safeDigitalService.getTasks(); break;
-                    case 'all':
+                  toolResultContent = data ? JSON.stringify(data) : "No data found or error occurred.";
+                  if (onChunk)
+                    onChunk("", `\n🔍 Citit informații din portofoliu...\n`);
+                } else {
+                  pendingAction = {
+                    type: "complex_module_action",
+                    data: {
+                      module: "portfolio",
+                      action: args.action,
+                      data: args.payload,
+                    },
+                    originalToolCallId: toolCall.id,
+                  };
+                  toolResultContent = "Portfolio action pending user confirmation.";
+                  if (onChunk)
+                    onChunk("", `\n⚙️ Pregătit acțiune pentru portofoliu...\n`);
+                }
+              } catch (e) {
+                console.error("Error executing portfolio tool:", e);
+                toolResultContent = "Error occurred.";
+              }
+            } else if (toolCall.function.name === "safe_digital_tool") {
+              let data = null;
+              try {
+                if (args.action.startsWith('read_')) {
+                  switch (args.action) {
+                    case 'read_documents': data = await safeDigitalService.getDocuments(); break;
+                    case 'read_notes': data = await safeDigitalService.getNotes(); break;
+                    case 'read_tasks': data = await safeDigitalService.getTasks(); break;
+                    case 'read_all':
                       data = {
                         documents: await safeDigitalService.getDocuments(),
                         notes: await safeDigitalService.getNotes(),
@@ -3485,25 +3001,27 @@ export class LLMService {
                       };
                       break;
                   }
+                  toolResultContent = data ? JSON.stringify(data) : "No data found or error occurred.";
+                  if (onChunk)
+                    onChunk("", `\n🔍 Citit informații din safe digital...\n`);
+                } else {
+                  pendingAction = {
+                    type: "complex_module_action",
+                    data: {
+                      module: "safe_digital",
+                      action: args.action,
+                      data: args.payload,
+                    },
+                    originalToolCallId: toolCall.id,
+                  };
+                  toolResultContent = "Safe Digital action pending user confirmation.";
+                  if (onChunk)
+                    onChunk("", `\n⚙️ Pregătit acțiune pentru safe digital...\n`);
                 }
               } catch (e) {
-                console.error("Error reading complex module:", e);
+                console.error("Error executing safe digital tool:", e);
+                toolResultContent = "Error occurred.";
               }
-              toolResultContent = data ? JSON.stringify(data) : "No data found or error occurred.";
-              if (onChunk)
-                onChunk("", `\n🔍 Citit informații din ${args.module}...\n`);
-            } else if (toolCall.function.name === "manage_complex_module") {
-              pendingAction = {
-                type: "complex_module_action",
-                data: {
-                  module: args.module,
-                  action: args.action,
-                  data: args.data,
-                },
-                originalToolCallId: toolCall.id,
-              };
-              toolResultContent =
-                "Complex module action pending user confirmation.";
             } else if (toolCall.function.name === "get_current_time") {
               const now = new Date();
               const timeString = now.toLocaleString("en-US", {
@@ -3516,90 +3034,96 @@ export class LLMService {
               });
               toolResultContent = timeString;
               if (onChunk) onChunk("", `\n🕒 Time: ${timeString}...\n`);
-            } else if (toolCall.function.name === "read_workspace_files") {
-              const filenames = (args.filenames || []) as string[];
-              const requestedFiles = this.workspaceFiles.filter((f) =>
-                filenames.includes(f.name),
-              );
+            } else if (toolCall.function.name === "workspace_tool") {
+              const action = args.action;
+              const payload = args.payload || {};
+              toolResultContent = "";
 
-              if (requestedFiles.length > 0) {
-                requestedFiles.forEach((f) => {
-                  toolResultContent += `\n[File: ${f.name}]\n${f.content}\n`;
-                });
-              } else {
-                toolResultContent =
-                  "Error: Requested files not found in workspace.";
-              }
-              if (onChunk)
-                onChunk(
-                  "",
-                  `\n📖 Citit ${filenames.length} fișiere din workspace...\n`,
+              if (action === "read_files") {
+                const filenames = (payload.filenames || []) as string[];
+                const requestedFiles = this.workspaceFiles.filter((f) =>
+                  filenames.includes(f.name),
                 );
-            } else if (toolCall.function.name === "search_workspace_files") {
-              const queries = ((args.queries || []) as string[]).map((q) =>
-                q.toLowerCase(),
-              );
-              let foundCount = 0;
-              toolResultContent = `Search results for [${queries.join(", ")}] in workspace files:\n`;
 
-              this.workspaceFiles.forEach((f) => {
-                if (!f.content) return;
-                const lines = f.content.split("\n");
-                lines.forEach((line, idx) => {
-                  const lowerLine = line.toLowerCase();
-                  if (queries.some((q) => lowerLine.includes(q))) {
-                    foundCount++;
-                    const start = Math.max(0, idx - 1);
-                    const end = Math.min(lines.length - 1, idx + 1);
-                    toolResultContent += `\n[File: ${f.name}, Line ${idx + 1}]\n`;
-                    for (let i = start; i <= end; i++) {
-                      toolResultContent += `${i === idx ? ">> " : "   "}${lines[i]}\n`;
-                    }
-                  }
-                });
-              });
-
-              if (foundCount === 0)
-                toolResultContent = `No matches found for any of the queries in workspace files.`;
-              if (onChunk)
-                onChunk(
-                  "",
-                  `\n🔍 Căutat ${queries.length} termeni în workspace...\n`,
-                );
-            } else if (toolCall.function.name === "get_workspace_map") {
-              toolResultContent = "WORKSPACE KNOWLEDGE BASE MAP:\n";
-              this.workspaceFiles.forEach((f) => {
-                const snippet = (f.content || "")
-                  .substring(0, 500)
-                  .replace(/\n/g, " ");
-                const sizeKb = Math.round((f.content?.length || 0) / 1024);
-                toolResultContent += `\n- FILE: ${f.name} (${sizeKb} KB)\n`;
-                toolResultContent += `  PREVIEW: ${snippet}...\n`;
-                toolResultContent += `  CONTEXT: This file appears to contain ${f.mimeType || "text"} data. Use search to find specific entities.\n`;
-              });
-              if (onChunk)
-                onChunk("", `\n🗺️ Mapat structura workspace-ului...\n`);
-            } else if (toolCall.function.name === "semantic_search_workspace") {
-              const query = args.query as string;
-              toolResultContent = `Semantic search results for "${query}":\n`;
-
-              const queryEmbedding = await this.generateEmbedding(query);
-              if (!queryEmbedding) {
-                toolResultContent =
-                  "Error: Could not generate embedding for query.";
-              } else {
-                const results = await this.searchInWorkspace(queryEmbedding);
-                if (results.length > 0) {
-                  results.forEach((res, idx) => {
-                    toolResultContent += `\n[Result ${idx + 1} - File: ${res.filename} (Score: ${res.score.toFixed(2)})]\n${res.content}\n`;
+                if (requestedFiles.length > 0) {
+                  requestedFiles.forEach((f) => {
+                    toolResultContent += `\n[File: ${f.name}]\n${f.content}\n`;
                   });
                 } else {
                   toolResultContent =
-                    "No semantically relevant information found.";
+                    "Error: Requested files not found in workspace.";
                 }
+                if (onChunk)
+                  onChunk(
+                    "",
+                    `\n📖 Citit ${filenames.length} fișiere din workspace...\n`,
+                  );
+              } else if (action === "search_files") {
+                const queries = ((payload.queries || []) as string[]).map((q) =>
+                  q.toLowerCase(),
+                );
+                let foundCount = 0;
+                toolResultContent = `Search results for [${queries.join(", ")}] in workspace files:\n`;
+
+                this.workspaceFiles.forEach((f) => {
+                  if (!f.content) return;
+                  const lines = f.content.split("\n");
+                  lines.forEach((line, idx) => {
+                    const lowerLine = line.toLowerCase();
+                    if (queries.some((q) => lowerLine.includes(q))) {
+                      foundCount++;
+                      const start = Math.max(0, idx - 1);
+                      const end = Math.min(lines.length - 1, idx + 1);
+                      toolResultContent += `\n[File: ${f.name}, Line ${idx + 1}]\n`;
+                      for (let i = start; i <= end; i++) {
+                        toolResultContent += `${i === idx ? ">> " : "   "}${lines[i]}\n`;
+                      }
+                    }
+                  });
+                });
+
+                if (foundCount === 0)
+                  toolResultContent = `No matches found for any of the queries in workspace files.`;
+                if (onChunk)
+                  onChunk(
+                    "",
+                    `\n🔍 Căutat ${queries.length} termeni în workspace...\n`,
+                  );
+              } else if (action === "get_map") {
+                toolResultContent = "WORKSPACE KNOWLEDGE BASE MAP:\n";
+                this.workspaceFiles.forEach((f) => {
+                  const snippet = (f.content || "")
+                    .substring(0, 500)
+                    .replace(/\n/g, " ");
+                  const sizeKb = Math.round((f.content?.length || 0) / 1024);
+                  toolResultContent += `\n- FILE: ${f.name} (${sizeKb} KB)\n`;
+                  toolResultContent += `  PREVIEW: ${snippet}...\n`;
+                  toolResultContent += `  CONTEXT: This file appears to contain ${f.mimeType || "text"} data. Use search to find specific entities.\n`;
+                });
+                if (onChunk)
+                  onChunk("", `\n🗺️ Mapat structura workspace-ului...\n`);
+              } else if (action === "semantic_search") {
+                const query = payload.query as string;
+                toolResultContent = `Semantic search results for "${query}":\n`;
+
+                const queryEmbedding = await this.generateEmbedding(query);
+                if (!queryEmbedding) {
+                  toolResultContent =
+                    "Error: Could not generate embedding for query.";
+                } else {
+                  const results = await this.searchInWorkspace(queryEmbedding);
+                  if (results.length > 0) {
+                    results.forEach((res, idx) => {
+                      toolResultContent += `\n[Result ${idx + 1} - File: ${res.filename} (Score: ${res.score.toFixed(2)})]\n${res.content}\n`;
+                    });
+                  } else {
+                    toolResultContent =
+                      "No semantically relevant information found.";
+                  }
+                }
+                if (onChunk)
+                  onChunk("", `\n🧠 Căutare semantică: "${query}"...\n`);
               }
-              if (onChunk)
-                onChunk("", `\n🧠 Căutare semantică: "${query}"...\n`);
             } else {
               toolResultContent = "Unknown tool.";
             }
@@ -3874,7 +3398,7 @@ export class LLMService {
 1. **PRIORITY:** If the user has attached a file, page, or source (e.g., from the Library), this attachment is your **PRIMARY SOURCE OF TRUTH**.
 2. **VERIFY FIRST:** Do NOT answer from your internal memory or assumptions about what the file *might* contain. You MUST read and analyze the actual content of the attachment provided in the context.
 3. **NO HALLUCINATIONS:** If the attached file does not contain the answer, state that clearly. Do not invent information to fill the gap.
-4. **TOOL USAGE:** If the file content is truncated or summarized (indicated by a system message), you **MUST** use the \`read_workspace_files\` tool to retrieve the full content before answering specific questions about it.
+4. **TOOL USAGE:** If the file content is truncated or summarized (indicated by a system message), you **MUST** use the \`workspace_tool\` with action \`read_files\` to retrieve the full content before answering specific questions about it.
 5. **ANALYSIS:** When asked about a source, first analyze its structure, key points, and details *before* formulating your response.`);
 
     if (aiProfile.systemInstructions) {
@@ -3896,24 +3420,14 @@ export class LLMService {
       );
     }
 
-    // Explicit Tool Usage Instruction (Crucial for generic OpenRouter/OpenAI models)
-    if (forceExplicitToolUse) {
-      parts.push(`\n**CRITICAL INSTRUCTION: REAL-TIME SEARCH & KNOWLEDGE BASE**
-1. **Real-Time Search:** You have access to \`perform_search\`. If the user asks about current events, news, weather, or ANY information that might have changed since your training cutoff, you **MUST** use it.
-2. **Workspace Knowledge Base:** You have access to workspace files. If the user asks for specific data (ID numbers, tax codes like 'Steuer number', IBAN, names, dates) that might be in these files, you **MUST** find it.
-3. **Semantic Mapping:** Use \`get_workspace_map\` first if you are unsure which file contains the information. This gives you a high-level overview of the topics and context of each file.
-4. **Semantic Search:** Use \`semantic_search_workspace\` for complex questions where keywords might fail (e.g., "What are my obligations?" instead of "Tax"). This finds information based on meaning.
-5. **Query Expansion (Synonyms):** When using \`search_workspace_files\`, always include multiple synonyms and related terms in the \`queries\` array to ensure semantic coverage. For example, if searching for a tax ID, use \`["Steuer", "Tax ID", "Fiscal Code", "Steuernummer"]\`.
-6. **Contextual Understanding:** Don't just look for exact matches. Analyze the snippets returned by search to understand the context. If a snippet mentions "the number assigned by the finance office", it might be the tax ID even if the word "tax" isn't there.
-7. **Accuracy:** Never hallucinate or guess personal data. If you cannot find it after searching/reading, state that clearly.
-8. **Form Filling:** If asked to fill a form or provide a list of personal details, use the tools to gather every single piece of information requested.
-9. **Calendar Management:** You have full access to the user's calendar. You can list, add, update, and delete events. ALWAYS check the current time using \`get_current_time\` before making any date-relative assumptions (like "tomorrow" or "next week"). Check for conflicts using \`list_calendar_events\` before adding new events.`);
-    } else {
-      // For Gemini models, we still want to mention the calendar capability
-      parts.push(
-        `\n**CALENDAR CAPABILITY:** You have full access to the user's calendar. You can list, add, update, and delete events. ALWAYS check the current time using \`get_current_time\` before making any date-relative assumptions. Check for conflicts before adding events.`,
-      );
-    }
+    // Explicit Tool Usage Instruction
+    parts.push(`\n**CRITICAL INSTRUCTION: REAL-TIME SEARCH & KNOWLEDGE BASE & TOOLS**
+1. **Real-Time Search:** You have access to search the web. If the user asks about current events, news, weather, or ANY information that might have changed since your training cutoff, you **MUST** use it.
+2. **Workspace Knowledge Base:** You have access to workspace files via \`workspace_tool\`. If the user asks for specific data (ID numbers, tax codes, names, dates) that might be in these files, you **MUST** find it using actions like \`read_files\`, \`search_files\`, \`get_map\`, or \`semantic_search\`.
+3. **Calendar Management:** You have full access to the user's calendar via \`calendar_tool\`. You can list, add, update, and delete events. ALWAYS check the current time using \`get_current_time\` before making any date-relative assumptions. Check for conflicts using \`read_events\` before adding new events.
+4. **Library Management:** You have access to the user's library via \`library_tool\`. You can read page structures and modify pages.
+5. **Portfolio & Safe Digital:** You have access to the user's portfolio (\`portfolio_tool\`) and safe digital documents (\`safe_digital_tool\`).
+6. **Accuracy:** Never hallucinate or guess personal data. If you cannot find it after searching/reading, state that clearly.`);
 
     // GLOBAL PROCESS INSTRUCTION (Enforces the Plan -> Execute -> Analyze -> Answer loop)
     parts.push(`\n**OPERATIONAL PROTOCOL:**
@@ -4002,7 +3516,7 @@ To display a professional portfolio dashboard widget, use:
 
     // Add capabilities instruction for Saving
     parts.push(
-      "\n\nCAPABILITIES: You can save information to the user's library. CRITICAL RULE: ONLY use `save_to_library` if the user EXPLICITLY and DIRECTLY commands you to 'save this', 'create a page', or 'remember this'. DO NOT call this tool automatically at the end of a research task or conversation. If the user just asks a question or asks for research, DO NOT save it.",
+      "\n\nCAPABILITIES: You can save information to the user's library. CRITICAL RULE: ONLY use `library_tool` with action `save_page` if the user EXPLICITLY and DIRECTLY commands you to 'save this', 'create a page', or 'remember this'. DO NOT call this tool automatically at the end of a research task or conversation. If the user just asks a question or asks for research, DO NOT save it.",
     );
 
     // Instruction to generate related questions
