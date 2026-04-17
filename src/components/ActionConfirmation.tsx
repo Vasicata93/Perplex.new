@@ -163,40 +163,73 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
 
     return (
       <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-          {/* Header */}
+        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+          {/* Header - Structured Info */}
           <div className="px-6 py-5 border-b border-pplx-border bg-pplx-secondary/30">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${opColor}`}>
-                <Icon size={20} />
-              </div>
+            <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-bold text-pplx-text tracking-tight">
-                  {moduleName} Action
-                </h2>
-                <p className="text-xs text-pplx-muted">
-                  Confirm {moduleAction.replace("_", " ")}
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`p-1.5 rounded-lg ${opColor}`}>
+                    <Icon size={16} />
+                  </div>
+                  <h2 className="text-lg font-bold text-pplx-text tracking-tight">
+                    {moduleName} Action: {moduleAction.replace("_", " ")}
+                  </h2>
+                </div>
+                <p className="text-xs text-pplx-muted pl-1">
+                  Review and modify the payload before saving to your {moduleName}.
                 </p>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-pplx-muted bg-pplx-primary border border-pplx-border px-2 py-1 rounded-md">
+                <span className="uppercase tracking-wider">Storage:</span>
+                <span className="text-pplx-text font-bold">{moduleName}</span>
               </div>
             </div>
           </div>
 
           {/* Body */}
-          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5">
-                <AlignLeft size={12} /> Action Payload (JSON)
-              </label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2 text-xs font-mono text-pplx-text shadow-sm outline-none transition-all min-h-[200px]"
+          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-6">
+            <div className="group">
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                  <Type size={12} /> Action Reference Title
+                </label>
+              </div>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
               />
             </div>
-            {moduleAction.includes("delete") && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-                Warning: This will permanently remove the item from {moduleName}
-                .
+
+            <div className="flex flex-col min-h-0 group">
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                  <AlignLeft size={12} /> Action Payload (JSON)
+                </label>
+              </div>
+              <div className="relative">
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-4 min-h-[250px] text-sm text-pplx-text leading-7 whitespace-pre-wrap font-mono shadow-sm outline-none resize-y transition-all custom-scrollbar placeholder-pplx-muted/50"
+                />
+              </div>
+            </div>
+
+            {moduleAction.includes("delete") ? (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-500 leading-relaxed">
+                  Warning: This will permanently remove the item from {moduleName}.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50">
+                <AlertCircle size={16} className="text-pplx-accent shrink-0 mt-0.5" />
+                <p className="text-xs text-pplx-muted leading-relaxed">
+                  This action will modify data in your {moduleName}. Ensure the JSON payload is formatted accurately.
+                </p>
               </div>
             )}
           </div>
@@ -205,7 +238,7 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
           <div className="px-6 py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-4">
             <button
               onClick={onCancel}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
             >
               <X size={16} /> Cancel
             </button>
@@ -218,12 +251,10 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                   alert("Invalid JSON payload. Please check the format.");
                 }
               }}
-              className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 ${moduleAction.includes("delete") ? "bg-red-500 shadow-red-500/20" : "bg-blue-600 shadow-blue-600/20"}`}
+              className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-lg hover:scale-[1.02] active:scale-95 ${moduleAction.includes("delete") ? "bg-red-500 shadow-red-500/20" : "bg-blue-600 shadow-blue-600/20"}`}
             >
-              <Check size={16} strokeWidth={3} />
-              <span>
-                Confirm {moduleAction.includes("delete") ? "Delete" : "Save"}
-              </span>
+              <Check size={18} strokeWidth={3} />
+              <span>Confirm {moduleAction.includes("delete") ? "Deletion" : "Changes"}</span>
             </button>
           </div>
         </div>
@@ -249,99 +280,126 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
 
     return (
       <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-          {/* Header */}
+        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+          {/* Header - Structured Info */}
           <div className="px-6 py-5 border-b border-pplx-border bg-pplx-secondary/30">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${opColor}`}>
-                <Icon size={20} />
-              </div>
+            <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-bold text-pplx-text tracking-tight">
-                  {opName}
-                </h2>
-                <p className="text-xs text-pplx-muted">
-                  Review calendar changes
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`p-1.5 rounded-lg ${opColor}`}>
+                    <Icon size={16} />
+                  </div>
+                  <h2 className="text-lg font-bold text-pplx-text tracking-tight">
+                    {opName}
+                  </h2>
+                </div>
+                <p className="text-xs text-pplx-muted pl-1">
+                  Review and modify the event details before applying changes.
                 </p>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-pplx-muted bg-pplx-primary border border-pplx-border px-2 py-1 rounded-md">
+                <span className="uppercase tracking-wider">Storage:</span>
+                <span className="text-pplx-text font-bold">Calendar</span>
               </div>
             </div>
           </div>
 
           {/* Body */}
-          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-6">
             {/* Title */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5">
-                <Type size={12} /> Event Title
-              </label>
+            <div className="group">
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                  <Type size={12} /> Event Title
+                </label>
+              </div>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={opType === "delete"}
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2 text-sm font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
+                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
               />
             </div>
 
             {/* Date & Time */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock size={12} /> Start
-                </label>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="group">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                    <Clock size={12} /> Start Time
+                  </label>
+                </div>
                 <input
                   type="datetime-local"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   disabled={opType === "delete"}
-                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2 text-xs font-mono text-pplx-text shadow-sm outline-none transition-all disabled:opacity-70"
+                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-sm font-mono text-pplx-text shadow-sm outline-none transition-all disabled:opacity-70"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock size={12} /> End
-                </label>
+              <div className="group">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                    <Clock size={12} /> End Time
+                  </label>
+                </div>
                 <input
                   type="datetime-local"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   disabled={opType === "delete"}
-                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2 text-xs font-mono text-pplx-text shadow-sm outline-none transition-all disabled:opacity-70"
+                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-sm font-mono text-pplx-text shadow-sm outline-none transition-all disabled:opacity-70"
                 />
               </div>
             </div>
 
             {/* Location */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin size={12} /> Location
-              </label>
+            <div className="group">
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                  <MapPin size={12} /> Location
+                </label>
+              </div>
               <input
                 value={location || ""}
                 onChange={(e) => setLocation(e.target.value)}
                 disabled={opType === "delete"}
                 placeholder="Add location..."
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2 text-sm text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50 disabled:opacity-70"
+                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-sm text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50 disabled:opacity-70"
               />
             </div>
 
             {/* Description */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5">
-                <AlignLeft size={12} /> Description
-              </label>
-              <textarea
-                value={content || ""}
-                onChange={(e) => setContent(e.target.value)}
-                disabled={opType === "delete"}
-                placeholder="Add description..."
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2 text-sm text-pplx-text shadow-sm outline-none resize-y min-h-[80px] transition-all placeholder-pplx-muted/50 disabled:opacity-70"
-              />
+            <div className="flex flex-col min-h-0 group">
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                  <AlignLeft size={12} /> Description
+                </label>
+              </div>
+              <div className="relative">
+                <textarea
+                  value={content || ""}
+                  onChange={(e) => setContent(e.target.value)}
+                  disabled={opType === "delete"}
+                  placeholder="Add description..."
+                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-4 min-h-[150px] text-sm text-pplx-text shadow-sm outline-none resize-y transition-all placeholder-pplx-muted/50 disabled:opacity-70 custom-scrollbar"
+                />
+              </div>
             </div>
 
-            {opType === "delete" && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-                Are you sure you want to delete this event? This action cannot
-                be undone.
+            {opType === "delete" ? (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-500 leading-relaxed">
+                  Are you sure you want to delete this event? This action cannot be undone.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50">
+                <AlertCircle size={16} className="text-pplx-accent shrink-0 mt-0.5" />
+                <p className="text-xs text-pplx-muted leading-relaxed">
+                  This will {opType === "update" ? "modify" : "add"} an event in your external Google Calendar and your local data.
+                </p>
               </div>
             )}
           </div>
@@ -350,7 +408,7 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
           <div className="px-6 py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-4">
             <button
               onClick={onCancel}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
             >
               <X size={16} /> Cancel
             </button>
@@ -369,10 +427,10 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                   location,
                 })
               }
-              className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 ${opType === "delete" ? "bg-red-500 shadow-red-500/20" : "bg-blue-600 shadow-blue-600/20"}`}
+              className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 ${opType === "delete" ? "bg-red-500 shadow-red-500/20" : "bg-blue-600 shadow-blue-600/20"}`}
             >
-              <Check size={16} strokeWidth={3} />
-              <span>Confirm {opType === "delete" ? "Delete" : "Save"}</span>
+              <Check size={18} strokeWidth={3} />
+              <span>Confirm {opType === "delete" ? "Deletion" : "Changes"}</span>
             </button>
           </div>
         </div>
