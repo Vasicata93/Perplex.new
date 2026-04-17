@@ -62,8 +62,8 @@ Analyze the request and output a JSON object with the following structure:
 }
 
 Rules:
-- SIMPLU: Greetings, simple factual questions that do NOT require searching the web or reading files, simple clarifications.
-- MEDIU: Requires 1-2 tool calls (e.g., searching the web, reading a file, checking the calendar, saving a page).
+- SIMPLU: ONLY for purely conversational greetings AND simple factual questions without any actions. ANY request involving actions MUST NOT BE SIMPLU.
+- MEDIU: ANY request to perform an action (e.g., saving a page, reading a file, searching the web, checking the calendar). If the user asks you to "do" something, use MEDIU.
 - COMPLEX: Multi-step tasks, coding, extensive research, multiple tool calls.
 - AMBIGUU: Missing critical information, needs clarification first.
 - Priority:
@@ -96,7 +96,8 @@ CRITICAL: Ensure all property names are enclosed in double quotes. Do not use si
         openAiKey,
         openAiModel,
         activeLocalModel,
-        geminiApiKey
+        geminiApiKey,
+        true // requireJson
       );
       
       // Extract JSON from response

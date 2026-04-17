@@ -297,14 +297,14 @@ export const InputArea: React.FC<InputAreaProps> = ({
     };
 
     recognition.onerror = (event: any) => {
-      // Ignore "no-speech" errors as they happen during silence in continuous mode
-      if (event.error !== "no-speech") {
+      // Ignore "no-speech" and "aborted" errors as they happen during normal operation
+      if (event.error !== "no-speech" && event.error !== "aborted") {
         console.error("Speech Recognition Error", event.error);
       }
       if (event.error === "not-allowed") {
         alert("Microphone access denied. Please allow microphone permissions in your browser settings (check the lock icon in the address bar and ensure you are not in Private/Incognito mode).");
         stopListening();
-      } else if (event.error !== "no-speech") {
+      } else if (event.error !== "no-speech" && event.error !== "aborted") {
         // For other errors, we might want to show a subtle hint or just log
         setIsListening(false);
       }

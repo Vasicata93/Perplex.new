@@ -92,7 +92,8 @@ CRITICAL: Ensure all property names are enclosed in double quotes. Do not use si
         openAiKey,
         openAiModel,
         activeLocalModel,
-        geminiApiKey
+        geminiApiKey,
+        true // requireJson
       );
       // Extract JSON from potential markdown blocks
       let jsonString = responseText.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();

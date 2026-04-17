@@ -106,6 +106,14 @@ const libraryToolGemini: FunctionDeclaration = {
       payload: {
         type: Type.OBJECT,
         description: "The structured data for the action. Varies based on the action.",
+        properties: {
+          title: { type: Type.STRING, description: "Title of the page (for save_page)" },
+          content: { type: Type.STRING, description: "Content of the page (for save_page) or block" },
+          blockId: { type: Type.STRING, description: "Block ID for block operations" },
+          pageId: { type: Type.STRING, description: "Page ID" },
+          rowIdx: { type: Type.NUMBER, description: "Row index for table operations" },
+          colIdx: { type: Type.NUMBER, description: "Column index for table operations" },
+        }
       },
     },
     required: ["action"],
@@ -127,7 +135,12 @@ const workspaceToolGemini: FunctionDeclaration = {
       payload: {
         type: Type.OBJECT,
         description:
-          "The structured data for the action. For 'read_files', provide 'filenames' (array). For 'search_files', provide 'queries' (array). For 'semantic_search', provide 'query' (string). For 'get_map', leave empty.",
+          "The structured data for the action. For 'read_files', provide 'filenames' (array of strings). For 'search_files', provide 'queries' (array of strings). For 'semantic_search', provide 'query' (string).",
+        properties: {
+          filenames: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of filenames" },
+          queries: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of queries" },
+          query: { type: Type.STRING, description: "Search query" }
+        }
       },
     },
     required: ["action"],
@@ -187,9 +200,9 @@ const portfolioToolGemini: FunctionDeclaration = {
         description: "The specific action to perform on the portfolio.",
       },
       payload: {
-        type: Type.OBJECT,
+        type: Type.STRING,
         description:
-          "The structured data for the action. For 'add' actions, provide the full object. For 'update' or 'delete', include the 'id'. Optional for 'read' actions.",
+          "The structured data for the action as a minified JSON string. For 'add' actions, provide the full object JSON. For 'update' or 'delete', include the 'id' in JSON. Optional for 'read' actions.",
       },
     },
     required: ["action"],
@@ -217,9 +230,9 @@ const safeDigitalToolGemini: FunctionDeclaration = {
         description: "The specific action to perform on the safe digital.",
       },
       payload: {
-        type: Type.OBJECT,
+        type: Type.STRING,
         description:
-          "The structured data for the action. For 'add' actions, provide the full object. For 'update' or 'delete', include the 'id'. Optional for 'read' actions.",
+          "The structured data for the action as a minified JSON string. For 'add' actions, provide the full object JSON. For 'update' or 'delete', include the 'id' in JSON. Optional for 'read' actions.",
       },
     },
     required: ["action"],
@@ -353,7 +366,15 @@ const calendarToolGemini: FunctionDeclaration = {
       payload: {
         type: Type.OBJECT,
         description:
-          "The structured data for the action. For 'read_events', provide 'startDate' and 'endDate'. For 'add_event', provide 'title', 'startDate', 'endDate', etc. For 'update_event' or 'delete_event', include the 'id'.",
+          "The structured data for the action. For 'read_events', provide 'startDate' and 'endDate' (ISO strings). For 'add_event', provide 'title', 'startDate', 'endDate', etc. For 'update_event' or 'delete_event', include the 'id'.",
+        properties: {
+          startDate: { type: Type.STRING, description: "Start date (ISO)" },
+          endDate: { type: Type.STRING, description: "End date (ISO)" },
+          title: { type: Type.STRING, description: "Event title" },
+          description: { type: Type.STRING, description: "Event description" },
+          location: { type: Type.STRING, description: "Event location" },
+          id: { type: Type.STRING, description: "Event ID" }
+        }
       },
     },
     required: ["action"],
@@ -411,7 +432,9 @@ const getCurrentTimeToolGemini: FunctionDeclaration = {
     "Get the current system date and time. Use this to orient yourself temporally before checking the calendar.",
   parameters: {
     type: Type.OBJECT,
-    properties: {},
+    properties: {
+      format: { type: Type.STRING, description: "Optional format" }
+    },
     required: [],
   },
 };
@@ -674,7 +697,8 @@ export class LLMService {
     openAiKey: string = "",
     openAiModel: string = "",
     activeLocalModel: LocalModelConfig | undefined = undefined,
-    geminiApiKey?: string
+    geminiApiKey?: string,
+    requireJson: boolean = false
   ): Promise<string> {
     if (provider === ModelProvider.GEMINI) {
       const client = new GoogleGenAI({
@@ -689,6 +713,7 @@ export class LLMService {
           model: "gemini-2.5-flash",
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           config: {
+            responseMimeType: requireJson ? "application/json" : "text/plain",
             // @ts-ignore - some versions of the SDK support signal
             signal: controller.signal
           }
@@ -723,10 +748,19 @@ export class LLMService {
         headers["Authorization"] = `Bearer ${apiKey}`;
       }
 
-      const body = {
+      const body: any = {
         model: modelName,
         messages: [{ role: "user", content: prompt }],
       };
+      
+      if (requireJson) {
+        if (provider === ModelProvider.OPENAI) {
+          body.response_format = { type: "json_object" };
+        } else if (provider === ModelProvider.OPENROUTER || provider === ModelProvider.LOCAL) {
+            // Some local models and OpenRouter models support this
+            body.response_format = { type: "json_object" };
+        }
+      }
 
       let response: Response;
       let retryCount = 0;
@@ -3420,14 +3454,15 @@ export class LLMService {
       );
     }
 
-    // Explicit Tool Usage Instruction
-    parts.push(`\n**CRITICAL INSTRUCTION: REAL-TIME SEARCH & KNOWLEDGE BASE & TOOLS**
+    if (forceExplicitToolUse) {
+      parts.push(`\n**CRITICAL INSTRUCTION: REAL-TIME SEARCH & KNOWLEDGE BASE & TOOLS**
 1. **Real-Time Search:** You have access to search the web. If the user asks about current events, news, weather, or ANY information that might have changed since your training cutoff, you **MUST** use it.
 2. **Workspace Knowledge Base:** You have access to workspace files via \`workspace_tool\`. If the user asks for specific data (ID numbers, tax codes, names, dates) that might be in these files, you **MUST** find it using actions like \`read_files\`, \`search_files\`, \`get_map\`, or \`semantic_search\`.
 3. **Calendar Management:** You have full access to the user's calendar via \`calendar_tool\`. You can list, add, update, and delete events. ALWAYS check the current time using \`get_current_time\` before making any date-relative assumptions. Check for conflicts using \`read_events\` before adding new events.
 4. **Library Management:** You have access to the user's library via \`library_tool\`. You can read page structures and modify pages.
 5. **Portfolio & Safe Digital:** You have access to the user's portfolio (\`portfolio_tool\`) and safe digital documents (\`safe_digital_tool\`).
 6. **Accuracy:** Never hallucinate or guess personal data. If you cannot find it after searching/reading, state that clearly.`);
+    }
 
     // GLOBAL PROCESS INSTRUCTION (Enforces the Plan -> Execute -> Analyze -> Answer loop)
     parts.push(`\n**OPERATIONAL PROTOCOL:**
