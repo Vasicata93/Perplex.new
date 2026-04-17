@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { mockDocuments } from "./safedigital-constants";
 import { DocumentItem } from "./safedigital-types";
+import { safeDigitalService } from "../../services/safeDigitalService";
 
 declare global {
   interface Window {
@@ -33,39 +33,26 @@ const SafeDigitalPage: React.FC<SafeDigitalPageProps> = ({
   hasDock = false,
 }) => {
   // Centralized state management
-  const [documents, setDocuments] = useState<DocumentItem[]>(mockDocuments);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // AI Action Bridge
+  // Load from DB
+  const loadDocs = async () => {
+    setIsLoading(true);
+    await safeDigitalService.initializeDefaultData();
+    const docs = await safeDigitalService.getDocuments();
+    setDocuments(docs);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    window.safeDigitalActions = {
-      getDocuments: () => documents,
-      addDocument: (doc) => {
-        const finalItem = {
-          title: doc.title || "Document Nou",
-          mainCategory: doc.mainCategory || "Personal",
-          subCategory: doc.subCategory || "Altele",
-          fileSize: doc.fileSize || "N/A",
-          content: doc.content,
-          expiryDate: doc.expiryDate,
-          id: Date.now(),
-          lastModified: new Date().toISOString().split("T")[0],
-          isLocked: true,
-        };
-        setDocuments((prev) => [...prev, finalItem as DocumentItem]);
-      },
-      updateDocument: (id, updates) => {
-        setDocuments((prev) =>
-          prev.map((d) => (d.id === id ? { ...d, ...updates } : d)),
-        );
-      },
-      deleteDocument: (id) => {
-        setDocuments((prev) => prev.filter((d) => d.id !== id));
-      },
-    };
+    loadDocs();
+    window.addEventListener("safe-digital-updated", loadDocs);
     return () => {
-      delete window.safeDigitalActions;
+      window.removeEventListener("safe-digital-updated", loadDocs);
+      delete window.safeDigitalActions; // clean up old action bridge if any
     };
-  }, [documents]);
+  }, []);
 
   const [selectedMainCategory, setSelectedMainCategory] =
     useState<string>("Personal");
@@ -73,6 +60,7 @@ const SafeDigitalPage: React.FC<SafeDigitalPageProps> = ({
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DocumentItem | null>(null);
+  const [viewingItem, setViewingItem] = useState<DocumentItem | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{
     name: string;
@@ -83,11 +71,13 @@ const SafeDigitalPage: React.FC<SafeDigitalPageProps> = ({
   const [textContent, setTextContent] = useState("");
 
   // Generic CRUD handlers
-  const deleteHandler = (id: number) => {
-    setDocuments((prev) => prev.filter((item) => item.id !== id));
+  const deleteHandler = async (id: number) => {
+    const newDocs = documents.filter((item) => item.id !== id);
+    setDocuments(newDocs);
+    await safeDigitalService.saveDocuments(newDocs);
   };
 
-  const saveHandler = (item: any) => {
+  const saveHandler = async (item: any) => {
     let finalSize = item.fileSize;
     if (inputMode === "file" && uploadedFile) {
       finalSize = uploadedFile.size;
@@ -104,21 +94,25 @@ const SafeDigitalPage: React.FC<SafeDigitalPageProps> = ({
       fileSize: finalSize,
       content: inputMode === "text" ? textContent : undefined,
     };
+    
+    let newDocs;
     if (editingItem) {
-      setDocuments((prev) =>
-        prev.map((d) => (d.id === editingItem.id ? { ...d, ...finalItem } : d)),
-      );
+      newDocs = documents.map((d) => (d.id === editingItem.id ? { ...d, ...finalItem } : d));
     } else {
-      setDocuments((prev) => [
-        ...prev,
+      newDocs = [
+        ...documents,
         {
           ...finalItem,
           id: Date.now(),
           lastModified: new Date().toISOString().split("T")[0],
           isLocked: true,
         },
-      ]);
+      ];
     }
+    
+    setDocuments(newDocs as DocumentItem[]);
+    await safeDigitalService.saveDocuments(newDocs as DocumentItem[]);
+    
     setIsModalOpen(false);
     setEditingItem(null);
     setUploadedFile(null);
@@ -200,12 +194,24 @@ const SafeDigitalPage: React.FC<SafeDigitalPageProps> = ({
           </motion.div>
 
           {/* Main Content Area */}
-          <SafeDigitalVault
-            documents={documents}
-            onDelete={deleteHandler}
-            onEdit={openEditModal}
-            onAdd={openAddModal}
-          />
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20 flex-col gap-4">
+              <div className="p-4 bg-pplx-secondary rounded-full animate-bounce">
+                <VaultIcon className="w-8 h-8 text-pplx-accent" />
+              </div>
+              <p className="text-sm font-bold text-pplx-muted uppercase tracking-widest animate-pulse">
+                Seif Incarcat...
+              </p>
+            </div>
+          ) : (
+            <SafeDigitalVault
+              documents={documents}
+              onDelete={deleteHandler}
+              onEdit={openEditModal}
+              onAdd={openAddModal}
+              onView={(doc) => setViewingItem(doc)}
+            />
+          )}
         </main>
       </div>
 
@@ -487,6 +493,91 @@ const SafeDigitalPage: React.FC<SafeDigitalPageProps> = ({
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Viewing Modal Overlay */}
+      <AnimatePresence>
+        {viewingItem && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setViewingItem(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-2xl bg-pplx-card rounded-[32px] shadow-2xl border border-pplx-border p-6 sm:p-8 max-h-[90vh] flex flex-col"
+            >
+              <div className="flex justify-between items-start mb-6 shrink-0">
+                <div className="pr-12">
+                  <h3 className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-pplx-text">
+                    {viewingItem.title}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] font-bold text-pplx-muted uppercase tracking-widest bg-pplx-secondary px-2 py-1 rounded">
+                      {viewingItem.mainCategory}
+                    </span>
+                    <span className="text-pplx-muted">/</span>
+                    <span className="text-[10px] font-bold text-pplx-muted uppercase tracking-widest">
+                      {viewingItem.subCategory}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setViewingItem(null)}
+                  className="absolute top-6 right-6 p-2 hover:bg-pplx-hover rounded-full text-pplx-muted transition-all active:scale-90 border border-transparent hover:border-pplx-border"
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-6">
+                {viewingItem.content ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed text-pplx-text bg-pplx-secondary/30 p-4 sm:p-6 rounded-2xl border border-pplx-border">
+                    {viewingItem.content}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center bg-pplx-secondary/20 rounded-2xl border border-pplx-border border-dashed">
+                    <div className="p-4 bg-pplx-secondary rounded-full mb-4">
+                      <FileText className="w-8 h-8 text-pplx-muted/50" />
+                    </div>
+                    <p className="text-sm font-medium text-pplx-text">Doar atașament prezent</p>
+                    <p className="text-xs text-pplx-muted mt-1">Nu există continut detaliat pentru acest fișier.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="shrink-0 flex items-center justify-between pt-4 border-t border-pplx-border">
+                <div className="flex items-center gap-4 text-xs font-bold text-pplx-muted">
+                  <span className="bg-pplx-secondary px-3 py-1.5 rounded-lg flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-pplx-accent" />
+                    {viewingItem.fileSize || "N/A"}
+                  </span>
+                  {viewingItem.expiryDate && (
+                    <span className="bg-rose-500/10 text-rose-500 px-3 py-1.5 rounded-lg border border-rose-500/20">
+                      Expiră: {viewingItem.expiryDate}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setViewingItem(null);
+                      openEditModal(viewingItem);
+                    }}
+                    className="px-4 py-2 bg-pplx-secondary hover:bg-pplx-hover text-pplx-text font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Editează
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}

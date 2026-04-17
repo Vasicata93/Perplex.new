@@ -22,6 +22,7 @@ interface SafeDigitalVaultProps {
   onDelete: (id: number) => void;
   onEdit: (doc: DocumentItem) => void;
   onAdd: (initialData?: any) => void;
+  onView?: (doc: DocumentItem) => void;
 }
 
 export const folderHierarchy = [
@@ -66,6 +67,7 @@ const SafeDigitalVault: React.FC<SafeDigitalVaultProps> = ({
   onDelete,
   onEdit,
   onAdd,
+  onView,
 }) => {
   const [currentMain, setCurrentMain] = useState<string | null>(null);
   const [currentSub, setCurrentSub] = useState<string | null>(null);
@@ -268,7 +270,14 @@ const SafeDigitalVault: React.FC<SafeDigitalVaultProps> = ({
               <motion.div
                 key={doc.id}
                 variants={itemVariants}
-                className="bg-pplx-card p-3 rounded-xl border border-pplx-border shadow-sm hover:border-pplx-accent/30 transition-colors duration-200 group relative flex flex-col"
+                onClick={(e) => {
+                  // Prevent view if clicking on action buttons
+                  const target = e.target as HTMLElement;
+                  if (!target.closest('button')) {
+                    onView && onView(doc);
+                  }
+                }}
+                className={`bg-pplx-card p-3 rounded-xl border border-pplx-border shadow-sm hover:border-pplx-accent/30 transition-colors duration-200 group relative flex flex-col ${onView ? 'cursor-pointer' : ''}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">

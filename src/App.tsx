@@ -74,6 +74,11 @@ import { initializeIntegrations } from "./services/integration/init";
 
 import { SpaceFilesModal } from "./components/SpaceFilesModal";
 
+import { v4 as uuidv4 } from "uuid";
+import { portfolioService } from "./services/portfolioService";
+import { safeDigitalService } from "./services/safeDigitalService";
+
+// --- End of imports ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // Initialize integrations once
@@ -1513,55 +1518,92 @@ function App() {
 
       try {
         if (module === "safe_digital") {
-          if (window.safeDigitalActions) {
-            if (action === "add_document")
-              await window.safeDigitalActions.addDocument(payloadToUse);
-            else if (action === "update_document")
-              await window.safeDigitalActions.updateDocument(payloadToUse.id || data.id, payloadToUse);
-            else if (action === "delete_document")
-              await window.safeDigitalActions.deleteDocument(payloadToUse.id || data.id);
+          const docs = await safeDigitalService.getDocuments();
+
+          if (action === "add_document") {
+            const newDoc = {
+              title: payloadToUse.title || "Document Nou",
+              mainCategory: payloadToUse.mainCategory || "Personal",
+              subCategory: payloadToUse.subCategory || "Altele",
+              fileSize: payloadToUse.fileSize || "N/A",
+              content: payloadToUse.content,
+              expiryDate: payloadToUse.expiryDate,
+              id: Date.now(),
+              lastModified: new Date().toISOString().split("T")[0],
+              isLocked: true,
+              ...payloadToUse
+            };
+            // ensure id is number
+            if(typeof newDoc.id !== 'number') newDoc.id = Date.now();
+            await safeDigitalService.saveDocuments([...docs, newDoc as any]);
+          } else if (action === "update_document") {
+            const idToUpdate = payloadToUse.id || data?.id;
+            const newDocs = docs.map((d) => (d.id === idToUpdate ? { ...d, ...payloadToUse, id: d.id } : d));
+            await safeDigitalService.saveDocuments(newDocs as any);
+          } else if (action === "delete_document") {
+            const idToDelete = payloadToUse.id || data?.id;
+            const newDocs = docs.filter((d) => d.id !== idToDelete);
+            await safeDigitalService.saveDocuments(newDocs);
           }
+          window.dispatchEvent(new CustomEvent("safe-digital-updated"));
+
         } else if (module === "portfolio") {
-          if (window.portfolioActions) {
-            const assetData = payloadToUse.asset || {
-              name: payloadToUse.name || "Unknown Asset",
-              symbol: payloadToUse.symbol || "UNK",
-              type: payloadToUse.type || "Equity",
-              sector: payloadToUse.sector || "General",
-              emoji: payloadToUse.emoji || "📈",
-              color: payloadToUse.color || "blue"
-            };
+          const assets = await portfolioService.getAssets();
+          const positions = await portfolioService.getPositions();
 
-            const positionData = payloadToUse.position || {
-              shares: payloadToUse.shares || 1,
-              avgCost: payloadToUse.avgCost || 0,
-              costBasis: payloadToUse.costBasis || ((payloadToUse.shares || 1) * (payloadToUse.avgCost || 0)),
-              currentPrice: payloadToUse.currentPrice || payloadToUse.avgCost || 0,
-              targetPrice: payloadToUse.targetPrice,
-              stopLoss: payloadToUse.stopLoss,
-            };
+          const assetData = payloadToUse.asset || {
+            name: payloadToUse.name || "Unknown Asset",
+            symbol: payloadToUse.symbol || "UNK",
+            type: payloadToUse.type || "Equity",
+            sector: payloadToUse.sector || "General",
+            emoji: payloadToUse.emoji || "📈",
+            color: payloadToUse.color || "blue"
+          };
 
-            if (action === "add_asset" || action === "add_position") {
-              await window.portfolioActions.addAssetAndPosition(
-                assetData,
-                positionData,
+          const positionData = payloadToUse.position || {
+            shares: payloadToUse.shares || 1,
+            avgCost: payloadToUse.avgCost || 0,
+            costBasis: payloadToUse.costBasis || ((payloadToUse.shares || 1) * (payloadToUse.avgCost || 0)),
+            currentPrice: payloadToUse.currentPrice || payloadToUse.avgCost || 0,
+            targetPrice: payloadToUse.targetPrice,
+            stopLoss: payloadToUse.stopLoss,
+          };
+
+          if (action === "add_asset" || action === "add_position") {
+            const assetId = uuidv4();
+            const posId = uuidv4();
+            const newAsset = { ...assetData, id: assetId };
+            const newPos = { ...positionData, id: posId, assetId, lastUpdate: Date.now() };
+
+            await portfolioService.saveAssets([...assets, newAsset as any]);
+            await portfolioService.savePositions([...positions, newPos as any]);
+          } else if (
+            action === "update_asset" ||
+            action === "update_position"
+          ) {
+            const targetId = payloadToUse.id || data?.id;
+            const existingPos = positions.find((p) => p.id === targetId);
+            
+            if (existingPos) {
+              const newPositions = positions.map((p) => 
+                p.id === targetId ? { ...p, ...positionData, id: p.id, assetId: p.assetId, lastUpdate: Date.now() } : p
               );
-            } else if (
-              action === "update_asset" ||
-              action === "update_position"
-            ) {
-              await window.portfolioActions.updateAssetAndPosition(
-                payloadToUse.id || data?.id,
-                assetData,
-                positionData,
+              const newAssets = assets.map((a) => 
+                a.id === existingPos.assetId ? { ...a, ...assetData, id: a.id } : a
               );
-            } else if (
-              action === "delete_asset" ||
-              action === "delete_position"
-            ) {
-              await window.portfolioActions.deletePosition(payloadToUse.id || data?.id);
+              
+              await portfolioService.saveAssets(newAssets as any);
+              await portfolioService.savePositions(newPositions as any);
             }
+          } else if (
+            action === "delete_asset" ||
+            action === "delete_position"
+          ) {
+            const targetId = payloadToUse.id || data?.id;
+            const newPositions = positions.filter((p) => p.id !== targetId);
+            await portfolioService.savePositions(newPositions);
           }
+          window.dispatchEvent(new CustomEvent("portfolio-updated"));
         }
       } catch (e) {
         console.error(`Complex Module Action Failed: ${module}.${action}`, e);
