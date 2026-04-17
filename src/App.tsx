@@ -1509,38 +1509,57 @@ function App() {
       }
     } else if (actionToConfirm.type === "complex_module_action") {
       const { module, action, data } = actionToConfirm.data;
+      const payloadToUse = modifiedData || data;
 
       try {
         if (module === "safe_digital") {
           if (window.safeDigitalActions) {
             if (action === "add_document")
-              await window.safeDigitalActions.addDocument(data);
+              await window.safeDigitalActions.addDocument(payloadToUse);
             else if (action === "update_document")
-              await window.safeDigitalActions.updateDocument(data.id, data);
+              await window.safeDigitalActions.updateDocument(payloadToUse.id || data.id, payloadToUse);
             else if (action === "delete_document")
-              await window.safeDigitalActions.deleteDocument(data.id);
+              await window.safeDigitalActions.deleteDocument(payloadToUse.id || data.id);
           }
         } else if (module === "portfolio") {
           if (window.portfolioActions) {
+            const assetData = payloadToUse.asset || {
+              name: payloadToUse.name || "Unknown Asset",
+              symbol: payloadToUse.symbol || "UNK",
+              type: payloadToUse.type || "Equity",
+              sector: payloadToUse.sector || "General",
+              emoji: payloadToUse.emoji || "📈",
+              color: payloadToUse.color || "blue"
+            };
+
+            const positionData = payloadToUse.position || {
+              shares: payloadToUse.shares || 1,
+              avgCost: payloadToUse.avgCost || 0,
+              costBasis: payloadToUse.costBasis || ((payloadToUse.shares || 1) * (payloadToUse.avgCost || 0)),
+              currentPrice: payloadToUse.currentPrice || payloadToUse.avgCost || 0,
+              targetPrice: payloadToUse.targetPrice,
+              stopLoss: payloadToUse.stopLoss,
+            };
+
             if (action === "add_asset" || action === "add_position") {
               await window.portfolioActions.addAssetAndPosition(
-                data.asset,
-                data.position,
+                assetData,
+                positionData,
               );
             } else if (
               action === "update_asset" ||
               action === "update_position"
             ) {
               await window.portfolioActions.updateAssetAndPosition(
-                data.id,
-                data.asset,
-                data.position,
+                payloadToUse.id || data?.id,
+                assetData,
+                positionData,
               );
             } else if (
               action === "delete_asset" ||
               action === "delete_position"
             ) {
-              await window.portfolioActions.deletePosition(data.id);
+              await window.portfolioActions.deletePosition(payloadToUse.id || data?.id);
             }
           }
         }

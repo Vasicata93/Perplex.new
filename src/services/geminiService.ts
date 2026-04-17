@@ -2145,12 +2145,20 @@ export class LLMService {
                   if (onChunk)
                     onChunk("", `\n🔍 Citit informații din portofoliu...\n`);
                 } else {
+                  let parsedPayload = fc.args.payload;
+                  try {
+                    if (typeof fc.args.payload === "string") {
+                      parsedPayload = JSON.parse(fc.args.payload);
+                    }
+                  } catch(e) {
+                    // fallback to string if parsing fails
+                  }
                   pendingAction = {
                     type: "complex_module_action",
                     data: {
                       module: "portfolio",
                       action: fc.args.action,
-                      data: fc.args.payload,
+                      data: parsedPayload,
                     },
                     originalToolCallId: "gemini-fc",
                   };
@@ -2199,12 +2207,20 @@ export class LLMService {
                   if (onChunk)
                     onChunk("", `\n🔍 Citit informații din safe digital...\n`);
                 } else {
+                  let parsedPayload = fc.args.payload;
+                  try {
+                    if (typeof fc.args.payload === "string") {
+                      parsedPayload = JSON.parse(fc.args.payload);
+                    }
+                  } catch(e) {
+                    // fallback to string if parsing fails
+                  }
                   pendingAction = {
                     type: "complex_module_action",
                     data: {
                       module: "safe_digital",
                       action: fc.args.action,
-                      data: fc.args.payload,
+                      data: parsedPayload,
                     },
                     originalToolCallId: "gemini-fc",
                   };

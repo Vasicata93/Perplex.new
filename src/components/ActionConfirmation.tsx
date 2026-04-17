@@ -109,6 +109,23 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
           ? `${action.data.module}: ${action.data.action}`
           : action.data.title,
   );
+  // Safe formatting for complex modules
+  const getComplexModuleContent = () => {
+    try {
+      const data = action.data.data;
+      if (typeof data === "string") {
+        try {
+          return JSON.stringify(JSON.parse(data), null, 2);
+        } catch (e) {
+          return data;
+        }
+      }
+      return JSON.stringify(data, null, 2);
+    } catch (e) {
+      return "{}";
+    }
+  };
+
   const [content, setContent] = useState(
     isBlockOperation
       ? action.data.args.content ||
@@ -117,7 +134,7 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
       : isCalendarEvent
         ? action.data.args.description
         : isComplexModule
-          ? JSON.stringify(action.data.data, null, 2)
+          ? getComplexModuleContent()
           : action.data.content,
   );
 
