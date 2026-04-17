@@ -37,19 +37,19 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
   // --- SENSITIVE DATA WARNING ---
   if (isSensitiveData) {
     return (
-      <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-pplx-card sm:border border-pplx-border sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 flex flex-col">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-pplx-border bg-orange-500/10">
+          <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-pplx-border bg-orange-500/10 shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg text-orange-500 bg-orange-500/20">
                 <AlertCircle size={20} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-pplx-text tracking-tight">
+                <h2 className="text-[15px] sm:text-lg font-bold text-pplx-text tracking-tight">
                   Sensitive Data Detected
                 </h2>
-                <p className="text-xs text-pplx-muted">
+                <p className="text-[11px] sm:text-xs text-pplx-muted">
                   The agent is attempting to use potentially sensitive information.
                 </p>
               </div>
@@ -57,22 +57,22 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
           </div>
 
           {/* Body */}
-          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5">
+          <div className="p-4 sm:px-6 sm:py-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 sm:gap-6">
+            <div className="space-y-1 flex-1 flex flex-col min-h-0">
+              <label className="text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5 shrink-0 mb-1.5 sm:mb-2">
                 <FileText size={12} /> Data Payload
               </label>
-              <div className="w-full bg-pplx-input border border-pplx-border rounded-xl px-3 py-2 text-xs font-mono text-pplx-text shadow-sm overflow-x-auto">
+              <div className="flex-1 w-full bg-pplx-input border border-pplx-border rounded-xl p-3 sm:p-4 text-[11px] sm:text-xs font-mono text-pplx-text shadow-sm overflow-auto">
                 <pre>{JSON.stringify(action.data.payload, null, 2)}</pre>
               </div>
             </div>
-            <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs">
+            <div className="p-2.5 sm:p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] sm:text-xs shrink-0">
               Warning: This data will be sent to an external tool or search engine.
             </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-5 border-t border-pplx-border bg-pplx-card flex flex-col gap-3">
+          <div className="px-4 py-3 sm:px-6 sm:py-5 border-t border-pplx-border bg-pplx-card flex flex-col gap-2.5 sm:gap-3 shrink-0">
             <button
               onClick={() => onConfirm(action.data.payload)}
               className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-orange-600 shadow-lg shadow-orange-600/20 transition-all hover:scale-[1.02] active:scale-95"
@@ -162,72 +162,72 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
         : Edit3;
 
     return (
-      <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-pplx-card sm:border border-pplx-border sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-2xl overflow-hidden animate-in sm:zoom-in-95 slide-in-from-bottom-full sm:slide-in-from-bottom-0 duration-200 flex flex-col">
           {/* Header - Structured Info */}
-          <div className="px-6 py-5 border-b border-pplx-border bg-pplx-secondary/30">
+          <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-pplx-border bg-pplx-secondary/30 shrink-0">
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className={`p-1.5 rounded-lg ${opColor}`}>
                     <Icon size={16} />
                   </div>
-                  <h2 className="text-lg font-bold text-pplx-text tracking-tight">
+                  <h2 className="text-[15px] sm:text-lg font-bold text-pplx-text tracking-tight max-w-[200px] sm:max-w-none truncate sm:whitespace-normal">
                     {moduleName} Action: {moduleAction.replace("_", " ")}
                   </h2>
                 </div>
-                <p className="text-xs text-pplx-muted pl-1">
+                <p className="text-[11px] sm:text-xs text-pplx-muted pl-1 hidden sm:block">
                   Review and modify the payload before saving to your {moduleName}.
                 </p>
               </div>
-              <div className="flex items-center gap-2 text-[10px] font-mono text-pplx-muted bg-pplx-primary border border-pplx-border px-2 py-1 rounded-md">
-                <span className="uppercase tracking-wider">Storage:</span>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-pplx-muted bg-pplx-primary border border-pplx-border px-2 py-1 rounded-md shrink-0">
+                <span className="uppercase tracking-wider hidden sm:inline">Storage:</span>
                 <span className="text-pplx-text font-bold">{moduleName}</span>
               </div>
             </div>
           </div>
 
           {/* Body */}
-          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-6">
-            <div className="group">
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+          <div className="p-4 sm:px-6 sm:py-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 sm:gap-6">
+            <div className="group shrink-0">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                   <Type size={12} /> Action Reference Title
                 </label>
               </div>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
+                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2.5 sm:px-4 sm:py-3.5 text-base sm:text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
               />
             </div>
 
-            <div className="flex flex-col min-h-0 group">
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+            <div className="flex flex-col flex-1 min-h-0 group">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2 shrink-0">
+                <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                   <AlignLeft size={12} /> Action Payload (JSON)
                 </label>
               </div>
-              <div className="relative">
+              <div className="relative flex-1 flex flex-col">
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-4 min-h-[250px] text-sm text-pplx-text leading-7 whitespace-pre-wrap font-mono shadow-sm outline-none resize-y transition-all custom-scrollbar placeholder-pplx-muted/50"
+                  className="w-full flex-1 bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-3 sm:p-4 min-h-[150px] sm:min-h-[250px] text-xs sm:text-sm text-pplx-text tracking-wide whitespace-pre-wrap font-mono shadow-sm outline-none resize-none transition-all custom-scrollbar placeholder-pplx-muted/50"
                 />
               </div>
             </div>
 
             {moduleAction.includes("delete") ? (
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-red-500 leading-relaxed">
+              <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-red-500/10 border border-red-500/20 shrink-0">
+                <AlertCircle size={14} className="text-red-500 shrink-0 sm:mt-0.5" />
+                <p className="text-[11px] sm:text-xs text-red-500 leading-relaxed">
                   Warning: This will permanently remove the item from {moduleName}.
                 </p>
               </div>
             ) : (
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50">
-                <AlertCircle size={16} className="text-pplx-accent shrink-0 mt-0.5" />
-                <p className="text-xs text-pplx-muted leading-relaxed">
+              <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50 shrink-0">
+                <AlertCircle size={14} className="text-pplx-accent shrink-0 sm:mt-0.5" />
+                <p className="text-[11px] sm:text-xs text-pplx-muted leading-relaxed">
                   This action will modify data in your {moduleName}. Ensure the JSON payload is formatted accurately.
                 </p>
               </div>
@@ -235,12 +235,12 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-4">
+          <div className="px-4 py-3 sm:px-6 sm:py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-3 sm:gap-4 shrink-0">
             <button
               onClick={onCancel}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
+              className="px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
             >
-              <X size={16} /> Cancel
+              <X size={16} /> <span className="hidden sm:inline">Cancel</span>
             </button>
             <button
               onClick={() => {
@@ -251,7 +251,7 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                   alert("Invalid JSON payload. Please check the format.");
                 }
               }}
-              className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-lg hover:scale-[1.02] active:scale-95 ${moduleAction.includes("delete") ? "bg-red-500 shadow-red-500/20" : "bg-blue-600 shadow-blue-600/20"}`}
+              className={`flex flex-1 sm:flex-none justify-center items-center gap-2 px-6 sm:px-8 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-lg hover:scale-[1.02] active:scale-95 ${moduleAction.includes("delete") ? "bg-red-500 shadow-red-500/20" : "bg-blue-600 shadow-blue-600/20"}`}
             >
               <Check size={18} strokeWidth={3} />
               <span>Confirm {moduleAction.includes("delete") ? "Deletion" : "Changes"}</span>
@@ -279,37 +279,37 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
       opType === "delete" ? Trash2 : opType === "add" ? Calendar : Edit3;
 
     return (
-      <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-pplx-card sm:border border-pplx-border sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 flex flex-col">
           {/* Header - Structured Info */}
-          <div className="px-6 py-5 border-b border-pplx-border bg-pplx-secondary/30">
+          <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-pplx-border bg-pplx-secondary/30 shrink-0">
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className={`p-1.5 rounded-lg ${opColor}`}>
                     <Icon size={16} />
                   </div>
-                  <h2 className="text-lg font-bold text-pplx-text tracking-tight">
+                  <h2 className="text-[15px] sm:text-lg font-bold text-pplx-text tracking-tight max-w-[200px] sm:max-w-none truncate sm:whitespace-normal">
                     {opName}
                   </h2>
                 </div>
-                <p className="text-xs text-pplx-muted pl-1">
+                <p className="text-[11px] sm:text-xs text-pplx-muted pl-1 hidden sm:block">
                   Review and modify the event details before applying changes.
                 </p>
               </div>
-              <div className="flex items-center gap-2 text-[10px] font-mono text-pplx-muted bg-pplx-primary border border-pplx-border px-2 py-1 rounded-md">
-                <span className="uppercase tracking-wider">Storage:</span>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-pplx-muted bg-pplx-primary border border-pplx-border px-2 py-1 rounded-md shrink-0">
+                <span className="uppercase tracking-wider hidden sm:inline">Storage:</span>
                 <span className="text-pplx-text font-bold">Calendar</span>
               </div>
             </div>
           </div>
 
           {/* Body */}
-          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-6">
+          <div className="p-4 sm:px-6 sm:py-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 sm:gap-6">
             {/* Title */}
-            <div className="group">
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+            <div className="group shrink-0">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                   <Type size={12} /> Event Title
                 </label>
               </div>
@@ -317,15 +317,15 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={opType === "delete"}
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
+                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2.5 sm:px-4 sm:py-3.5 text-base sm:text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
               />
             </div>
 
             {/* Date & Time */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 shrink-0">
               <div className="group">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                  <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                     <Clock size={12} /> Start Time
                   </label>
                 </div>
@@ -334,12 +334,12 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   disabled={opType === "delete"}
-                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-sm font-mono text-pplx-text shadow-sm outline-none transition-all disabled:opacity-70"
+                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-2 py-2 sm:px-4 sm:py-3.5 text-[12px] sm:text-sm font-mono text-pplx-text shadow-sm outline-none transition-all disabled:opacity-70"
                 />
               </div>
               <div className="group">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                  <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                     <Clock size={12} /> End Time
                   </label>
                 </div>
@@ -348,15 +348,15 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   disabled={opType === "delete"}
-                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-sm font-mono text-pplx-text shadow-sm outline-none transition-all disabled:opacity-70"
+                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-2 py-2 sm:px-4 sm:py-3.5 text-[12px] sm:text-sm font-mono text-pplx-text shadow-sm outline-none transition-all disabled:opacity-70"
                 />
               </div>
             </div>
 
             {/* Location */}
-            <div className="group">
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+            <div className="group shrink-0">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                   <MapPin size={12} /> Location
                 </label>
               </div>
@@ -365,39 +365,39 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                 onChange={(e) => setLocation(e.target.value)}
                 disabled={opType === "delete"}
                 placeholder="Add location..."
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-sm text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50 disabled:opacity-70"
+                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2 sm:px-4 sm:py-3.5 text-[13px] sm:text-sm text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50 disabled:opacity-70"
               />
             </div>
 
             {/* Description */}
-            <div className="flex flex-col min-h-0 group">
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+            <div className="flex flex-col flex-1 min-h-[100px] group">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2 shrink-0">
+                <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                   <AlignLeft size={12} /> Description
                 </label>
               </div>
-              <div className="relative">
+              <div className="relative flex flex-col flex-1">
                 <textarea
                   value={content || ""}
                   onChange={(e) => setContent(e.target.value)}
                   disabled={opType === "delete"}
                   placeholder="Add description..."
-                  className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-4 min-h-[150px] text-sm text-pplx-text shadow-sm outline-none resize-y transition-all placeholder-pplx-muted/50 disabled:opacity-70 custom-scrollbar"
+                  className="w-full flex-1 bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-3 sm:p-4 min-h-[100px] sm:min-h-[150px] text-[13px] sm:text-sm text-pplx-text shadow-sm outline-none resize-none transition-all placeholder-pplx-muted/50 disabled:opacity-70 custom-scrollbar"
                 />
               </div>
             </div>
 
             {opType === "delete" ? (
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-red-500 leading-relaxed">
+              <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-red-500/10 border border-red-500/20 shrink-0">
+                <AlertCircle size={14} className="text-red-500 shrink-0 sm:mt-0.5" />
+                <p className="text-[11px] sm:text-xs text-red-500 leading-relaxed">
                   Are you sure you want to delete this event? This action cannot be undone.
                 </p>
               </div>
             ) : (
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50">
-                <AlertCircle size={16} className="text-pplx-accent shrink-0 mt-0.5" />
-                <p className="text-xs text-pplx-muted leading-relaxed">
+              <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50 shrink-0">
+                <AlertCircle size={14} className="text-pplx-accent shrink-0 sm:mt-0.5" />
+                <p className="text-[11px] sm:text-xs text-pplx-muted leading-relaxed">
                   This will {opType === "update" ? "modify" : "add"} an event in your external Google Calendar and your local data.
                 </p>
               </div>
@@ -405,12 +405,12 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-4">
+          <div className="px-4 py-3 sm:px-6 sm:py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-3 sm:gap-4 shrink-0">
             <button
               onClick={onCancel}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
+              className="px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
             >
-              <X size={16} /> Cancel
+              <X size={16} /> <span className="hidden sm:inline">Cancel</span>
             </button>
             <button
               onClick={() =>
@@ -463,21 +463,21 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
             : Edit3;
 
     return (
-      <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-pplx-card sm:border border-pplx-border sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 flex flex-col">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-pplx-border bg-pplx-secondary/30">
+          <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-pplx-border bg-pplx-secondary/30 shrink-0">
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className={`p-1.5 rounded-lg ${opColor}`}>
                     <Icon size={16} />
                   </div>
-                  <h2 className="text-lg font-bold text-pplx-text tracking-tight">
+                  <h2 className="text-[15px] sm:text-lg font-bold text-pplx-text tracking-tight max-w-[200px] sm:max-w-none truncate sm:whitespace-normal">
                     {opName}
                   </h2>
                 </div>
-                <p className="text-xs text-pplx-muted pl-1">
+                <p className="text-[11px] sm:text-xs text-pplx-muted pl-1 hidden sm:block">
                   Target Page:{" "}
                   <span className="font-semibold text-pplx-text">{title}</span>
                 </p>
@@ -486,10 +486,10 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
           </div>
 
           {/* Body */}
-          <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-6">
-            <div className="flex flex-col min-h-0 group">
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+          <div className="p-4 sm:px-6 sm:py-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 sm:gap-6">
+            <div className="flex flex-col flex-1 min-h-[150px] group">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2 shrink-0">
+                <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                   <AlignLeft size={12} />{" "}
                   {opType === "delete_block"
                     ? "Content to Remove"
@@ -498,34 +498,34 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                       : "Content to Add/Update"}
                 </label>
                 {opType === "update_table_cell" && (
-                  <span className="text-[10px] text-pplx-muted bg-pplx-secondary px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] text-pplx-muted bg-pplx-secondary px-2 py-0.5 rounded-full shrink-0">
                     Row: {action.data.args.rowIndex}, Col:{" "}
                     {action.data.args.colIndex}
                   </span>
                 )}
               </div>
-              <div className="relative">
+              <div className="relative flex flex-col flex-1">
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   disabled={opType === "delete_block"}
-                  className={`w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-4 min-h-[150px] text-sm text-pplx-text leading-7 whitespace-pre-wrap font-sans shadow-sm outline-none resize-y transition-all custom-scrollbar placeholder-pplx-muted/50 ${opType === "delete_block" ? "opacity-70 cursor-not-allowed" : ""}`}
+                  className={`w-full flex-1 bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-3 sm:p-4 min-h-[150px] text-[13px] sm:text-sm text-pplx-text leading-relaxed sm:leading-7 whitespace-pre-wrap font-sans shadow-sm outline-none resize-none transition-all custom-scrollbar placeholder-pplx-muted/50 ${opType === "delete_block" ? "opacity-70 cursor-not-allowed" : ""}`}
                 />
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-4">
+          <div className="px-4 py-3 sm:px-6 sm:py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-3 sm:gap-4 shrink-0">
             <button
               onClick={onCancel}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
+              className="px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
             >
-              <X size={16} /> Cancel
+              <X size={16} /> <span className="hidden sm:inline">Cancel</span>
             </button>
             <button
               onClick={() => onConfirm({ title, content })}
-              className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-pplx-primary bg-pplx-text hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-pplx-accent/10"
+              className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-6 sm:px-8 py-2.5 rounded-xl text-sm font-bold text-pplx-primary bg-pplx-text hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-pplx-accent/10"
             >
               <Check size={18} strokeWidth={3} />
               <span>
@@ -540,10 +540,10 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
 
   // --- DEFAULT PAGE CONFIRMATION ---
   return (
-    <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-pplx-card border border-pplx-border rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="bg-pplx-card sm:border border-pplx-border sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 flex flex-col">
         {/* Header - Structured Info */}
-        <div className="px-6 py-5 border-b border-pplx-border bg-pplx-secondary/30">
+        <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-pplx-border bg-pplx-secondary/30 shrink-0">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -552,68 +552,68 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                 >
                   {isUpdate ? <Edit3 size={16} /> : <FileText size={16} />}
                 </div>
-                <h2 className="text-lg font-bold text-pplx-text tracking-tight">
+                <h2 className="text-[15px] sm:text-lg font-bold text-pplx-text tracking-tight max-w-[200px] sm:max-w-none truncate sm:whitespace-normal">
                   {isUpdate ? "Update Existing Page" : "Create New Page"}
                 </h2>
               </div>
-              <p className="text-xs text-pplx-muted pl-1">
+              <p className="text-[11px] sm:text-xs text-pplx-muted pl-1 hidden sm:block">
                 Review and modify the content before saving to your library.
               </p>
             </div>
-            <div className="flex items-center gap-2 text-[10px] font-mono text-pplx-muted bg-pplx-primary border border-pplx-border px-2 py-1 rounded-md">
-              <span className="uppercase tracking-wider">Storage:</span>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-pplx-muted bg-pplx-primary border border-pplx-border px-2 py-1 rounded-md shrink-0">
+              <span className="uppercase tracking-wider hidden sm:inline">Storage:</span>
               <span className="text-pplx-text font-bold">Library</span>
             </div>
           </div>
         </div>
 
         {/* Editable Body */}
-        <div className="px-6 py-6 flex-1 overflow-y-auto custom-scrollbar space-y-6">
+        <div className="p-4 sm:px-6 sm:py-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 sm:gap-6">
           {/* Title Input */}
-          <div className="group">
-            <div className="flex items-center justify-between mb-2">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+          <div className="group shrink-0">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                 <Type size={12} /> Page Title
               </label>
-              <span className="text-[10px] text-pplx-muted opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[10px] text-pplx-muted opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
                 Editable
               </span>
             </div>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-4 py-3.5 text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
+              className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2.5 sm:px-4 sm:py-3.5 text-base sm:text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
               placeholder="Enter page title..."
             />
           </div>
 
           {/* Content Textarea */}
-          <div className="flex flex-col min-h-0 group">
-            <div className="flex items-center justify-between mb-2">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
+          <div className="flex flex-col flex-1 min-h-[150px] group">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2 shrink-0">
+              <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                 <AlignLeft size={12} /> Content Body
               </label>
-              <span className="text-[10px] text-pplx-muted bg-pplx-secondary px-2 py-0.5 rounded-full">
+              <span className="text-[10px] text-pplx-muted bg-pplx-secondary px-2 py-0.5 rounded-full shrink-0">
                 ~{wordCount} words
               </span>
             </div>
-            <div className="relative">
+            <div className="relative flex flex-col flex-1">
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-4 min-h-[250px] text-sm text-pplx-text leading-7 whitespace-pre-wrap font-sans shadow-sm outline-none resize-y transition-all custom-scrollbar placeholder-pplx-muted/50"
+                className="w-full flex-1 bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-3 sm:p-4 min-h-[150px] sm:min-h-[250px] text-[13px] sm:text-sm text-pplx-text leading-relaxed sm:leading-7 whitespace-pre-wrap font-sans shadow-sm outline-none resize-none transition-all custom-scrollbar placeholder-pplx-muted/50"
                 placeholder="Page content..."
               />
             </div>
           </div>
 
           {/* Warning / Info Box */}
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50">
+          <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50 shrink-0">
             <AlertCircle
-              size={16}
-              className="text-pplx-accent shrink-0 mt-0.5"
+              size={14}
+              className="text-pplx-accent shrink-0 sm:mt-0.5"
             />
-            <p className="text-xs text-pplx-muted leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-pplx-muted leading-relaxed">
               This action will{" "}
               {isUpdate ? "append data to" : "create a new entry in"} your
               personal knowledge base. You can further edit this page later in
@@ -623,16 +623,16 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-4">
+        <div className="px-4 py-3 sm:px-6 sm:py-5 border-t border-pplx-border bg-pplx-card flex items-center justify-between gap-3 sm:gap-4 shrink-0">
           <button
             onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
+            className="px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors flex items-center gap-2"
           >
-            <X size={16} /> Cancel
+            <X size={16} /> <span className="hidden sm:inline">Cancel</span>
           </button>
           <button
             onClick={() => onConfirm({ title, content })}
-            className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-pplx-primary bg-pplx-text hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-pplx-accent/10"
+            className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-6 sm:px-8 py-2.5 rounded-xl text-sm font-bold text-pplx-primary bg-pplx-text hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-pplx-accent/10"
           >
             <Check size={18} strokeWidth={3} />
             <span>Confirm Changes</span>
