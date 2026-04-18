@@ -74,6 +74,8 @@ interface InputAreaProps {
   isAgentProMode?: boolean;
   setIsAgentProMode?: (isPro: boolean) => void;
   activeThread?: Thread;
+  onTTS?: (text: string) => void;
+  isPlayingAudio?: boolean;
 }
 
 export const InputArea: React.FC<InputAreaProps> = ({
@@ -103,6 +105,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
   isAgentProMode: propIsAgentProMode,
   setIsAgentProMode: propSetIsAgentProMode,
   activeThread,
+  onTTS,
+  isPlayingAudio,
 }) => {
   const [input, setInput] = useState("");
   const [focusModes, setFocusModes] = useState<FocusMode[]>([
@@ -1813,6 +1817,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
           activeThread={activeThread}
           isThinking={isThinking}
           onGenericSendMessage={(text) => onSendMessage(text, focusModes, proMode, [], undefined, isAgentMode, isAgentProMode)}
+          onTTS={onTTS}
+          isPlayingAudio={isPlayingAudio}
         />
       </div>
     </div>

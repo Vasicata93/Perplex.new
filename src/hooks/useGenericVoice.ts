@@ -6,9 +6,11 @@ interface UseGenericVoiceProps {
   isThinking: boolean;
   activeThread?: Thread;
   enabled: boolean;
+  onTTS?: (text: string) => void;
+  isPlayingAudio?: boolean;
 }
 
-export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabled }: UseGenericVoiceProps) => {
+export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabled, onTTS, isPlayingAudio }: UseGenericVoiceProps) => {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -22,8 +24,10 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
   const hasFatalErrorRef = useRef(false);
   const hasPendingRequestRef = useRef(false);
 
+  const isPlayingAudioRef = useRef(isPlayingAudio);
+
   const startListening = useCallback(() => {
-    if (recognitionRef.current && !synthRef.current?.speaking && !isThinkingRef.current && !hasPendingRequestRef.current) {
+    if (recognitionRef.current && !synthRef.current?.speaking && !isPlayingAudioRef.current && !isThinkingRef.current && !hasPendingRequestRef.current) {
       try {
         recognitionRef.current.start();
         setIsListening(true);
@@ -34,7 +38,21 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     }
   }, []);
 
+  useEffect(() => {
+    const wasPlaying = isPlayingAudioRef.current;
+    isPlayingAudioRef.current = isPlayingAudio;
+    // Auto start listening when high-quality TTS finishes
+    if (wasPlaying && !isPlayingAudio && enabledRef.current && !isThinkingRef.current) {
+       startListening();
+    }
+  }, [isPlayingAudio, startListening]);
+
   const speak = useCallback((text: string) => {
+    if (onTTS) {
+       onTTS(text);
+       return;
+    }
+
     if (!synthRef.current) return;
     
     // Clean up markdown before speaking
@@ -58,7 +76,7 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     };
 
     synthRef.current.speak(utterance);
-  }, [startListening]);
+  }, [startListening, onTTS]);
 
   useEffect(() => {
     enabledRef.current = enabled;
@@ -119,12 +137,13 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
 
         recognitionRef.current.onend = () => {
           setIsListening(false);
-          // Auto-restart if still enabled, NOT waiting for a request, NOT thinking, NOT speaking, and no fatal error.
+          // Auto-restart if still enabled, NOT waiting for a request, NOT thinking, NOT speaking, NOT playing audio, and no fatal error.
           if (
              enabledRef.current && 
              !hasPendingRequestRef.current && 
              !isThinkingRef.current && 
              !synthRef.current?.speaking && 
+             !isPlayingAudioRef.current &&
              !hasFatalErrorRef.current
           ) {
              try {

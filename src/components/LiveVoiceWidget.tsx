@@ -15,6 +15,8 @@ interface LiveVoiceWidgetProps {
   activeThread?: Thread;
   isThinking?: boolean;
   onGenericSendMessage?: (text: string) => void;
+  onTTS?: (text: string) => void;
+  isPlayingAudio?: boolean;
 }
 
 export const LiveVoiceWidget: React.FC<LiveVoiceWidgetProps> = ({ 
@@ -25,7 +27,9 @@ export const LiveVoiceWidget: React.FC<LiveVoiceWidgetProps> = ({
   settings,
   activeThread,
   isThinking = false,
-  onGenericSendMessage
+  onGenericSendMessage,
+  onTTS,
+  isPlayingAudio
 }) => {
   const [volume, setVolume] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -79,7 +83,9 @@ export const LiveVoiceWidget: React.FC<LiveVoiceWidgetProps> = ({
     onSendMessage: onGenericSendMessage || (() => {}),
     isThinking,
     activeThread,
-    enabled: isOpen && !isGemini
+    enabled: isOpen && !isGemini,
+    onTTS,
+    isPlayingAudio
   });
 
   useEffect(() => {

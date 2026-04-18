@@ -1066,7 +1066,11 @@ function App() {
   const handleTTS = async (textToRead?: string) => {
     if (isPlayingAudio) {
       stopAudio();
-      return;
+      // If called without explicit text (like toggle button), just stop.
+      // If called WITH text, we want to stop the old audio and play the new one!
+      if (!textToRead) {
+        return;
+      }
     }
 
     let text = textToRead;
@@ -4043,6 +4047,8 @@ function App() {
                     isLongThinking={inputIsLongThinking}
                     setIsLongThinking={setInputIsLongThinking}
                     activeThread={activeThread}
+                    onTTS={handleTTS}
+                    isPlayingAudio={isPlayingAudio}
                   />
                 </div>
               </div>
