@@ -205,21 +205,8 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
           </div>
 
           {/* Body */}
-          <div className="p-4 sm:px-6 sm:py-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 sm:gap-6">
-            <div className="group shrink-0">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
-                  <Type size={12} /> Action Reference Title
-                </label>
-              </div>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl px-3 py-2.5 sm:px-4 sm:py-3.5 text-base sm:text-lg font-semibold text-pplx-text shadow-sm outline-none transition-all placeholder-pplx-muted/50"
-              />
-            </div>
-
-            <div className="flex flex-col flex-1 min-h-0 group">
+          <div className="p-3 sm:px-6 sm:py-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3 sm:gap-6">
+            <div className="flex flex-col flex-1 min-h-[300px] sm:min-h-0 group">
               <div className="flex items-center justify-between mb-1.5 sm:mb-2 shrink-0">
                 <label className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider ml-1">
                   <AlignLeft size={12} /> Action Payload (JSON)
@@ -229,23 +216,24 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full flex-1 bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-3 sm:p-4 min-h-[150px] sm:min-h-[250px] text-xs sm:text-sm text-pplx-text tracking-wide whitespace-pre-wrap font-mono shadow-sm outline-none resize-none transition-all custom-scrollbar placeholder-pplx-muted/50"
+                  className="w-full flex-1 bg-pplx-input border border-transparent focus:border-pplx-accent hover:border-pplx-border rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-pplx-text tracking-wide whitespace-pre-wrap font-mono shadow-sm outline-none resize-none transition-all custom-scrollbar placeholder-pplx-muted/50"
+                  spellCheck={false}
                 />
               </div>
             </div>
 
             {moduleAction.includes("delete") ? (
-              <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-red-500/10 border border-red-500/20 shrink-0">
-                <AlertCircle size={14} className="text-red-500 shrink-0 sm:mt-0.5" />
-                <p className="text-[11px] sm:text-xs text-red-500 leading-relaxed">
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 shrink-0">
+                <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] sm:text-[11px] text-red-500 leading-relaxed font-medium">
                   Warning: This will permanently remove the item from {moduleName}.
                 </p>
               </div>
             ) : (
-              <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50 shrink-0">
-                <AlertCircle size={14} className="text-pplx-accent shrink-0 sm:mt-0.5" />
-                <p className="text-[11px] sm:text-xs text-pplx-muted leading-relaxed">
-                  This action will modify data in your {moduleName}. Ensure the JSON payload is formatted accurately.
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-pplx-secondary/50 border border-pplx-border/50 shrink-0">
+                <AlertCircle size={14} className="text-pplx-accent shrink-0 mt-0.5" />
+                <p className="text-[10px] sm:text-[11px] text-pplx-muted leading-relaxed font-medium">
+                  Review and ensure the JSON payload is formatted accurately before saving.
                 </p>
               </div>
             )}

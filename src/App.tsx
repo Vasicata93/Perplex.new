@@ -1551,22 +1551,47 @@ function App() {
           const assets = await portfolioService.getAssets();
           const positions = await portfolioService.getPositions();
 
-          const assetData = payloadToUse.asset || {
-            name: payloadToUse.name || "Unknown Asset",
-            symbol: payloadToUse.symbol || "UNK",
-            type: payloadToUse.type || "Equity",
-            sector: payloadToUse.sector || "General",
-            emoji: payloadToUse.emoji || "📈",
-            color: payloadToUse.color || "blue"
+          // Helper to recursively find a value across possible keys in the payload
+          const findValue = (obj: any, keys: string[]): any => {
+             if (!obj) return undefined;
+             for (const key of keys) {
+               if (obj[key] !== undefined) return obj[key];
+             }
+             if (obj.asset) {
+               for (const key of keys) {
+                 if (obj.asset[key] !== undefined) return obj.asset[key];
+               }
+             }
+             if (obj.position) {
+               for (const key of keys) {
+                 if (obj.position[key] !== undefined) return obj.position[key];
+               }
+             }
+             return undefined;
           };
 
-          const positionData = payloadToUse.position || {
-            shares: payloadToUse.shares || 1,
-            avgCost: payloadToUse.avgCost || 0,
-            costBasis: payloadToUse.costBasis || ((payloadToUse.shares || 1) * (payloadToUse.avgCost || 0)),
-            currentPrice: payloadToUse.currentPrice || payloadToUse.avgCost || 0,
-            targetPrice: payloadToUse.targetPrice,
-            stopLoss: payloadToUse.stopLoss,
+          const rawShares = findValue(payloadToUse, ["shares", "quantity", "cantitate", "amount", "bucăți"]);
+          const shares = rawShares !== undefined ? Number(rawShares) : 1;
+
+          const rawAvgCost = findValue(payloadToUse, ["avgCost", "cost", "price", "pret", "suma", "sum", "valoare", "value", "costBasis", "total"]);
+          const avgCost = rawAvgCost !== undefined ? Number(rawAvgCost) : 0;
+
+          const assetData = {
+            name: findValue(payloadToUse, ["name", "nume", "assetName", "asset"]) || payloadToUse.asset?.name || "Unknown Asset",
+            symbol: findValue(payloadToUse, ["symbol", "simbol", "ticker"]) || payloadToUse.asset?.symbol || "UNK",
+            type: findValue(payloadToUse, ["type", "tip", "assetType"]) || payloadToUse.asset?.type || "Equity",
+            sector: findValue(payloadToUse, ["sector", "industrie"]) || payloadToUse.asset?.sector || "General",
+            emoji: findValue(payloadToUse, ["emoji", "icon"]) || payloadToUse.asset?.emoji || "📈",
+            color: findValue(payloadToUse, ["color", "culoare"]) || payloadToUse.asset?.color || "blue"
+          };
+
+          const positionData = {
+            shares: shares,
+            avgCost: avgCost,
+            costBasis: (shares * avgCost),
+            currentPrice: findValue(payloadToUse, ["currentPrice", "marketPrice"]) || avgCost,
+            targetPrice: findValue(payloadToUse, ["targetPrice"]),
+            stopLoss: findValue(payloadToUse, ["stopLoss"]),
           };
 
           if (action === "add_asset" || action === "add_position") {
