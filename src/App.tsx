@@ -1517,58 +1517,85 @@ function App() {
       const payloadToUse = modifiedData || data;
 
       try {
+        // Helper to recursively find a value across possible keys in the payload
+        const findValue = (obj: any, keys: string[]): any => {
+           if (!obj) return undefined;
+           // Check top level
+           for (const key of keys) {
+             if (obj[key] !== undefined) return obj[key];
+           }
+           // Check common nested objects
+           const nestedKeys = ["asset", "position", "document", "doc", "date"];
+           for (const nested of nestedKeys) {
+             if (obj[nested] && typeof obj[nested] === 'object') {
+               for (const key of keys) {
+                 if (obj[nested][key] !== undefined) return obj[nested][key];
+               }
+             }
+           }
+           return undefined;
+        };
+
         if (module === "safe_digital") {
           const docs = await safeDigitalService.getDocuments();
 
           if (action === "add_document") {
+            const title = findValue(payloadToUse, ["title", "titlu", "name", "nume", "document"]) || "Document Nou";
+            const mainCategory = findValue(payloadToUse, ["mainCategory", "categoriePrincipala", "category", "categorie"]) || "Personal";
+            const subCategory = findValue(payloadToUse, ["subCategory", "subCategorie", "subcategory", "subcategorie"]) || "Altele";
+            const fileSize = findValue(payloadToUse, ["fileSize", "dimensiune", "size", "marime"]) || "N/A";
+            const content = findValue(payloadToUse, ["content", "continut", "text", "body", "descriere"]) || "";
+            const expiryDate = findValue(payloadToUse, ["expiryDate", "expirare", "dataExpirare", "valabilitate"]);
+
             const newDoc = {
-              title: payloadToUse.title || "Document Nou",
-              mainCategory: payloadToUse.mainCategory || "Personal",
-              subCategory: payloadToUse.subCategory || "Altele",
-              fileSize: payloadToUse.fileSize || "N/A",
-              content: payloadToUse.content,
-              expiryDate: payloadToUse.expiryDate,
+              title,
+              mainCategory,
+              subCategory,
+              fileSize,
+              content,
+              expiryDate,
               id: Date.now(),
               lastModified: new Date().toISOString().split("T")[0],
               isLocked: true,
-              ...payloadToUse
             };
-            // ensure id is number
-            if(typeof newDoc.id !== 'number') newDoc.id = Date.now();
-            await safeDigitalService.saveDocuments([...docs, newDoc as any]);
+            // merge additional payload properties except those we already extracted if they are at the root level
+            const docToSave = { ...payloadToUse, ...payloadToUse.document, ...newDoc };
+            await safeDigitalService.saveDocuments([...docs, docToSave as any]);
           } else if (action === "update_document") {
-            const idToUpdate = payloadToUse.id || data?.id;
-            const newDocs = docs.map((d) => (d.id === idToUpdate ? { ...d, ...payloadToUse, id: d.id } : d));
-            await safeDigitalService.saveDocuments(newDocs as any);
+            const idToUpdate = findValue(payloadToUse, ["id", "documentId"]);
+            if (!idToUpdate) {
+               console.error("Nu s-a gasit ID pentru actualizare document");
+            } else {
+               const title = findValue(payloadToUse, ["title", "titlu", "name", "nume", "document"]);
+               const mainCategory = findValue(payloadToUse, ["mainCategory", "categoriePrincipala", "category", "categorie"]);
+               const subCategory = findValue(payloadToUse, ["subCategory", "subCategorie", "subcategory", "subcategorie"]);
+               const fileSize = findValue(payloadToUse, ["fileSize", "dimensiune", "size", "marime"]);
+               const content = findValue(payloadToUse, ["content", "continut", "text", "body", "descriere"]);
+               const expiryDate = findValue(payloadToUse, ["expiryDate", "expirare", "dataExpirare", "valabilitate"]);
+
+               const updates: any = {};
+               if (title !== undefined) updates.title = title;
+               if (mainCategory !== undefined) updates.mainCategory = mainCategory;
+               if (subCategory !== undefined) updates.subCategory = subCategory;
+               if (fileSize !== undefined) updates.fileSize = fileSize;
+               if (content !== undefined) updates.content = content;
+               if (expiryDate !== undefined) updates.expiryDate = expiryDate;
+
+               const newDocs = docs.map((d) => (d.id === idToUpdate ? { ...d, ...updates, id: d.id, ...payloadToUse, ...payloadToUse.document } : d));
+               await safeDigitalService.saveDocuments(newDocs as any);
+            }
           } else if (action === "delete_document") {
-            const idToDelete = payloadToUse.id || data?.id;
-            const newDocs = docs.filter((d) => d.id !== idToDelete);
-            await safeDigitalService.saveDocuments(newDocs);
+            const idToDelete = findValue(payloadToUse, ["id", "documentId"]);
+            if (idToDelete) {
+               const newDocs = docs.filter((d) => d.id !== idToDelete);
+               await safeDigitalService.saveDocuments(newDocs);
+            }
           }
           window.dispatchEvent(new CustomEvent("safe-digital-updated"));
 
         } else if (module === "portfolio") {
           const assets = await portfolioService.getAssets();
           const positions = await portfolioService.getPositions();
-
-          // Helper to recursively find a value across possible keys in the payload
-          const findValue = (obj: any, keys: string[]): any => {
-             if (!obj) return undefined;
-             for (const key of keys) {
-               if (obj[key] !== undefined) return obj[key];
-             }
-             if (obj.asset) {
-               for (const key of keys) {
-                 if (obj.asset[key] !== undefined) return obj.asset[key];
-               }
-             }
-             if (obj.position) {
-               for (const key of keys) {
-                 if (obj.position[key] !== undefined) return obj.position[key];
-               }
-             }
-             return undefined;
-          };
 
           const rawShares = findValue(payloadToUse, ["shares", "quantity", "cantitate", "amount", "bucăți"]);
           const shares = rawShares !== undefined ? Number(rawShares) : 1;
@@ -1577,12 +1604,12 @@ function App() {
           const avgCost = rawAvgCost !== undefined ? Number(rawAvgCost) : 0;
 
           const assetData = {
-            name: findValue(payloadToUse, ["name", "nume", "assetName", "asset"]) || payloadToUse.asset?.name || "Unknown Asset",
-            symbol: findValue(payloadToUse, ["symbol", "simbol", "ticker"]) || payloadToUse.asset?.symbol || "UNK",
-            type: findValue(payloadToUse, ["type", "tip", "assetType"]) || payloadToUse.asset?.type || "Equity",
-            sector: findValue(payloadToUse, ["sector", "industrie"]) || payloadToUse.asset?.sector || "General",
-            emoji: findValue(payloadToUse, ["emoji", "icon"]) || payloadToUse.asset?.emoji || "📈",
-            color: findValue(payloadToUse, ["color", "culoare"]) || payloadToUse.asset?.color || "blue"
+            name: findValue(payloadToUse, ["name", "nume", "assetName", "asset"]) || "Unknown Asset",
+            symbol: findValue(payloadToUse, ["symbol", "simbol", "ticker"]) || "UNK",
+            type: findValue(payloadToUse, ["type", "tip", "assetType"]) || "Equity",
+            sector: findValue(payloadToUse, ["sector", "industrie"]) || "General",
+            emoji: findValue(payloadToUse, ["emoji", "icon"]) || "📈",
+            color: findValue(payloadToUse, ["color", "culoare"]) || "blue"
           };
 
           const positionData = {
