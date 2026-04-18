@@ -20,11 +20,51 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
   const isThinkingRef = useRef(isThinking);
   const enabledRef = useRef(enabled);
   const hasFatalErrorRef = useRef(false);
+  const hasPendingRequestRef = useRef(false);
+
+  const startListening = useCallback(() => {
+    if (recognitionRef.current && !synthRef.current?.speaking && !isThinkingRef.current && !hasPendingRequestRef.current) {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        setError(null);
+      } catch (e) {
+        // Already started
+      }
+    }
+  }, []);
+
+  const speak = useCallback((text: string) => {
+    if (!synthRef.current) return;
+    
+    // Clean up markdown before speaking
+    const cleanText = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
+    
+    setIsSpeaking(true);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (enabledRef.current) {
+        startListening();
+      }
+    };
+    
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      if (enabledRef.current) {
+        startListening();
+      }
+    };
+
+    synthRef.current.speak(utterance);
+  }, [startListening]);
 
   useEffect(() => {
     enabledRef.current = enabled;
     if (!enabled) {
       hasFatalErrorRef.current = false;
+      hasPendingRequestRef.current = false;
       setError(null);
     }
   }, [enabled]);
@@ -54,6 +94,7 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
           setTranscript(currentTranscript);
 
           if (isFinal && currentTranscript.trim()) {
+            hasPendingRequestRef.current = true; // Synchronously mark that we are waiting for LLM
             onSendMessage(currentTranscript.trim());
             setTranscript('');
             setIsListening(false);
@@ -64,7 +105,7 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
           if (event.error !== 'no-speech') {
             console.error('Speech recognition error', event.error);
             if (event.error === 'not-allowed') {
-              setError("Microphone access denied. Please allow permissions in browser settings (check if you are in Private/Incognito mode).");
+              setError("Microphone access denied. Please allow permissions in browser settings.");
               hasFatalErrorRef.current = true;
             } else if (event.error === 'audio-capture') {
               setError("No microphone found. Please ensure a microphone is connected.");
@@ -78,8 +119,14 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
 
         recognitionRef.current.onend = () => {
           setIsListening(false);
-          // Auto-restart if still enabled, not thinking, not speaking, and no fatal error
-          if (enabledRef.current && !isThinkingRef.current && !synthRef.current?.speaking && !hasFatalErrorRef.current) {
+          // Auto-restart if still enabled, NOT waiting for a request, NOT thinking, NOT speaking, and no fatal error.
+          if (
+             enabledRef.current && 
+             !hasPendingRequestRef.current && 
+             !isThinkingRef.current && 
+             !synthRef.current?.speaking && 
+             !hasFatalErrorRef.current
+          ) {
              try {
                recognitionRef.current?.start();
                setIsListening(true);
@@ -106,7 +153,13 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     const wasThinking = isThinkingRef.current;
     isThinkingRef.current = isThinking;
 
+    // If it becomes true, we know React acknowledged the thinking state. We can clear the synchronous pending flag.
+    if (isThinking && !wasThinking) {
+      hasPendingRequestRef.current = false;
+    }
+
     if (wasThinking && !isThinking && enabled && activeThread) {
+      hasPendingRequestRef.current = false; // also clear here for safety
       // Model just finished generating
       const messages = activeThread.messages;
       const lastMessage = messages[messages.length - 1];
@@ -117,45 +170,7 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
         startListening();
       }
     }
-  }, [isThinking, activeThread, enabled]);
-
-  const speak = useCallback((text: string) => {
-    if (!synthRef.current) return;
-    
-    // Clean up markdown before speaking
-    const cleanText = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
-    
-    setIsSpeaking(true);
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      if (enabledRef.current) {
-        startListening();
-      }
-    };
-    
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      if (enabledRef.current) {
-        startListening();
-      }
-    };
-
-    synthRef.current.speak(utterance);
-  }, []);
-
-  const startListening = useCallback(() => {
-    if (recognitionRef.current && !synthRef.current?.speaking && !isThinkingRef.current) {
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-        setError(null);
-      } catch (e) {
-        // Already started
-      }
-    }
-  }, []);
+  }, [isThinking, activeThread, enabled, speak, startListening]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
