@@ -347,7 +347,8 @@ function App() {
 
   // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const ttsPlaybackIdRef = useRef<number>(0);
 
   // Modals
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1052,12 +1053,13 @@ function App() {
   };
 
   const stopAudio = () => {
-    if (audioSourceRef.current) {
+    ttsPlaybackIdRef.current = 0; // stop fetching loop
+    activeSourcesRef.current.forEach((src) => {
       try {
-        audioSourceRef.current.stop();
+        src.stop();
       } catch (e) {}
-      audioSourceRef.current = null;
-    }
+    });
+    activeSourcesRef.current = [];
     window.speechSynthesis.cancel();
     setIsPlayingAudio(false);
   };
@@ -1075,6 +1077,10 @@ function App() {
       text = lastMsg.content;
     }
 
+    const playbackId = Date.now();
+    ttsPlaybackIdRef.current = playbackId;
+    activeSourcesRef.current = [];
+
     setIsPlayingAudio(true);
     if (!audioContextRef.current) {
       audioContextRef.current = new (
@@ -1084,38 +1090,136 @@ function App() {
       await audioContextRef.current.resume();
     }
     const cleanText = text
-      .replace(/[*#`]/g, "")
+      .replace(/[*#`_]/g, "")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
       .replace(/\n\n/g, ". ")
       .substring(0, 4000);
+
+    const useNativeFallback = () => {
+      if (ttsPlaybackIdRef.current !== playbackId) return;
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      const voices = window.speechSynthesis.getVoices();
+      const langCode = settings.interfaceLanguage === "ro" ? "ro-RO" : "en-US";
+      const preferredVoice = voices.find((v) => v.lang === langCode) || voices[0];
+      if (preferredVoice) utterance.voice = preferredVoice;
+      utterance.onend = () => setIsPlayingAudio(false);
+      utterance.onerror = () => setIsPlayingAudio(false);
+      window.speechSynthesis.speak(utterance);
+    };
+
+    if (!settings.geminiApiKey) {
+      useNativeFallback();
+      return;
+    }
+
     try {
-      const buffer = await llmService.generateSpeech(
-        cleanText,
-        audioContextRef.current,
-        settings.geminiApiKey,
-      );
-      if (buffer) {
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContextRef.current.destination);
-        source.onended = () => setIsPlayingAudio(false);
-        audioSourceRef.current = source;
-        source.start();
-      } else {
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        const voices = window.speechSynthesis.getVoices();
-        const langCode =
-          settings.interfaceLanguage === "ro" ? "ro-RO" : "en-US";
-        const preferredVoice =
-          voices.find((v) => v.lang === langCode) || voices[0];
-        if (preferredVoice) utterance.voice = preferredVoice;
-        utterance.onend = () => setIsPlayingAudio(false);
-        utterance.onerror = () => setIsPlayingAudio(false);
-        window.speechSynthesis.speak(utterance);
+      // Chunking text to minimize Time-To-First-Audio (TTFA) but prevent JS timeline gaps
+      const chunks: string[] = [];
+      const blocks = cleanText.split(/([.!?;:\n]+)/);
+      let currentChunk = "";
+      for (const block of blocks) {
+        if (!block) continue;
+        currentChunk += block;
+        // Split if we hit a punctuation mark AND chunk is > 60 chars, OR if it's a newline.
+        // This ensures chunks are large enough to mask the fetch time of the NEXT chunk!
+        if (/^[.!?;:\n]+$/.test(block)) {
+          if (currentChunk.length > 60 || block.includes("\n")) {
+            if (currentChunk.trim().length > 0) chunks.push(currentChunk.trim());
+            currentChunk = "";
+          }
+        }
       }
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+      }
+
+      const bufferQueue: AudioBuffer[] = [];
+      let isFetching = true;
+      let hasError = false;
+
+      // Async fetch task - loops through chunks and fetches audio sequentially but independent of playback
+      const fetchTask = async () => {
+        for (let i = 0; i < chunks.length; i++) {
+          if (ttsPlaybackIdRef.current !== playbackId) break;
+          try {
+            const buffer = await llmService.generateSpeech(
+              chunks[i],
+              audioContextRef.current!,
+              settings.geminiApiKey
+            );
+            if (!buffer) {
+               if (i === 0) hasError = true;
+               break; 
+            }
+            if (ttsPlaybackIdRef.current !== playbackId) break;
+            bufferQueue.push(buffer);
+          } catch (e) {
+            console.error("Chunk fetch error", e);
+            if (i === 0) hasError = true;
+            break;
+          }
+        }
+        isFetching = false;
+      };
+
+      fetchTask(); 
+
+      // Async playback loop - WebAudio precise timeline scheduling
+      let hasPlayedFirstChunk = false;
+      let nextStartTime = 0;
+      let activeSourcesCount = 0;
+
+      while (isFetching || bufferQueue.length > 0) {
+        if (ttsPlaybackIdRef.current !== playbackId) break;
+
+        if (bufferQueue.length > 0) {
+          hasPlayedFirstChunk = true;
+          const buffer = bufferQueue.shift()!;
+          
+          const source = audioContextRef.current!.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioContextRef.current!.destination);
+          
+          const currentTime = audioContextRef.current!.currentTime;
+          if (nextStartTime < currentTime) {
+              nextStartTime = currentTime + 0.05; // 50ms transition buffer if we fell behind
+          }
+          
+          source.start(nextStartTime);
+          activeSourcesRef.current.push(source);
+          nextStartTime += buffer.duration;
+          
+          activeSourcesCount++;
+          source.onended = () => {
+             activeSourcesCount--;
+             activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== source);
+             if (activeSourcesCount === 0 && !isFetching && bufferQueue.length === 0) {
+               if (ttsPlaybackIdRef.current === playbackId) {
+                  setIsPlayingAudio(false);
+               }
+             }
+          };
+        } else {
+          if (hasError && !hasPlayedFirstChunk) break;
+          if (!isFetching && bufferQueue.length === 0) break;
+          await new Promise((r) => setTimeout(r, 20)); // ultra-short poll
+        }
+      }
+
+      // We don't forcefully set `isPlayingAudio = false` here anymore unless it was an early break,
+      // because we must wait for the actual AudioBuffers to finish playing via `onended`.
+      // If we fell through due to a stop or native fallback condition:
+      if (hasError && !hasPlayedFirstChunk && ttsPlaybackIdRef.current === playbackId) {
+         useNativeFallback();
+      }
+
     } catch (e) {
       console.error("TTS failed", e);
-      setIsPlayingAudio(false);
+      if (ttsPlaybackIdRef.current === playbackId) {
+         useNativeFallback();
+      } else {
+         setIsPlayingAudio(false);
+      }
     }
   };
 
