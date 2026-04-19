@@ -1,5 +1,4 @@
-import { LLMService } from '../geminiService';
-import { Message, ModelProvider, LocalModelConfig } from '../../types';
+import { semanticRouter, SemanticCategory } from './SemanticRouter';
 
 export type ComplexityLevel = 'SIMPLU' | 'MEDIU' | 'COMPLEX' | 'AMBIGUU';
 export type PriorityLevel = 'URGENT_IMPORTANT' | 'IMPORTANT' | 'RUTINA' | 'OPTIONAL';
@@ -16,119 +15,83 @@ export interface RoutingDecision {
 
 export class AgentRouter {
   /**
-   * Evaluates the incoming message and context to determine the routing strategy.
-   * This implements Layer 4 of the Perplex Agent Architecture.
+   * Evaluates the incoming message and context to determine the routing strategy LOCALLY.
+   * This implements Layer 4 of the Perplex Agent Architecture using 100% heuristics + Semantic Embeddings.
    */
   static async evaluate(
-    currentMessage: string,
-    recentHistory: Message[],
-    systemContextStr: string,
-    memoryContextStr: string,
-    perceptionContextStr: string,
-    llmService: LLMService,
-    provider: ModelProvider = ModelProvider.GEMINI,
-    openRouterKey: string = "",
-    openRouterModel: string = "",
-    openAiKey: string = "",
-    openAiModel: string = "",
-    activeLocalModel: LocalModelConfig | undefined = undefined,
-    geminiApiKey?: string
+    currentMessage: string
   ): Promise<RoutingDecision> {
-    const prompt = `
-SYSTEM CONTEXT:
-${systemContextStr}
-
-MEMORY CONTEXT:
-${memoryContextStr}
-
-PERCEPTION CONTEXT:
-${perceptionContextStr}
-
-You are the ROUTER layer of an advanced AI agent.
-Your job is to evaluate the user's latest message and determine the optimal execution path.
-
-Recent History:
-${recentHistory.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')}
-
-User Message: "${currentMessage}"
-
-Analyze the request and output a JSON object with the following structure:
-{
-  "complexity": "SIMPLU" | "MEDIU" | "COMPLEX" | "AMBIGUU",
-  "priority": "URGENT_IMPORTANT" | "IMPORTANT" | "RUTINA" | "OPTIONAL",
-  "toolState": "idle" | "writing" | "confirming" | "error",
-  "injectedSkills": ["coding_skill", "research_skill", "finance_skill", "writing_skill", "data_analysis_skill"],
-  "reasoning": "Brief explanation of your routing decision"
-}
-
-Rules:
-- SIMPLU: ONLY for purely conversational greetings AND simple factual questions without any actions. ANY request involving actions MUST NOT BE SIMPLU.
-- MEDIU: ANY request to perform an action (e.g., saving a page, reading a file, searching the web, checking the calendar). If the user asks you to "do" something, use MEDIU.
-- COMPLEX: Multi-step tasks, coding, extensive research, multiple tool calls.
-- AMBIGUU: Missing critical information, needs clarification first.
-- Priority:
-  - URGENT_IMPORTANT: Immediate execution needed.
-  - IMPORTANT: Needs planning and confirmation.
-  - RUTINA: Direct execution.
-  - OPTIONAL: Mention, don't execute.
-- Tool State:
-  - idle: Default state, all tools available.
-  - writing: Use this if the user is currently in the middle of a multi-step writing process and we should focus on finishing it. Read tools are blocked in this state.
-  - confirming: Use this if the next step MUST be a user confirmation before any tool can be used. All tools are blocked.
-  - error: Use this if the previous action failed and we need to decide on a fallback.
-- Skills: Only inject skills that are highly relevant to the request.
-  - coding_skill: Programming, debugging, architecture.
-  - research_skill: Deep dives, fact checking, synthesis.
-  - finance_skill: Calculations, market analysis, budgeting.
-  - writing_skill: Creative writing, editing, formal docs.
-  - data_analysis_skill: Statistics, visualization, pattern detection.
-
-Output ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
-CRITICAL: Ensure all property names are enclosed in double quotes. Do not use single quotes for strings. Escape any internal double quotes using \\". Do not include trailing commas.
-`;
-
-    try {
-      const responseText = await llmService.generateSimpleText(
-        prompt,
-        provider,
-        openRouterKey,
-        openRouterModel,
-        openAiKey,
-        openAiModel,
-        activeLocalModel,
-        geminiApiKey,
-        true // requireJson
-      );
-      
-      // Extract JSON from response
-      let jsonString = responseText.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
-      
-      const jsonStart = jsonString.indexOf('{');
-      const jsonEnd = jsonString.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
-        
-        // Basic JSON repair
-        jsonString = jsonString
-          .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
-          .replace(/,\s*([}\]])/g, '$1');
-
-        const decision = JSON.parse(jsonString) as RoutingDecision;
-        if (!decision) throw new Error("Parsed decision is null");
-        return decision;
+    const text = currentMessage.toLowerCase();
+    
+    // Attempt Semantic Classification
+    let semanticIntent: SemanticCategory | null = null;
+    if (semanticRouter.isReady) {
+      try {
+        const result = await semanticRouter.classify(currentMessage);
+        semanticIntent = result.category;
+      } catch (e) {
+        console.warn("Semantic routing failed:", e);
       }
-      
-      throw new Error("Failed to parse routing decision");
-    } catch (error) {
-      console.error("Routing evaluation failed:", error);
-      // Fallback to safe defaults
-      return {
-        complexity: 'MEDIU',
-        priority: 'RUTINA',
-        toolState: 'idle',
-        injectedSkills: [],
-        reasoning: "Fallback routing due to error."
-      };
     }
+    
+    // HEURISTIC 1: COMPLEXITY (Blended Semantic & Heuristic)
+    let complexity: ComplexityLevel = 'SIMPLU';
+    const actionWords = ['cauta', 'search', 'find', 'write', 'creeaza', 'adauga', 'save', 'citeste', 'verifica', 'build', 'fa', 'rezolva', 'fix'];
+    const hasAction = actionWords.some(w => text.includes(w));
+    const isLong = text.split(' ').length > 20;
+    const hasMultipleClauses = text.includes(' si ') && text.includes(' apoi ');
+
+    // Use semantic vector if available
+    if (semanticIntent) {
+      if (semanticIntent === 'ANALYSIS' || semanticIntent === 'CODING' || hasMultipleClauses) {
+         complexity = 'COMPLEX';
+      } else if (semanticIntent === 'ACTION' || semanticIntent === 'RESEARCH' || semanticIntent === 'FINANCE') {
+         complexity = 'MEDIU';
+      } else if (semanticIntent === 'AMBIGUOUS' || (text.length < 5 && text.includes('?'))) {
+         complexity = 'AMBIGUU';
+      } else {
+         complexity = 'SIMPLU'; // CONVERSATION
+      }
+    } else {
+      // Fallback heuristics
+      if (hasMultipleClauses || (isLong && hasAction)) {
+         complexity = 'COMPLEX';
+      } else if (hasAction) {
+         complexity = 'MEDIU';
+      } else if (text.length < 5 && text.includes('?')) {
+         complexity = 'AMBIGUU';
+      }
+    }
+    
+    // HEURISTIC 2: PRIORITY
+    let priority: PriorityLevel = 'RUTINA';
+    if (text.includes('urgent') || text.includes('acum') || text.includes('rapid')) {
+       priority = 'URGENT_IMPORTANT';
+    } else if (text.includes('important')) {
+       priority = 'IMPORTANT';
+    }
+
+    // HEURISTIC 3: SKILLS (Blended)
+    const skills: SituationalSkill[] = [];
+    
+    if (semanticIntent === 'CODING') skills.push('coding_skill');
+    if (semanticIntent === 'RESEARCH') skills.push('research_skill');
+    if (semanticIntent === 'FINANCE') skills.push('finance_skill');
+    if (semanticIntent === 'ANALYSIS') skills.push('data_analysis_skill');
+    
+    // Heuristic fallbacks for skills
+    if (['cod', 'programare', 'bug', 'react', 'typescript', 'eroare', 'fix', 'script'].some(w => text.includes(w)) && !skills.includes('coding_skill')) skills.push('coding_skill');
+    if (['cauta', 'cine', 'cand', 'istorie', 'informatii', 'cercetare'].some(w => text.includes(w)) && !skills.includes('research_skill')) skills.push('research_skill');
+    if (['bani', 'buget', 'finante', 'investitii', 'crypto', 'pret', 'cost'].some(w => text.includes(w)) && !skills.includes('finance_skill')) skills.push('finance_skill');
+    if (['scrie', 'articol', 'text', 'compune', 'email', 'mesaj'].some(w => text.includes(w)) && !skills.includes('writing_skill')) skills.push('writing_skill');
+    if (['analizeaza', 'date', 'statistica', 'grafic', 'tabel'].some(w => text.includes(w)) && !skills.includes('data_analysis_skill')) skills.push('data_analysis_skill');
+
+    return {
+       complexity,
+       priority,
+       toolState: 'idle',
+       injectedSkills: skills,
+       reasoning: `Routing applied (Semantic: ${semanticIntent || 'None'}). Detected complexity: ${complexity}.`
+    };
   }
 }

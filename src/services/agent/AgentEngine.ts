@@ -26,7 +26,6 @@ export class AgentEngine {
     onChunk: (text: string, reasoning?: string) => void,
     onComplete: (finalText: string, pendingAction?: any) => void,
     requestConfirmation: (action: any) => Promise<'confirm' | 'cancel' | 'redact'>,
-    forceAgentMode: boolean = false,
     provider: ModelProvider = ModelProvider.GEMINI,
     openRouterKey: string = "",
     openRouterModel: string = "",
@@ -122,18 +121,7 @@ ${memoryContext.procedural.map(p => `- When [${p.pattern}] -> Do [${p.action}] (
       setStep(3, 10, '[3] Perception: Analyzing intent and situation...', 'layer-3');
       
       const perceptionContext = await AgentPerception.analyze(
-        text,
-        history,
-        systemContextStr,
-        memoryContextStr,
-        llmService,
-        provider,
-        openRouterKey,
-        openRouterModel,
-        openAiKey,
-        openAiModel,
-        activeLocalModel,
-        geminiApiKey
+        text
       );
       
       store.setPerception(perceptionContext);
@@ -172,19 +160,7 @@ EVENT DETECTION:
       // ==========================================
       setStep(4, 10, '[4] Routing: Evaluating complexity and skills...', 'layer-4');
       const routingDecision = await AgentRouter.evaluate(
-        text, 
-        history, 
-        systemContextStr,
-        memoryContextStr,
-        perceptionContextStr,
-        llmService,
-        provider,
-        openRouterKey,
-        openRouterModel,
-        openAiKey,
-        openAiModel,
-        activeLocalModel,
-        geminiApiKey
+        text
       );
       
       addStepLog('layer-4', 'thought', `Complexity: ${routingDecision.complexity}`);
@@ -216,7 +192,9 @@ EVENT DETECTION:
       
       const activeToolsStr = JSON.stringify(activeTools);
 
-      const isAgentMode = forceAgentMode || routingDecision.complexity === 'COMPLEX' || routingDecision.complexity === 'MEDIU';
+      // Decizie arhitecturală: Chiar și în Agent Pro mode, întrebările de bază ("Salut") 
+      // trebuie să ruleze prin Chat Mode pentru a scuti timp și resurse. Oprim execuția forțată oarbă.
+      const isAgentMode = routingDecision.complexity === 'COMPLEX' || routingDecision.complexity === 'MEDIU';
 
       if (!isAgentMode) {
         // ==========================================

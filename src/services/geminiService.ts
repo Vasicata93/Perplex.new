@@ -1579,6 +1579,17 @@ export class LLMService {
         2. ONLY extract *permanent* facts: User preferences, specific project details/status, learned skills, or important life events.
         3. DO NOT save "User asked about..." or "User wants to know...". Save the underlying interest ONLY if it seems like a long-term hobby/goal.
         4. If the buffer contains only noise, return empty arrays.
+        5. CRITICAL: The "category" string in new_facts MUST BE EXACTLY one of the following 10 values:
+           - "about_me": Basic personal info, identity, general details.
+           - "preferences": Rules for AI interaction, style, formatting choices, moral values.
+           - "work": Career, job specifics, professional life.
+           - "coding_projects": Tech stack, programming, bug solutions, active development projects.
+           - "learning_goals": Things the user is currently learning, roadmaps, personal/professional goals.
+           - "relationships": Family, friends, mentions of other people.
+           - "health_lifestyle": Diet, sleep, workouts, physical/mental wellbeing tracking.
+           - "hobbies_interests": Travel, movies, books, games, free-time activities.
+           - "finance": Money, budgets, investments, SafeDigital portfolio assets, holdings.
+           - "other": General facts that strictly do not fit any of the above.
         
         BUFFER (Recent Conversation):
         ${buffer.map((b) => `${b.role.toUpperCase()}: ${b.content}`).join("\n")}
@@ -1592,7 +1603,7 @@ export class LLMService {
 
         Return JSON ONLY:
         {
-            "new_facts": [{ "category": "string", "content": "string", "type": "fact|goal" }],
+            "new_facts": [{ "category": "see_allowed_values", "content": "string", "type": "fact|goal" }],
             "new_skills": ["string"],
             "project_updates": [{ "title": "string", "status": "active|completed", "progress": "string", "nextStep": "string", "techStack": ["string"] }]
         }

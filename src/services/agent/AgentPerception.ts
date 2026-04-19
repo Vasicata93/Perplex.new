@@ -1,145 +1,81 @@
-import { Message, ModelProvider, LocalModelConfig } from '../../types';
-import { LLMService } from '../geminiService';
 import { Perception } from '../../types/agent';
+import { extractKeywords } from './localHeuristics';
+import { semanticRouter } from './SemanticRouter';
 
 export class AgentPerception {
   /**
-   * Evaluates the incoming message and context to determine the perception.
-   * This implements Layer 3 of the Perplex Agent Architecture.
+   * Evaluates the incoming message and context to determine the perception LOCALLY.
+   * This implements Layer 3 of the Perplex Agent Architecture using embeddings (semantic) + heuristics.
    */
   static async analyze(
-    currentMessage: string,
-    recentHistory: Message[],
-    systemContextStr: string,
-    memoryContextStr: string,
-    llmService: LLMService,
-    provider: ModelProvider = ModelProvider.GEMINI,
-    openRouterKey: string = "",
-    openRouterModel: string = "",
-    openAiKey: string = "",
-    openAiModel: string = "",
-    activeLocalModel: LocalModelConfig | undefined = undefined,
-    geminiApiKey?: string
+    currentMessage: string
   ): Promise<Perception> {
-    const prompt = `
-SYSTEM CONTEXT:
-${systemContextStr}
+    const text = currentMessage.toLowerCase();
+    
+    // HEURISTIC 1: URGENCY
+    let urgency: "low" | "medium" | "high" | "critical" = "low";
+    const criticalWords = ['urgent', 'asap', 'now', 'critical', 'emergency', 'quick', 'fast', 'immediately'];
+    const highWords = ['important', 'soon', 'priority'];
+    if (criticalWords.some(w => text.includes(w))) urgency = "critical";
+    else if (highWords.some(w => text.includes(w))) urgency = "high";
+    else if (text.endsWith('!')) urgency = "medium";
 
-MEMORY CONTEXT:
-${memoryContextStr}
+    // HEURISTIC 2: TONE
+    let tone = "neutral";
+    const frustratedWords = ['fuck', 'shit', 'ugh', 'stupid', 'annoying', 'hate', 'bad', 'wrong', 'fail'];
+    const excitedWords = ['awesome', 'great', 'love', 'amazing', 'perfect', 'thanks', 'wow'];
+    if (frustratedWords.some(w => text.includes(w))) tone = "frustrated";
+    else if (excitedWords.some(w => text.includes(w))) tone = "excited";
+    else if (text.includes('please') || text.includes('could you')) tone = "polite";
 
-You are the PERCEPTION layer of an advanced AI agent.
-Your job is to analyze the user's latest message, understand the real intent, and model the current situation.
-
-Recent History:
-${recentHistory.slice(-5).map(m => `${m.role}: ${m.content}`).join('\n')}
-
-User Message: "${currentMessage}"
-
-Analyze the request and output a JSON object with the following structure:
-{
-  "realIntent": "The actual underlying goal or need of the user",
-  "tone": "The emotional tone of the user (e.g., frustrated, excited, neutral, urgent)",
-  "urgency": "low" | "medium" | "high" | "critical",
-  "situationModel": {
-    "projectState": "Where we are in the current project or task",
-    "changesSinceLastMessage": "What changed in the user's request or context",
-    "relevantMemoryContext": "Which parts of the memory are most relevant right now"
-  },
-  "goalAwareness": {
-    "mainGoal": "The overarching goal of the current session",
-    "activeSubgoals": ["subgoal 1", "subgoal 2"],
-    "remainingTasks": ["task 1", "task 2"]
-  },
-  "eventDetection": {
-    "directionChanges": ["Any pivot or change in direction requested"],
-    "opportunities": ["Any proactive suggestions we could make"],
-    "blocks": ["Any frustrations or blockers the user is facing"]
-  }
-}
-
-Respond ONLY with valid JSON. Do not include markdown formatting like \`\`\`json.
-CRITICAL: Ensure all property names are enclosed in double quotes. Do not use single quotes for strings. Escape any internal double quotes using \\". Do not include trailing commas.
-`;
-
-    try {
-      const response = await llmService.generateSimpleText(
-        prompt,
-        provider,
-        openRouterKey,
-        openRouterModel,
-        openAiKey,
-        openAiModel,
-        activeLocalModel,
-        geminiApiKey
-      );
-
-      // Clean up markdown if present
-      let cleanedResponse = response.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
-      
-      // Extract JSON object if there's surrounding text
-      const jsonStart = cleanedResponse.indexOf('{');
-      const jsonEnd = cleanedResponse.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        cleanedResponse = cleanedResponse.substring(jsonStart, jsonEnd + 1);
+    // HEURISTIC 3: SEMANTIC INTENT
+    let intent = "general conversation";
+    let intentSource = "Heuristics";
+    
+    if (semanticRouter.isReady) {
+      try {
+        const result = await semanticRouter.classify(currentMessage);
+        intent = result.category; // Uses the category key (e.g. "CONVERSATION", "CODING")
+        intentSource = "Xenova ONNX Semantic";
+      } catch (err) {
+        console.warn("Semantic classification failed:", err);
       }
-
-      // Basic JSON repair for common LLM mistakes
-      cleanedResponse = cleanedResponse
-        // Fix unquoted keys (basic heuristic)
-        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
-        // Remove trailing commas
-        .replace(/,\s*([}\]])/g, '$1');
-
-      const parsed = JSON.parse(cleanedResponse);
-
-      return {
-        timestamp: Date.now(),
-        literalInput: currentMessage,
-        realIntent: parsed.realIntent || "Analyze user request",
-        tone: parsed.tone || "neutral",
-        urgency: parsed.urgency || "medium",
-        situationModel: parsed.situationModel || {
-          projectState: "Unknown",
-          changesSinceLastMessage: "None",
-          relevantMemoryContext: "None"
-        },
-        goalAwareness: parsed.goalAwareness || {
-          mainGoal: "Assist user",
-          activeSubgoals: [],
-          remainingTasks: []
-        },
-        eventDetection: parsed.eventDetection || {
-          directionChanges: [],
-          opportunities: [],
-          blocks: []
-        }
-      };
-    } catch (error) {
-      console.error("[Perception] Failed to parse perception response:", error);
-      // Fallback
-      return {
-        timestamp: Date.now(),
-        literalInput: currentMessage,
-        realIntent: "Analyze user request",
-        tone: "neutral",
-        urgency: "medium",
-        situationModel: {
-          projectState: "Unknown",
-          changesSinceLastMessage: "None",
-          relevantMemoryContext: "None"
-        },
-        goalAwareness: {
-          mainGoal: "Assist user",
-          activeSubgoals: [],
-          remainingTasks: []
-        },
-        eventDetection: {
-          directionChanges: [],
-          opportunities: [],
-          blocks: []
-        }
-      };
     }
+
+    // Fallback to strict heuristics if semantic router wasn't ready or returned something unexpected
+    if (intent === "general conversation" && !semanticRouter.isReady) {
+      if (text.includes('?', text.length - 2)) intent = "information request";
+      if (['create', 'make', 'build', 'write', 'generate', 'adauga'].some(w => text.startsWith(w) || text.includes(` ${w} `))) intent = "action execution";
+      if (['fix', 'bug', 'error', 'debug', 'code', 'eroare'].some(w => text.includes(w))) intent = "coding assistance";
+      if (['save', 'remember', 'memorize', 'salveaza'].some(w => text.includes(w))) intent = "data memorization";
+      if (['search', 'find', 'look up', 'cauta'].some(w => text.includes(w))) intent = "web search";
+    }
+
+    // HEURISTIC 4: ENTITIES / GOALS
+    const keywords = extractKeywords(currentMessage);
+
+    return {
+       timestamp: Date.now(),
+       literalInput: currentMessage,
+       realIntent: intent,
+       tone: tone,
+       urgency: urgency,
+       situationModel: {
+         projectState: "ongoing",
+         changesSinceLastMessage: keywords.join(', ') || "None detected",
+         relevantMemoryContext: `Classified via ${intentSource}`
+       },
+       goalAwareness: {
+         mainGoal: intent,
+         activeSubgoals: keywords.slice(0, 2),
+         remainingTasks: []
+       },
+       eventDetection: {
+         directionChanges: [],
+         opportunities: [],
+         blocks: []
+       }
+    };
   }
 }
+

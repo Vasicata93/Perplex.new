@@ -77,12 +77,16 @@ import { SpaceFilesModal } from "./components/SpaceFilesModal";
 import { v4 as uuidv4 } from "uuid";
 import { portfolioService } from "./services/portfolioService";
 import { safeDigitalService } from "./services/safeDigitalService";
+import { semanticRouter } from "./services/agent/SemanticRouter";
 
 // --- End of imports ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // Initialize integrations once
 initializeIntegrations();
+
+// Pre-warm the semantic router (starts download/init in background)
+semanticRouter.init().catch(console.error);
 
 // --- Premium Tornado Thinking Component (Updated: Persistent Visibility) ---
 function App() {
@@ -2076,7 +2080,6 @@ function App() {
             setIsThinking(false);
           },
           requestConfirmation,
-          true, // forceAgentMode
           provider,
           settings.openRouterApiKey,
           settings.openRouterModelId,
@@ -2412,7 +2415,6 @@ function App() {
             );
           },
           requestConfirmation,
-          true, // forceAgentMode
           settings.modelProvider,
           settings.openRouterApiKey,
           settings.openRouterModelId,

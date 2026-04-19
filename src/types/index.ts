@@ -117,24 +117,14 @@ export interface Note {
 // ENUM for Memory Categories
 export type MemoryCategory =
   | "about_me"
-  | "work"
-  | "projects"
-  | "relationships"
   | "preferences"
-  | "health"
-  | "diet"
-  | "hobbies"
-  | "entertainment"
-  | "coding"
-  | "goals"
-  | "events"
-  | "style"
-  | "learning"
-  | "travel"
-  | "explicit_save"
-  | "skills" // New: Procedural rules
-  | "workflows" // New: Recurring habits
-  | "finance" // New: Added based on analysis
+  | "work"
+  | "coding_projects"
+  | "learning_goals"
+  | "relationships"
+  | "health_lifestyle"
+  | "hobbies_interests"
+  | "finance"
   | "other";
 
 export type MemoryType = "fact" | "goal" | "skill" | "project" | "preference";

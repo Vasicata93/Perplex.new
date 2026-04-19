@@ -14,26 +14,26 @@ const PROJECTS_KEY = "active_projects";
 // --- INTENT CLASSIFIER CONFIGURATION ---
 // Maps keywords to specific memory categories
 const INTENT_MAP: Record<string, MemoryCategory[]> = {
-  coding: ["coding", "projects", "skills", "learning", "workflows"],
-  code: ["coding", "projects", "skills"],
-  react: ["coding", "skills"],
-  typescript: ["coding", "skills"],
-  bug: ["coding", "projects"],
-  error: ["coding", "projects"],
-  health: ["health", "diet", "hobbies"],
-  workout: ["health", "goals"],
-  diet: ["diet", "health", "preferences"],
-  finance: ["finance", "goals", "work"],
-  money: ["finance", "goals"],
-  invest: ["finance", "goals"],
-  job: ["work", "goals", "skills"],
-  work: ["work", "projects", "workflows"],
-  travel: ["travel", "preferences"],
-  trip: ["travel", "events"],
-  book: ["hobbies", "learning"],
-  movie: ["entertainment", "hobbies"],
-  learn: ["learning", "skills", "goals"],
-  plan: ["goals", "projects"],
+  coding: ["coding_projects", "learning_goals"],
+  code: ["coding_projects"],
+  react: ["coding_projects"],
+  typescript: ["coding_projects"],
+  bug: ["coding_projects"],
+  error: ["coding_projects"],
+  health: ["health_lifestyle", "hobbies_interests"],
+  workout: ["health_lifestyle"],
+  diet: ["health_lifestyle"],
+  finance: ["finance", "learning_goals", "work"],
+  money: ["finance"],
+  invest: ["finance"],
+  job: ["work", "learning_goals"],
+  work: ["work", "coding_projects"],
+  travel: ["hobbies_interests", "preferences"],
+  trip: ["hobbies_interests"],
+  book: ["hobbies_interests", "learning_goals"],
+  movie: ["hobbies_interests"],
+  learn: ["learning_goals", "coding_projects"],
+  plan: ["learning_goals", "coding_projects"],
   relationship: ["relationships", "about_me"],
   family: ["relationships"],
   friend: ["relationships"],
@@ -141,7 +141,7 @@ export class MemoryService {
     // 2. LAYER A: CORE MEMORY (Always present, high priority)
     // Contains Identity, Style, Preferences.
     const coreMemories = allMemories.filter((m) =>
-      ["about_me", "style", "preferences"].includes(m.category),
+      m && m.category && ["about_me", "preferences"].includes(m.category),
     );
 
     // 3. LAYER B: WORKING MEMORY (Session Context)
@@ -149,15 +149,15 @@ export class MemoryService {
     const workingMemory: string[] = [];
 
     // Add Active Projects only if relevant to intent or if generalized
-    const activeProjects = allProjects.filter((p) => p.status === "active");
+    const activeProjects = allProjects.filter((p) => p && p.status === "active");
     activeProjects.forEach((p) => {
+      if (!p || !p.title) return;
       // If intent is coding, include tech stack details
       if (
-        targetCategories.includes("coding") ||
-        targetCategories.includes("projects")
+        targetCategories.includes("coding_projects")
       ) {
         workingMemory.push(
-          `Project "${p.title}": ${p.progress} (Next: ${p.nextStep})`,
+          `Project "${p.title}": ${p.progress || "Started"} (Next: ${p.nextStep || "Planning"})`,
         );
       } else {
         // Minimal mention for general context
@@ -168,13 +168,14 @@ export class MemoryService {
     // 4. LAYER C: RELEVANT FACTS (Scored Retrieval)
     // Filter the rest of the memories based on Intent + Keywords
     const otherMemories = allMemories.filter(
-      (m) => !["about_me", "style", "preferences"].includes(m.category),
+      (m) => m && m.category && !["about_me", "preferences"].includes(m.category),
     );
 
     const keywords = this.extractKeywords(prompt);
     const relevantFacts = otherMemories
       .map((m) => {
         let score = 0;
+        if (!m || !m.content) return { m, score: -1 };
 
         // A. Category Match (High Weight)
         if (targetCategories.includes(m.category)) score += 5;
@@ -184,11 +185,11 @@ export class MemoryService {
           score += 3;
 
         // C. Tag Match
-        if (m.tags && m.tags.some((t) => keywords.includes(t))) score += 2;
+        if (m.tags && Array.isArray(m.tags) && m.tags.some((t) => keywords.includes(t))) score += 2;
 
         // D. Recency Boost (Small Weight)
         // Boost if created/updated in last 24h
-        if (Date.now() - m.updatedAt < 86400000) score += 1;
+        if (m.updatedAt && Date.now() - m.updatedAt < 86400000) score += 1;
 
         // E. Importance Weight (if exists)
         if (m.importance) score += m.importance;
@@ -263,17 +264,19 @@ export class MemoryService {
     // 2. Update/Merge Memories (Simple replacement for now)
     const uniqueMemories = currentMemories.filter(
       (m, index, self) =>
+        m && m.content && m.category &&
         index ===
         self.findIndex(
-          (t) => t.content === m.content && t.category === m.category,
+          (t) => t && t.content === m.content && t.category === m.category,
         ),
     );
 
     // 3. Update Projects
     if (updates.project_updates && Array.isArray(updates.project_updates)) {
       updates.project_updates.forEach((update: any) => {
+        if (!update || !update.title) return;
         const existing = currentProjects.find(
-          (p) => p.title.toLowerCase() === update.title.toLowerCase(),
+          (p) => p && p.title && p.title.toLowerCase() === update.title.toLowerCase(),
         );
         if (existing) {
           if (update.progress) existing.progress = update.progress;
@@ -297,15 +300,16 @@ export class MemoryService {
     // 4. Update Skills
     if (updates.new_skills && Array.isArray(updates.new_skills)) {
       updates.new_skills.forEach((skill: any) => {
+        if (typeof skill !== 'string') return;
         if (
-          !uniqueMemories.find(
-            (m) => m.category === "skills" && m.content.includes(skill),
-          )
+           !uniqueMemories.find(
+             (m) => m && m.category === "learning_goals" && m.content && m.content.includes(skill),
+           )
         ) {
           uniqueMemories.push({
             id: Math.random().toString(36).substr(2, 9),
             content: skill,
-            category: "skills",
+            category: "learning_goals",
             type: "skill",
             confidence: 1,
             tags: [],
@@ -357,6 +361,8 @@ export class MemoryService {
   }
 
   private static extractKeywords(text: string): string[] {
+    if (!text || typeof text !== "string") return [];
+    
     const stopWords = new Set([
       "the",
       "is",
