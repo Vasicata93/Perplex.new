@@ -6,13 +6,13 @@ env.useBrowserCache = true;
 
 // Define broad archetypes of user intents to match against
 export const SEMANTIC_CATEGORIES = {
-  CONVERSATION: "casual greeting, general conversation, simple facts, chitchat",
-  ACTION: "perform an action, create something, write email, save data, execute task, do something",
-  CODING: "programming, write code, debug, fix error, software architecture, typescript, react, code review",
-  RESEARCH: "web search, look up deep information, find history, read articles, external data",
-  FINANCE: "money, budget, investments, cryptocurrency, prices, economy, spending",
-  ANALYSIS: "data analysis, statistics, charts, graph, math, logical deduction",
-  AMBIGUOUS: "huh?, what?, can you repeat that?, i don't understand, ambiguous short question"
+  CONVERSATION: "casual greeting, general conversation, simple facts, chitchat, buna, salut, ce mai faci, cine esti, cum te cheama, zi-mi o gluma, hello, hi",
+  ACTION: "perform an action, create something, write email, save data, execute task, do something, fa o actiune, creeaza, salveaza, scrie un email, adauga, modifica",
+  CODING: "programming, write code, debug, fix error, software architecture, typescript, react, code review, programare, scrie cod, eroare, bug, rezolva codul",
+  RESEARCH: "web search, look up deep information, find history, read articles, external data, cauta pe net, cautare web, informatii detaliate, cine a fost, istoric",
+  FINANCE: "money, budget, investments, cryptocurrency, prices, economy, spending, bani, buget, investitii, criptomonede, economie, pret', bursa",
+  ANALYSIS: "data analysis, statistics, charts, graph, math, logical deduction, analiza date, statistici, grafice, matematica, deductie logica",
+  AMBIGUOUS: "huh?, what?, can you repeat that?, i don't understand, ambiguous short question, poftim, ce, nu inteleg, repeta, la ce te referi"
 };
 
 export type SemanticCategory = keyof typeof SEMANTIC_CATEGORIES;
@@ -69,7 +69,7 @@ class SemanticRouter {
   /**
    * Transforms a natural language text into a vector and finds the closest semantic intent.
    */
-  async classify(text: string): Promise<{ category: SemanticCategory; score: number }> {
+  async classify(text: string): Promise<{ category: SemanticCategory | null; score: number }> {
     if (!this.isReady || !this.extractor) {
       throw new Error("Semantic Router not ready");
     }
@@ -78,7 +78,7 @@ class SemanticRouter {
     const output = await this.extractor(text, { pooling: 'mean', normalize: true });
     const textVector = Array.from(output.data);
 
-    let bestMatch: SemanticCategory = "CONVERSATION";
+    let bestMatch: SemanticCategory | null = null;
     let highestScore = -1;
 
     // Compare similarity against all known categories
@@ -88,6 +88,11 @@ class SemanticRouter {
         highestScore = score;
         bestMatch = key as SemanticCategory;
       }
+    }
+
+    // Threshold check: if score is too low, we return null to force heuristics
+    if (highestScore < 0.35) {
+       bestMatch = null;
     }
 
     return { category: bestMatch, score: highestScore };

@@ -96,7 +96,8 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = false;
         recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = 'en-US'; // Default, could be mapped to settings.interfaceLanguage
+        // Use the browser's language to allow dynamic detection of the user's native tongue
+        recognitionRef.current.lang = navigator.language || 'en-US';
 
         recognitionRef.current.onresult = (event: any) => {
           let currentTranscript = '';

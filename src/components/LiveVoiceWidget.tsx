@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
-import { useGeminiLive } from '../hooks/useGeminiLive';
+import { X, Monitor } from 'lucide-react';
 import { useGenericVoice } from '../hooks/useGenericVoice';
-import { Role, AppSettings, ModelProvider, Thread } from '../types';
+import { Role, AppSettings, Thread } from '../types';
 
 interface LiveVoiceWidgetProps {
   isOpen: boolean;
@@ -17,73 +16,26 @@ interface LiveVoiceWidgetProps {
   onGenericSendMessage?: (text: string) => void;
   onTTS?: (text: string) => void;
   isPlayingAudio?: boolean;
+  onShareScreen?: () => void;
 }
 
 export const LiveVoiceWidget: React.FC<LiveVoiceWidgetProps> = ({ 
-  isOpen, 
-  apiKey, 
-  onAddMessage, 
-  onUpdateMessage,
-  settings,
+  isOpen,
+  onClose,
   activeThread,
   isThinking = false,
   onGenericSendMessage,
   onTTS,
-  isPlayingAudio
+  isPlayingAudio,
+  onShareScreen
 }) => {
-  const [volume, setVolume] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   
-  const currentUserMsgId = useRef<string | null>(null);
-  const currentModelMsgId = useRef<string | null>(null);
-  const currentUserTranscript = useRef<string>('');
-  const currentModelTranscript = useRef<string>('');
-
-  const isGemini = settings?.modelProvider === ModelProvider.GEMINI;
-
-  const handleTranscript = useCallback((text: string, isUser: boolean) => {
-    if (isUser) {
-      if (!currentUserMsgId.current && onAddMessage) {
-        currentUserMsgId.current = onAddMessage(Role.USER, text);
-        currentUserTranscript.current = text;
-        currentModelMsgId.current = null;
-        currentModelTranscript.current = '';
-      } else if (currentUserMsgId.current && onUpdateMessage) {
-        currentUserTranscript.current += text;
-        onUpdateMessage(currentUserMsgId.current, currentUserTranscript.current);
-      }
-    } else {
-      if (!currentModelMsgId.current && onAddMessage) {
-        currentModelMsgId.current = onAddMessage(Role.MODEL, text);
-        currentModelTranscript.current = text;
-        currentUserMsgId.current = null;
-        currentUserTranscript.current = '';
-      } else if (currentModelMsgId.current && onUpdateMessage) {
-        currentModelTranscript.current += text;
-        onUpdateMessage(currentModelMsgId.current, currentModelTranscript.current);
-      }
-    }
-  }, [onAddMessage, onUpdateMessage]);
-
-  const handleTurnComplete = useCallback(() => {
-    currentModelMsgId.current = null;
-    currentModelTranscript.current = '';
-    currentUserMsgId.current = null;
-    currentUserTranscript.current = '';
-  }, []);
-
-  const gemini = useGeminiLive({
-    apiKey,
-    onTranscript: handleTranscript,
-    onTurnComplete: handleTurnComplete,
-    onVolumeChange: setVolume
-  });
-
   const generic = useGenericVoice({
     onSendMessage: onGenericSendMessage || (() => {}),
     isThinking,
     activeThread,
-    enabled: isOpen && !isGemini,
+    enabled: isOpen,
     onTTS,
     isPlayingAudio
   });
@@ -91,33 +43,20 @@ export const LiveVoiceWidget: React.FC<LiveVoiceWidgetProps> = ({
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
-      if (isGemini) {
-        gemini.connect();
-      } else {
-        generic.startListening();
-      }
+      generic.startListening();
     } else {
       setIsVisible(false);
-      if (isGemini) {
-        gemini.disconnect();
-      } else {
-        generic.stopListening();
-      }
-      currentUserMsgId.current = null;
-      currentModelMsgId.current = null;
-      currentUserTranscript.current = '';
-      currentModelTranscript.current = '';
+      generic.stopListening();
     }
     return () => {
-      gemini.disconnect();
       generic.stopListening();
     };
-  }, [isOpen, isGemini]);
+  }, [isOpen]);
 
-  const isConnected = isGemini ? gemini.isConnected : generic.isConnected;
-  const isSpeaking = isGemini ? gemini.isSpeaking : generic.isSpeaking;
-  const currentVolume = isGemini ? volume : generic.volume;
-  const currentError = isGemini ? gemini.error : generic.error;
+  const isConnected = generic.isConnected;
+  const isSpeaking = generic.isSpeaking;
+  const currentVolume = generic.volume;
+  const currentError = generic.error;
 
   return (
     <AnimatePresence>
@@ -270,15 +209,29 @@ export const LiveVoiceWidget: React.FC<LiveVoiceWidgetProps> = ({
             </motion.div>
           )}
 
+          {/* Screen Share Button */}
+          {onShareScreen && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onShareScreen();
+              }}
+              className="absolute -top-1 leading-none -left-4 p-2 rounded-full bg-[#20b8cd] text-black opacity-0 group-hover:opacity-100 hover:bg-[#20b8cd]/80 transition-all z-20 shadow-[0_0_10px_rgba(32,184,205,0.5)] border border-[#20b8cd]/30"
+              title="Add screen to context"
+            >
+              <Monitor size={14} strokeWidth={2.5} />
+            </button>
+          )}
+
           {/* Close Button */}
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              setIsVisible(false);
+              onClose();
             }}
-            className="absolute -top-1 -right-1 p-1.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all z-20 shadow-lg"
+            className="absolute -top-1 -right-4 p-2 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all z-20 shadow-[0_0_10px_rgba(239,68,68,0.5)] border border-red-500/30"
           >
-            <X size={10} strokeWidth={3} />
+            <X size={14} strokeWidth={2.5} />
           </button>
         </motion.div>
       )}

@@ -1816,9 +1816,16 @@ export const InputArea: React.FC<InputAreaProps> = ({
           settings={settings}
           activeThread={activeThread}
           isThinking={isThinking}
-          onGenericSendMessage={(text) => onSendMessage(text, focusModes, proMode, [], undefined, isAgentMode, isAgentProMode)}
+          onGenericSendMessage={(text) => {
+            const finalAttachments = [...attachments];
+            // Format to signal to AgentEngine that this is a voice conversation
+            const wrappedText = `<voice_input>${text}</voice_input>`;
+            onSendMessage(wrappedText, focusModes, proMode, finalAttachments, selectedModelId || undefined, isAgentMode, isAgentProMode);
+            setAttachments([]); // Clear attachments after sending
+          }}
           onTTS={onTTS}
           isPlayingAudio={isPlayingAudio}
+          onShareScreen={handleScreenShare}
         />
       </div>
     </div>

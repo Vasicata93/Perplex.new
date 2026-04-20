@@ -2288,18 +2288,25 @@ function App() {
     isStoppedRef.current = false;
     setIsThinking(true);
 
+    let processedText = text;
+    let isVoice = false;
+    if (processedText.startsWith('<voice_input>') && processedText.endsWith('</voice_input>')) {
+      isVoice = true;
+      processedText = processedText.replace('<voice_input>', '').replace('</voice_input>', '');
+    }
+
     // Determine which thread to use: override (side chat) -> active -> new
     let threadId = threadIdOverride || activeThreadId;
 
     if (!threadId) {
-      const displayTitle = text
-        ? text.substring(0, 40)
+      const displayTitle = processedText
+        ? processedText.substring(0, 40)
         : attachments.length
           ? `Analysis of ${attachments[0].name}`
           : "New Thread";
       const newThread: Thread = {
         id: generateId(),
-        title: displayTitle + (text.length > 40 ? "..." : ""),
+        title: displayTitle + (processedText.length > 40 ? "..." : ""),
         messages: [],
         updatedAt: Date.now(),
         spaceId: activeSpaceId || undefined,
@@ -2315,7 +2322,7 @@ function App() {
     const userMsg: Message = {
       id: generateId(),
       role: Role.USER,
-      content: text,
+      content: processedText,
       attachments: attachments,
       timestamp: Date.now(),
     };
@@ -2359,8 +2366,12 @@ function App() {
         const currentThread = threads.find(t => t.id === threadId);
         const history = currentThread ? currentThread.messages : [];
         
+        const enginePrompt = isVoice 
+          ? `[SYSTEM: YOU ARE IN LIVE VOICE CONVERSATION MODE. DETECT MY LANGUAGE AND RESPOND NATURALLY IN THAT EXACT SAME LANGUAGE. BE VERY CONCISE FOR AUDIO.]\n\n${processedText}`
+          : processedText;
+        
         await AgentEngine.processRequest(
-          text,
+          enginePrompt,
           history,
           llmService,
           (chunk, reasoning) => {
@@ -2452,7 +2463,7 @@ function App() {
     }
 
     let effectiveUseSearch = settings.useSearch;
-    let modifiedPrompt = text;
+    let modifiedPrompt = processedText;
     let combinedAttachments = [...attachments];
     let customSystemInstructions = undefined;
 
@@ -2465,7 +2476,7 @@ function App() {
       if (!hasWebSearch) {
         effectiveUseSearch = false; // Disable web search when focusing ONLY on Library
         // STRICT INSTRUCTION: Enforce focus ONLY on the attached pages content.
-        modifiedPrompt = `[STRICT LIBRARY FOCUS] User Query: ${text}
+        modifiedPrompt = `[STRICT LIBRARY FOCUS] User Query: ${processedText}
             
             INSTRUCTIONS:
             1. Answer ONLY using the content of the attached 'Library Pages' (markdown files attached to this request).
@@ -2474,7 +2485,7 @@ function App() {
             4. If the answer is not found in the attached pages, state clearly that the information is missing from the selected library pages.`;
       } else {
         // COMBINED FOCUS: Use both Library and Web Search
-        modifiedPrompt = `[LIBRARY + WEB SEARCH FOCUS] User Query: ${text}
+        modifiedPrompt = `[LIBRARY + WEB SEARCH FOCUS] User Query: ${processedText}
             
             INSTRUCTIONS:
             1. Use the content of the attached 'Library Pages' (markdown files attached to this request) as your primary context.
@@ -2491,6 +2502,10 @@ function App() {
         combinedAttachments = [...combinedAttachments, ...activeSpace.files];
         modifiedPrompt += `\n\n[Context from Space '${activeSpace.title}': I have attached ${activeSpace.files.length} knowledge base files. Use them to answer.]`;
       }
+    }
+
+    if (isVoice) {
+      modifiedPrompt = `[SYSTEM: YOU ARE IN LIVE VOICE CONVERSATION MODE. DETECT MY LANGUAGE AND RESPOND NATURALLY IN THAT EXACT SAME LANGUAGE. BE VERY CONCISE FOR AUDIO.]\n\n${modifiedPrompt}`;
     }
 
     try {

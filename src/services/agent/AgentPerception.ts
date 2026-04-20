@@ -35,8 +35,10 @@ export class AgentPerception {
     if (semanticRouter.isReady) {
       try {
         const result = await semanticRouter.classify(currentMessage);
-        intent = result.category; // Uses the category key (e.g. "CONVERSATION", "CODING")
-        intentSource = "Xenova ONNX Semantic";
+        if (result.category) {
+          intent = result.category; // Uses the category key (e.g. "CONVERSATION", "CODING")
+          intentSource = "Xenova ONNX Semantic";
+        }
       } catch (err) {
         console.warn("Semantic classification failed:", err);
       }
