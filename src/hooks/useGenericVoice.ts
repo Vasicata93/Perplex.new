@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Thread, Role } from '../types';
+import { Thread, Role, AppSettings } from '../types';
 
 interface UseGenericVoiceProps {
   onSendMessage: (text: string) => void;
@@ -8,9 +8,10 @@ interface UseGenericVoiceProps {
   enabled: boolean;
   onTTS?: (text: string) => void;
   isPlayingAudio?: boolean;
+  settings?: AppSettings;
 }
 
-export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabled, onTTS, isPlayingAudio }: UseGenericVoiceProps) => {
+export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabled, onTTS, isPlayingAudio, settings }: UseGenericVoiceProps) => {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -23,17 +24,34 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
   const enabledRef = useRef(enabled);
   const hasFatalErrorRef = useRef(false);
   const hasPendingRequestRef = useRef(false);
+  const hasRequestedMicPermissionRef = useRef(false);
+  const micStreamRef = useRef<MediaStream | null>(null);
 
   const isPlayingAudioRef = useRef(isPlayingAudio);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     if (recognitionRef.current && !synthRef.current?.speaking && !isPlayingAudioRef.current && !isThinkingRef.current && !hasPendingRequestRef.current) {
       try {
+        if (!hasRequestedMicPermissionRef.current && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+           try {
+             // By keeping this stream alive, we prevent Android Chrome from playing the noisy "beep" sound every time SpeechRecognition restarts.
+             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+             micStreamRef.current = stream;
+             hasRequestedMicPermissionRef.current = true;
+           } catch (e) {
+             // Let it fall through, recognitionRef.current.start() might still work or throw NotAllowed
+           }
+        }
+
         recognitionRef.current.start();
         setIsListening(true);
         setError(null);
-      } catch (e) {
-        // Already started
+        hasFatalErrorRef.current = false;
+      } catch (e: any) {
+        if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e === 'not-allowed') {
+           setError("Microphone access denied. Please allow permissions in browser settings.");
+           hasFatalErrorRef.current = true;
+        }
       }
     }
   }, []);
@@ -96,8 +114,17 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = false;
         recognitionRef.current.interimResults = true;
-        // Use the browser's language to allow dynamic detection of the user's native tongue
-        recognitionRef.current.lang = navigator.language || 'en-US';
+        // --- SMART AUTO-DETECT LOGIC ---
+        const appInterfaceRo = settings?.interfaceLanguage === "ro";
+        const aiResponseRo = settings?.aiProfile?.language === "Romanian";
+        const sysLangs = navigator.languages || [navigator.language];
+        const systemRo = sysLangs.some((l) => l && l.toLowerCase().includes("ro"));
+
+        // Priority Logic: If ANY indicator points to Romanian, use 'ro-RO'.
+        const langCode =
+          appInterfaceRo || aiResponseRo || systemRo ? "ro-RO" : "en-US";
+
+        recognitionRef.current.lang = langCode;
 
         recognitionRef.current.onresult = (event: any) => {
           let currentTranscript = '';
@@ -200,6 +227,12 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     if (synthRef.current) {
       synthRef.current.cancel();
       setIsSpeaking(false);
+    }
+    // Only kill the background mic stream if the user explicitly stops listening (i.e. closes the live voice widget)
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current = null;
+      hasRequestedMicPermissionRef.current = false;
     }
   }, []);
 

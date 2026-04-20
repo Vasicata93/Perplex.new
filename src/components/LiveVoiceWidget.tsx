@@ -22,6 +22,7 @@ interface LiveVoiceWidgetProps {
 export const LiveVoiceWidget: React.FC<LiveVoiceWidgetProps> = ({ 
   isOpen,
   onClose,
+  settings,
   activeThread,
   isThinking = false,
   onGenericSendMessage,
@@ -37,7 +38,8 @@ export const LiveVoiceWidget: React.FC<LiveVoiceWidgetProps> = ({
     activeThread,
     enabled: isOpen,
     onTTS,
-    isPlayingAudio
+    isPlayingAudio,
+    settings
   });
 
   useEffect(() => {

@@ -167,6 +167,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
   const [detectedLangDisplay, setDetectedLangDisplay] = useState<string>(""); // For UI display (RO/EN)
 
   const recognitionRef = useRef<any>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
 
   // Drag Controls for Bottom Sheets
   const attachDragControls = useDragControls();
@@ -228,12 +229,16 @@ export const InputArea: React.FC<InputAreaProps> = ({
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((track) => track.stop());
+      micStreamRef.current = null;
+    }
     setIsListening(false);
     setRecordingSeconds(0);
     setDetectedLangDisplay("");
   };
 
-  const handleVoiceInput = () => {
+  const handleVoiceInput = async () => {
     // 1. If active, stop it
     if (isListening) {
       stopListening();
@@ -246,6 +251,19 @@ export const InputArea: React.FC<InputAreaProps> = ({
       !("SpeechRecognition" in window)
     ) {
       alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    // Prompt for permission explicitly if needed (bypasses iframe silent reject issues)
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // By keeping this stream alive, we prevent Android Chrome from playing the noisy "beep" sound every time SpeechRecognition restarts.
+        micStreamRef.current = stream;
+      }
+    } catch (e: any) {
+      // If user denied or no mic, alert
+      alert("Microphone access denied or not found. Please allow permissions in browser settings.");
       return;
     }
 
