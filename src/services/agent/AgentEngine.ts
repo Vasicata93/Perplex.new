@@ -90,13 +90,21 @@ export class AgentEngine {
       // Selective retrieval based on relevance
       setStep(2, 10, '[2] Memory Load: Retrieving relevant context...', 'layer-2');
       
-      const retrievedMemory = await MemoryManager.getRelevantContext();
+      const retrievedMemory = await MemoryManager.getRelevantContext(text);
+      
+      const workingMemoryTemp = history.slice(-10);
+      const workingMemory = workingMemoryTemp.map(msg => {
+        if (msg.role === 'model' && msg.content.length > 300) {
+          return { ...msg, content: msg.content.substring(0, 300) + ' [...]' };
+        }
+        return msg;
+      });
       
       const memoryContext = {
         episodic: retrievedMemory.recentEpisodes,
         semantic: retrievedMemory.semantic,
         procedural: retrievedMemory.procedural,
-        workingMemory: history.slice(-10) // Sliding window
+        workingMemory: workingMemory // Sliding window truncated
       };
       
       const memoryContextStr = `
@@ -397,11 +405,10 @@ Reply exactly YES or NO.`;
           setStep(6, 10, '[6] Pre-Tool Safety: Checking safety constraints...', 'layer-6');
           
           // 6.1 WRITE OPERATION GUARD
-          const writeTools = systemContextData.toolDefinitions.writeTools;
-          const isWriteOperation = writeTools.includes(task.tool) || 
-                                   (task.tool === 'portfolio_tool' && task.toolArgs?.action && !task.toolArgs.action.startsWith('read_')) ||
-                                   (task.tool === 'safe_digital_tool' && task.toolArgs?.action && !task.toolArgs.action.startsWith('read_')) ||
-                                   (task.tool === 'calendar_tool' && task.toolArgs?.action && !task.toolArgs.action.startsWith('read_'));
+          let isWriteOperation = SystemContext.isWriteTool(task.tool as string);
+          if (isWriteOperation && task.toolArgs?.action && task.toolArgs.action.startsWith('read_')) {
+            isWriteOperation = false;
+          }
           const isExecuteCode = task.tool === 'execute_code';
           
           if (isWriteOperation && !isExecuteCode) {

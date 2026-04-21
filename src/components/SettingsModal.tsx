@@ -39,6 +39,8 @@ import {
   XCircle,
   Wallet,
   Sliders,
+  Mic,
+  Layers,
 } from "lucide-react";
 import {
   AppSettings,
@@ -386,7 +388,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [formData, setFormData] = useState<AppSettings>(settings);
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [memories, setMemories] = useState<MemoryItem[]>([]);
-  const [modelType, setModelType] = useState<"cloud" | "local">("cloud");
+  const [llmType, setLlmType] = useState<"cloud" | "local">("cloud");
 
   // Mobile Navigation State
   const [isMobileDetail, setIsMobileDetail] = useState(false);
@@ -438,15 +440,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const renderIcon = (iconName: string) => {
     switch (iconName) {
       case "github":
-        return <Github className="w-5 h-5" />;
+        return <Github className="w-5 h-5 text-gray-100" />;
       case "vercel":
-        return <Triangle className="w-5 h-5" />;
+        return <Triangle className="w-5 h-5 text-white" />;
       case "google":
-        return <Mail className="w-5 h-5" />;
+        return <Mail className="w-5 h-5 text-red-500" />;
       case "search":
-        return <Search className="w-5 h-5" />;
+        return <Search className="w-5 h-5 text-pplx-primary" />;
       default:
-        return <Plug className="w-5 h-5" />;
+        return <Plug className="w-5 h-5 text-pplx-muted" />;
     }
   };
 
@@ -480,9 +482,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setIsCategoriesCollapsed(false);
 
       if (settings.modelProvider === ModelProvider.LOCAL) {
-        setModelType("local");
+        setLlmType("local");
       } else {
-        setModelType("cloud");
+        setLlmType("cloud");
       }
       MemoryService.getMemories().then(setMemories);
     }
@@ -1049,34 +1051,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     />
                   </div>
 
-                  <div className="flex justify-center mb-8">
-                    <div className="bg-pplx-input p-1.5 rounded-2xl flex w-full md:w-auto">
-                      <button
-                        onClick={() => setModelType("cloud")}
-                        className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 ${
-                          modelType === "cloud"
-                            ? "bg-pplx-text text-pplx-primary shadow-lg transform scale-[1.02]"
-                            : "bg-transparent text-pplx-muted hover:text-pplx-text"
-                        }`}
-                      >
-                        <Cloud size={16} />
-                        <span>Cloud</span>
-                      </button>
-                      <button
-                        onClick={() => setModelType("local")}
-                        className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 ${
-                          modelType === "local"
-                            ? "bg-pplx-text text-pplx-primary shadow-lg transform scale-[1.02]"
-                            : "bg-transparent text-pplx-muted hover:text-pplx-text"
-                        }`}
-                      >
-                        <Smartphone size={16} />
-                        <span>Offline</span>
-                      </button>
+                  {/* --- LLM CATEGORY --- */}
+                  <div className="space-y-6 pt-2 pb-6 border-b border-pplx-border/50">
+                    <div className="flex items-center gap-3 mb-6 px-2">
+                      <Cpu size={24} className="text-pplx-accent" />
+                      <h2 className="text-xl font-bold text-pplx-text">Language Models (LLM)</h2>
                     </div>
-                  </div>
 
-                  {modelType === "cloud" && (
+                    <div className="flex justify-center mb-8">
+                      <div className="bg-pplx-input p-1.5 rounded-2xl flex w-full md:w-auto">
+                        <button
+                          onClick={() => setLlmType("cloud")}
+                          className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 ${
+                            llmType === "cloud"
+                              ? "bg-pplx-text text-pplx-primary shadow-lg transform scale-[1.02]"
+                              : "bg-transparent text-pplx-muted hover:text-pplx-text"
+                          }`}
+                        >
+                          <Cloud size={16} />
+                          <span>Cloud</span>
+                        </button>
+                        <button
+                          onClick={() => setLlmType("local")}
+                          className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-xs md:text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 ${
+                            llmType === "local"
+                              ? "bg-pplx-text text-pplx-primary shadow-lg transform scale-[1.02]"
+                              : "bg-transparent text-pplx-muted hover:text-pplx-text"
+                          }`}
+                        >
+                          <Smartphone size={16} />
+                          <span>Offline</span>
+                        </button>
+                      </div>
+                    </div>
+
+                  {llmType === "cloud" && (
                     <div className="space-y-4 animate-fadeIn">
                       {/* Gemini Card */}
                       <div
@@ -1093,9 +1102,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         >
                           <div className="flex items-center gap-4">
                             <div
-                              className={`p-3 rounded-2xl ${formData.modelProvider === ModelProvider.GEMINI ? "bg-pplx-text text-pplx-primary" : "bg-pplx-secondary text-pplx-muted"}`}
+                              className="p-3 rounded-2xl bg-pplx-hover shadow-sm"
                             >
-                              <Sparkles size={20} />
+                              <Sparkles size={20} className="text-blue-500" />
                             </div>
                             <div>
                               <h4 className="text-base font-semibold text-pplx-text">
@@ -1156,9 +1165,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         >
                           <div className="flex items-center gap-4">
                             <div
-                              className={`p-3 rounded-2xl ${formData.modelProvider === ModelProvider.OPENROUTER ? "bg-pplx-text text-pplx-primary" : "bg-pplx-secondary text-pplx-muted"}`}
+                              className="p-3 rounded-2xl bg-pplx-hover shadow-sm"
                             >
-                              <Globe size={20} />
+                              <Globe size={20} className="text-indigo-500" />
                             </div>
                             <div>
                               <h4 className="text-base font-semibold text-pplx-text">
@@ -1248,9 +1257,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         >
                           <div className="flex items-center gap-4">
                             <div
-                              className={`p-3 rounded-2xl ${formData.modelProvider === ModelProvider.OPENAI ? "bg-pplx-text text-pplx-primary" : "bg-pplx-secondary text-pplx-muted"}`}
+                              className="p-3 rounded-2xl bg-pplx-hover shadow-sm"
                             >
-                              <Zap size={20} />
+                              <Zap size={20} className="text-emerald-500" />
                             </div>
                             <div>
                               <h4 className="text-base font-semibold text-pplx-text">
@@ -1316,7 +1325,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
 
-                  {modelType === "local" && (
+                  {llmType === "local" && (
                     <div className="animate-fadeIn pb-12">
                       <div className="bg-pplx-card rounded-3xl p-6 mb-6 shadow-sm border border-pplx-border/50">
                         <div className="flex items-center gap-3 mb-2">
@@ -1419,6 +1428,163 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       )}
                     </div>
                   )}
+                  </div>
+
+                  {/* --- VOICE CATEGORY --- */}
+                  <div className="space-y-6 py-6 border-b border-pplx-border/50">
+                    <div className="flex items-center gap-3 mb-6 px-2">
+                      <Mic size={24} className="text-pplx-accent" />
+                      <h2 className="text-xl font-bold text-pplx-text">Voice Input & Output</h2>
+                    </div>
+                    <div className="bg-pplx-card rounded-3xl p-6 mb-6 shadow-sm border border-pplx-border/50">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Mic size={20} className="text-pplx-accent" />
+                        <h3 className="text-lg font-bold text-pplx-text">
+                          Voice Providers
+                        </h3>
+                      </div>
+                      <p className="text-sm text-pplx-muted leading-relaxed">
+                        Configure API keys for Text-to-Speech (TTS) and Speech-to-Text (STT) models like Whisper, ElevenLabs, or others.
+                      </p>
+                    </div>
+
+                    <InputGroup label="ElevenLabs API Key" description="For ultra-realistic voices and custom voice cloning.">
+                      <div className="relative">
+                        <Key className="absolute left-4 top-4 text-pplx-muted opacity-50" size={16} />
+                        <input
+                          type="password"
+                          value={formData.elevenLabsApiKey || ""}
+                          onChange={(e) => setFormData({ ...formData, elevenLabsApiKey: e.target.value })}
+                          placeholder="sk_..."
+                          className="w-full bg-pplx-input rounded-2xl pl-11 pr-4 py-3.5 text-sm text-pplx-text outline-none font-mono transition-colors focus:ring-1 focus:ring-pplx-accent"
+                        />
+                      </div>
+                    </InputGroup>
+
+                    <InputGroup label="OpenAI Voice API Key" description="Key for OpenAI Whisper (STT) and OpenAI TTS.">
+                      <div className="relative">
+                        <Key className="absolute left-4 top-4 text-pplx-muted opacity-50" size={16} />
+                        <input
+                          type="password"
+                          value={formData.openaiVoiceApiKey || ""}
+                          onChange={(e) => setFormData({ ...formData, openaiVoiceApiKey: e.target.value })}
+                          placeholder="sk-proj-..."
+                          className="w-full bg-pplx-input rounded-2xl pl-11 pr-4 py-3.5 text-sm text-pplx-text outline-none font-mono transition-colors focus:ring-1 focus:ring-pplx-accent"
+                        />
+                      </div>
+                    </InputGroup>
+
+                    <InputGroup label="Custom Voice API Key" description="Key for custom instances or other supported platforms (e.g., Cartesia, Wizard).">
+                      <div className="relative">
+                        <Key className="absolute left-4 top-4 text-pplx-muted opacity-50" size={16} />
+                        <input
+                          type="password"
+                          value={formData.customVoiceApiKey || ""}
+                          onChange={(e) => setFormData({ ...formData, customVoiceApiKey: e.target.value })}
+                          placeholder="API Key..."
+                          className="w-full bg-pplx-input rounded-2xl pl-11 pr-4 py-3.5 text-sm text-pplx-text outline-none font-mono transition-colors focus:ring-1 focus:ring-pplx-accent"
+                        />
+                      </div>
+                    </InputGroup>
+                  </div>
+
+                  {/* --- EMBEDDINGS CATEGORY --- */}
+                  <div className="space-y-6 py-6 border-b border-pplx-border/50">
+                    <div className="flex items-center gap-3 mb-6 px-2">
+                       <Layers size={24} className="text-pplx-accent" />
+                       <h2 className="text-xl font-bold text-pplx-text">Embeddings Configuration</h2>
+                    </div>
+                    <div className="bg-pplx-card rounded-3xl p-6 mb-6 shadow-sm border border-pplx-border/50">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Layers size={20} className="text-pplx-accent" />
+                        <h3 className="text-lg font-bold text-pplx-text">
+                          Embeddings Model
+                        </h3>
+                      </div>
+                      <p className="text-sm text-pplx-muted leading-relaxed">
+                        Embeddings are used for specific retrieval tasks and semantic searches.
+                      </p>
+                    </div>
+
+                    <InputGroup label="Provider" description="Select the default embeddings API.">
+                      <div className="relative">
+                        <select
+                          value={formData.embeddingProvider}
+                          onChange={(e) => setFormData({ ...formData, embeddingProvider: e.target.value as "gemini" | "openai" | "custom" })}
+                          className="w-full bg-pplx-input rounded-2xl px-4 py-3.5 text-sm text-pplx-text outline-none appearance-none focus:ring-1 focus:ring-pplx-accent"
+                        >
+                          <option value="gemini">Google Gemini (Default)</option>
+                          <option value="openai">OpenAI</option>
+                          <option value="custom">Custom Configuration</option>
+                        </select>
+                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-pplx-muted pointer-events-none" />
+                      </div>
+                    </InputGroup>
+
+                    {formData.embeddingProvider === "custom" && (
+                      <InputGroup label="Custom Model ID" description="Set your own model to handle memory mapping.">
+                        <div className="relative">
+                          <Activity className="absolute left-4 top-4 text-pplx-muted opacity-50" size={16} />
+                          <input
+                            type="text"
+                            value={formData.customEmbeddingModelId || ""}
+                            onChange={(e) => setFormData({ ...formData, customEmbeddingModelId: e.target.value })}
+                            placeholder="e.g. text-embedding-v2"
+                            className="w-full bg-pplx-input rounded-2xl pl-11 pr-4 py-3.5 text-sm text-pplx-text outline-none font-mono focus:ring-1 focus:ring-pplx-accent"
+                          />
+                        </div>
+                      </InputGroup>
+                    )}
+                  </div>
+
+                  {/* --- MEMORY CONFIG CATEGORY --- */}
+                  <div className="space-y-6 pt-6 pb-2 border-b border-pplx-border/50">
+                    <div className="flex items-center gap-3 mb-6 px-2">
+                       <Brain size={24} className="text-pplx-accent" />
+                       <h2 className="text-xl font-bold text-pplx-text">Memory System</h2>
+                    </div>
+                    <div className="bg-pplx-card rounded-3xl p-6 mb-6 shadow-sm border border-pplx-border/50">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Brain size={20} className="text-pplx-accent" />
+                        <h3 className="text-lg font-bold text-pplx-text">
+                          Memory Settings
+                        </h3>
+                      </div>
+                      <p className="text-sm text-pplx-muted leading-relaxed">
+                        Select which Large Language Model behaves as the processor for maintaining context and memory lists in your chat. 
+                      </p>
+                    </div>
+
+                    <InputGroup label="Processor Provider" description="Select the platform responsible for context.">
+                      <div className="relative">
+                        <select
+                          value={formData.memoryModelProvider || "default"}
+                          onChange={(e) => setFormData({ ...formData, memoryModelProvider: e.target.value as "default" | "openai" | "openrouter" })}
+                          className="w-full bg-pplx-input rounded-2xl px-4 py-3.5 text-sm text-pplx-text outline-none appearance-none focus:ring-1 focus:ring-pplx-accent"
+                        >
+                          <option value="default">Default LLM (Same as Chat)</option>
+                          <option value="openai">OpenAI Engine</option>
+                          <option value="openrouter">OpenRouter Processor</option>
+                        </select>
+                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-pplx-muted pointer-events-none" />
+                      </div>
+                    </InputGroup>
+
+                    {(formData.memoryModelProvider === "openai" || formData.memoryModelProvider === "openrouter") && (
+                      <InputGroup label="Specific Memory Model ID" description="Assign a powerful model just for memory context analysis.">
+                        <div className="relative">
+                          <Activity className="absolute left-4 top-4 text-pplx-muted opacity-50" size={16} />
+                          <input
+                            type="text"
+                            value={formData.customMemoryModelId || ""}
+                            onChange={(e) => setFormData({ ...formData, customMemoryModelId: e.target.value })}
+                            placeholder={formData.memoryModelProvider === "openai" ? "gpt-4-turbo" : "anthropic/claude-3-haiku"}
+                            className="w-full bg-pplx-input rounded-2xl pl-11 pr-4 py-3.5 text-sm text-pplx-text outline-none font-mono focus:ring-1 focus:ring-pplx-accent"
+                          />
+                        </div>
+                      </InputGroup>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1796,12 +1962,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2">
-                    <div className="border border-pplx-border rounded-2xl p-5 bg-pplx-card flex flex-col transition-all hover:border-pplx-border/80 shadow-sm">
+                    {/* Tavily Search */}
+                    <div 
+                      className="border border-pplx-border rounded-2xl p-5 flex flex-col transition-all bg-pplx-card hover:border-pplx-border/80 shadow-sm cursor-pointer"
+                      onClick={() => setFormData({ ...formData, searchProvider: "tavily" })}
+                    >
                       <div className="flex items-start justify-between mb-4">
-                        <div className="p-2.5 bg-pplx-hover text-pplx-text rounded-xl shadow-sm">
-                          <Search className="w-5 h-5" />
+                        <div className="p-2.5 bg-pplx-hover rounded-xl shadow-sm">
+                          <Search className="w-5 h-5 text-blue-500" />
                         </div>
-                        {(formData.searchProvider === "tavily" && formData.tavilyApiKey) || (formData.searchProvider === "brave" && formData.braveApiKey) ? (
+                        {formData.tavilyApiKey ? (
                           <span className="flex items-center text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
                             <CheckCircle className="w-3 h-3 mr-1.5" /> Connected
                           </span>
@@ -1812,51 +1982,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         )}
                       </div>
                       
-                      <h3 className="text-lg font-medium text-pplx-text mb-1">Real Time Data Search</h3>
+                      <h3 className="text-lg font-medium text-pplx-text mb-1 flex items-center justify-between">
+                        Tavily Search
+                        {formData.searchProvider === "tavily" && (
+                          <div className="w-5 h-5 rounded-full bg-pplx-text flex items-center justify-center shadow-sm">
+                            <Check size={12} className="text-pplx-primary" strokeWidth={3} />
+                          </div>
+                        )}
+                      </h3>
                       <p className="text-sm text-pplx-muted mb-6 flex-1 leading-relaxed">
-                        Select your real-time search provider
+                        AI-optimized search engine for fast, accurate real-time data.
                       </p>
 
-                      <div className="mt-auto space-y-3">
-                        <div className="flex gap-2 bg-pplx-secondary/30 p-1 rounded-xl">
-                          <button
-                            onClick={() => setFormData({ ...formData, searchProvider: "tavily" })}
-                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-150 ${formData.searchProvider === "tavily" ? "bg-pplx-text text-pplx-primary shadow-md" : "bg-transparent text-pplx-muted hover:text-pplx-text"}`}
-                          >
-                            Tavily
-                          </button>
-                          <button
-                            onClick={() => setFormData({ ...formData, searchProvider: "brave" })}
-                            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-150 ${formData.searchProvider === "brave" ? "bg-pplx-text text-pplx-primary shadow-md" : "bg-transparent text-pplx-muted hover:text-pplx-text"}`}
-                          >
-                            Brave
-                          </button>
-                        </div>
-                        
-                        {formData.searchProvider === "tavily" ? (
+                      <div className="mt-auto space-y-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative">
                           <input
                             type="password"
-                            value={formData.tavilyApiKey}
+                            value={formData.tavilyApiKey || ""}
                             onChange={(e) => setFormData({ ...formData, tavilyApiKey: e.target.value })}
-                            placeholder="tvly-..."
-                            className="w-full px-3 py-2.5 bg-pplx-input border border-pplx-border rounded-xl text-sm text-pplx-text focus:outline-none focus:border-pplx-accent placeholder-pplx-muted transition-colors font-mono"
+                            placeholder="Enter API Key (tvly-...)"
+                            className="w-full px-4 py-3 bg-pplx-input border border-pplx-border/50 rounded-xl text-sm text-pplx-text focus:outline-none focus:ring-1 focus:ring-blue-500/50 placeholder-pplx-muted transition-colors font-mono"
                           />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Brave Search */}
+                    <div 
+                      className="border border-pplx-border rounded-2xl p-5 flex flex-col transition-all bg-pplx-card hover:border-pplx-border/80 shadow-sm cursor-pointer"
+                      onClick={() => setFormData({ ...formData, searchProvider: "brave" })}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="p-2.5 bg-pplx-hover rounded-xl shadow-sm">
+                          <Search className="w-5 h-5 text-orange-500" />
+                        </div>
+                        {formData.braveApiKey ? (
+                          <span className="flex items-center text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            <CheckCircle className="w-3 h-3 mr-1.5" /> Connected
+                          </span>
                         ) : (
+                          <span className="flex items-center text-[11px] font-bold text-pplx-muted bg-pplx-hover px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            <XCircle className="w-3 h-3 mr-1.5" /> Disconnected
+                          </span>
+                        )}
+                      </div>
+                      
+                      <h3 className="text-lg font-medium text-pplx-text mb-1 flex items-center justify-between">
+                        Brave Search
+                        {formData.searchProvider === "brave" && (
+                          <div className="w-5 h-5 rounded-full bg-pplx-text flex items-center justify-center shadow-sm">
+                            <Check size={12} className="text-pplx-primary" strokeWidth={3} />
+                          </div>
+                        )}
+                      </h3>
+                      <p className="text-sm text-pplx-muted mb-6 flex-1 leading-relaxed">
+                        Privacy-preserving search engine for real-time web access.
+                      </p>
+
+                      <div className="mt-auto space-y-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative">
                           <input
                             type="password"
                             value={formData.braveApiKey || ""}
                             onChange={(e) => setFormData({ ...formData, braveApiKey: e.target.value })}
-                            placeholder="BSA-..."
-                            className="w-full px-3 py-2.5 bg-pplx-input border border-pplx-border rounded-xl text-sm text-pplx-text focus:outline-none focus:border-pplx-accent placeholder-pplx-muted transition-colors font-mono"
+                            placeholder="Enter API Key (BSA-...)"
+                            className="w-full px-4 py-3 bg-pplx-input border border-pplx-border/50 rounded-xl text-sm text-pplx-text focus:outline-none focus:ring-1 focus:ring-orange-500/50 placeholder-pplx-muted transition-colors font-mono"
                           />
-                        )}
+                        </div>
                       </div>
                     </div>
 
                     {Object.values(connectors).map((connector) => (
                       <div key={connector.id} className="border border-pplx-border rounded-2xl p-5 bg-pplx-card flex flex-col transition-all hover:border-pplx-border/80 shadow-sm">
                         <div className="flex items-start justify-between mb-4">
-                          <div className="p-2.5 bg-pplx-hover text-pplx-text rounded-xl shadow-sm">
+                          <div className="p-2.5 bg-pplx-hover rounded-xl shadow-sm">
                             {renderIcon(connector.icon)}
                           </div>
                           {connector.status === 'connected' ? (

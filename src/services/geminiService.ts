@@ -888,8 +888,8 @@ export class LLMService {
       return result;
     }
 
-    // Stage 1: Planner
-    if (onChunk) customOnChunk("", "🧠 Etapa 1: Analizez cererea...\n");
+    // Stage 1: Router (Perception & Triage)
+    if (onChunk) customOnChunk("", "🧠 Analizez complexitatea cererii (Routing)...\n");
 
     const agentBaseContext = await this.buildSystemContext(
       prompt,
@@ -913,26 +913,27 @@ export class LLMService {
       timeZoneName: "short",
     });
 
-    const plannerSys = `${agentBaseContext}\n\nYou are the Chief Researcher Agent expert in strategic planning. Analyze the user's request.
+    const routerSys = `${agentBaseContext}\n\nYou are the Router Agent. Analyze the user's request.
       CURRENT SYSTEM TIME: ${timeStr}
 
-      If it is a simple greeting, casual conversation, or a direct question that does NOT require searching the internet, output: {"type": "direct"}
-      
-      CRITICAL: If the user asks about current events, news, "today", "recent", financial markets (crypto, stocks), or geopolitical conflicts, you MUST output "simple_research" or "complex_research" to trigger a real-time web search. Do NOT rely on your internal training data for these topics as it is outdated.
-      
-      If it requires a simple fact check or current news update, output: {"type": "simple_research", "steps": ["Search for latest news on [subject] as of ${timeStr}..."]}
-      If it requires deep research, comparisons, or complex logic, output: {"type": "complex_research", "steps": ["Descriptive step 1...", "Descriptive step 2..."]}
-      
-      CRITICAL RULES FOR PLANNING:
-      1. For research, create a MAXIMUM of 3 major steps.
-      2. DO NOT fragment into tiny steps. Group complex topics into subcategories within the 3 major steps.
-      3. CONTEXT ANCHORING (CRITICAL): Be extremely descriptive. Do not use single words or abbreviations for steps. Each step MUST be a complete paragraph that explicitly includes the main subject of the conversation and the specific subcategories to search for. Explain exactly WHAT to search and WHY, so the executing agent never loses the original context.`;
+      Determine the complexity of the request:
+      - "simple" -> Greeting, simple fact, quick answer, no external tool needed.
+      - "medium" -> Requires 1-2 tool calls (web search, reading a file, checking calendar) but no complex multi-step planning.
+      - "complex" -> Requires deep research, multi-step execution, coding, drafting large documents, comparing multiple sources.
+      - "ambiguous" -> Critical information is missing to formulate a response.
+
+      Return ONLY JSON format:
+      {
+        "route": "simple" | "medium" | "complex" | "ambiguous",
+        "clarify_question": "If ambiguous, write ONE concise follow-up question. Otherwise leave empty.",
+        "steps": ["If complex, provide an array of descriptive major steps to take..."]
+      }`;
 
     let plan;
     try {
       plan = await this.callLLMJson(
         prompt,
-        plannerSys,
+        routerSys,
         provider,
         openRouterKey,
         openRouterModel,
@@ -943,17 +944,27 @@ export class LLMService {
         shortTermHistory,
       );
     } catch (e) {
-      plan = { type: "direct" };
+      plan = { route: "medium" };
+    }
+
+    if (!this.abortController || this.abortController.signal.aborted) {
+      return { text: "Oprit de utilizator.", citations: [], relatedQuestions: [] };
+    }
+
+    if (plan.route === "ambiguous" && plan.clarify_question) {
+      if (onChunk) customOnChunk("", "❓ Cerific infomații suplimentare...\n");
+      const resultText = plan.clarify_question;
+      this.triggerMemoryConsolidation(prompt, resultText, enableMemory, geminiApiKey);
+      return { text: resultText, citations: [], relatedQuestions: [], reasoning: accumulatedReasoning };
     }
 
     if (
-      !plan ||
-      plan.type === "direct" ||
-      !plan.steps ||
-      plan.steps.length === 0 ||
-      (!this.abortController || this.abortController.signal.aborted)
+      plan.route === "simple" || 
+      plan.route === "medium" || 
+      !plan.steps || 
+      plan.steps.length === 0
     ) {
-      if (onChunk) customOnChunk("", "⚡ Răspund direct...\n");
+      if (onChunk) customOnChunk("", "⚡ Chat Mode: Execuție rapidă...\n");
       const result = await this.runCoreGeneration(
         shortTermHistory,
         prompt,
@@ -964,7 +975,7 @@ export class LLMService {
         openAiKey,
         openAiModel,
         activeLocalModel,
-        useSearch,
+        useSearch || plan.route === "medium", // Enable search implicitly if medium
         proMode,
         enableMemory,
         userProfile,
@@ -976,49 +987,49 @@ export class LLMService {
         braveApiKey,
         customOnChunk,
       );
-      this.triggerMemoryConsolidation(
-        prompt,
-        result.text,
-        enableMemory,
-        geminiApiKey,
-      );
+      this.triggerMemoryConsolidation( prompt, result.text, enableMemory, geminiApiKey );
       result.reasoning = accumulatedReasoning + (result.reasoning || "");
       return result;
     }
 
-    // Stage 2: Executor
+    // AGENT MODE EXECUTION (Complex)
     let researchContext = "";
     let finalCitations: Citation[] = [];
     let pendingAction: PendingAction | undefined = undefined;
 
+    // LOOP DE EXECUȚIE (AGENT MODE)
     if (plan.steps && plan.steps.length > 0) {
-      const totalSteps = plan.steps.length;
-      for (let i = 0; i < totalSteps; i++) {
+      const maxIterations = 10;
+      let iterations = 0;
+      let todoList = [...plan.steps];
+      let completedTasks: string[] = [];
+
+      while (todoList.length > 0 && iterations < maxIterations) {
         if (!this.abortController || this.abortController.signal.aborted) break;
+        iterations++;
 
-        const currentStep = plan.steps[i];
-        if (onChunk)
-          customOnChunk(
-            "",
-            `🔍 Etapa 2: Execut pasul ${i + 1} din ${totalSteps}...\n`,
-          );
+        // A. SELECT TASK
+        const currentTask = todoList.shift()!;
+        if (onChunk) customOnChunk("", `\n📋 Selectez Task: "${currentTask}"...\n`);
 
-        const researcherSys = `${agentBaseContext}\n\nYou are the Researcher Agent. Your current task is ONLY to execute this specific research step:
-              "${currentStep}"
+        // B. EXECUTE & TOOL FLOW
+        const executorSys = `${agentBaseContext}\n\nYou are the Executor Agent. Your current task is strictly to execute this step:
+              "${currentTask}"
               
-              Use your search tools to gather information. Formulate optimized search queries based on the detailed description provided in the step.
-              Current gathered info from previous steps: ${researchContext}
+              Current gathered knowledge from previous steps:
+              ${researchContext || "None yet."}
               
-              Return a detailed summary of your findings for this specific step. Do NOT address the user directly. Focus purely on extracting facts, data, and relevant details.`;
+              Use tools if you need to gather information, search the web, read files, or check the calendar.
+              If you already have the data, or you finished the tool calls, provide a factual summary of the execution result for this task.`;
 
-        const researcherOnChunk = (text: string, reasoning?: string) => {
-          if (text) customOnChunk("", text); // We don't want to show research text to user, only as reasoning
+        const executorOnChunk = (text: string, reasoning?: string) => {
+          if (text) customOnChunk("", text); 
           if (reasoning) customOnChunk("", reasoning);
         };
 
-        const researchResult = await this.runCoreGeneration(
+        const executionResult = await this.runCoreGeneration(
           [],
-          `Execute step: ${currentStep}\nOriginal user request: ${prompt}`,
+          `Execute task: ${currentTask}\nOriginal objective: ${prompt}`,
           attachments,
           provider,
           openRouterKey,
@@ -1026,7 +1037,7 @@ export class LLMService {
           openAiKey,
           openAiModel,
           activeLocalModel,
-          true, // Force search for researcher
+          true, // Tool flow enabled automatically in execution
           ProMode.STANDARD,
           false,
           userProfile,
@@ -1036,106 +1047,50 @@ export class LLMService {
           geminiApiKey,
           searchProvider,
           braveApiKey,
-          researcherOnChunk,
-          researcherSys,
+          executorOnChunk,
+          executorSys,
         );
 
-        researchContext += `\n\n--- Findings for Step ${i + 1}: ${currentStep} ---\n${researchResult.text}`;
-        finalCitations = [
-          ...finalCitations,
-          ...(researchResult.citations || []),
-        ];
-        if (researchResult.pendingAction)
-          pendingAction = researchResult.pendingAction;
-      }
-    }
+        researchContext += `\n\n[Task Data: ${currentTask}]\n${executionResult.text}`;
+        finalCitations = [...finalCitations, ...(executionResult.citations || [])];
+        if (executionResult.pendingAction) pendingAction = executionResult.pendingAction;
+        completedTasks.push(currentTask);
 
-    // Stage 3: Validator (Fallback Search)
-    if (this.abortController && !this.abortController.signal.aborted) {
-      if (onChunk)
-        customOnChunk("", `\n⚖️ Etapa 3: Validez informațiile adunate...\n`);
+        if (!this.abortController || this.abortController.signal.aborted) break;
 
-      const validatorSys = `${agentBaseContext}\n\nYou are the Gap Analyst Agent. You have just completed the research phases.
-          Review the Original User Request and the Gathered Info.
-          User Request: ${prompt}
-          Gathered Info: ${researchContext}
+        // C, D, E, F: PREDICT, VERIFY, CRITIQUE, UPDATE TODO
+        if (onChunk) customOnChunk("", `\n⚖️ Verific datele și actualizez planul (Critique)... \n`);
+
+        const criticSys = `${agentBaseContext}\n\nYou are the Critic & Verify Agent.
+          Original Request: ${prompt}
+          Completed Tasks: ${JSON.stringify(completedTasks)}
+          Pending Tasks: ${JSON.stringify(todoList)}
+          Current Gathered Data: ${researchContext}
           
-          TASK: Analyze if there is any CRITICAL information requested by the user that is still missing from the Gathered Info.
-          - If NO (everything is covered): output {"status": "sufficient"}
-          - If YES (essential details are missing): output {"status": "insufficient", "missing_query": "Formulate ONE hyper-specific search query to find ONLY the missing information."}
-          This is the final fallback search.`;
+          TASK: Verify if the gathered data is sufficient to satisfy the original request.
+          If there are glaring gaps, you MUST add ONE precise task to the TODO list to fix it.
+          
+          Return ONLY JSON Format:
+          {
+             "is_sufficient": boolean,
+             "new_required_task": "string (only if is_sufficient is false and no pending task covers it, otherwise leave empty)",
+             "next_logical_step": "string predicting the next action"
+          }`;
 
-      let validation;
-      try {
-        validation = await this.callLLMJson(
-          prompt,
-          validatorSys,
-          provider,
-          openRouterKey,
-          openRouterModel,
-          openAiKey,
-          openAiModel,
-          activeLocalModel,
-          geminiApiKey,
-          shortTermHistory,
-        );
-      } catch (e) {
-        validation = { status: "sufficient" };
-      }
+        let critique;
+        try {
+          critique = await this.callLLMJson( prompt, criticSys, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey, [] );
+        } catch(e) {
+          critique = { is_sufficient: true };
+        }
 
-      if (validation.status === "insufficient" && validation.missing_query) {
-        if (onChunk)
-          customOnChunk(
-            "",
-            `⚠️ Lipsesc informații. Caut date suplimentare: ${validation.missing_query}...\n`,
-          );
-
-        const researcherSys = `${agentBaseContext}\n\nYou are the Researcher Agent. Your task is to find this missing information: "${validation.missing_query}".
-              Use optimized keywords for searching.
-              Return a detailed summary of your findings. Focus purely on facts.`;
-
-        const researcherOnChunk = (text: string, reasoning?: string) => {
-          if (text) customOnChunk("", text);
-          if (reasoning) customOnChunk("", reasoning);
-        };
-
-        const researchResult = await this.runCoreGeneration(
-          [],
-          `Find missing info: ${validation.missing_query}`,
-          [],
-          provider,
-          openRouterKey,
-          openRouterModel,
-          openAiKey,
-          openAiModel,
-          activeLocalModel,
-          true,
-          ProMode.STANDARD,
-          false,
-          userProfile,
-          aiProfile,
-          undefined,
-          tavilyApiKey,
-          geminiApiKey,
-          searchProvider,
-          braveApiKey,
-          researcherOnChunk,
-          researcherSys,
-        );
-
-        researchContext += `\n\n--- Additional Findings ---\n${researchResult.text}`;
-        finalCitations = [
-          ...finalCitations,
-          ...(researchResult.citations || []),
-        ];
-        if (researchResult.pendingAction)
-          pendingAction = researchResult.pendingAction;
-      } else {
-        if (onChunk)
-          customOnChunk(
-            "",
-            "✅ Informațiile sunt complete. Formulez răspunsul final...\n",
-          );
+        if (critique.new_required_task) {
+           todoList.push(critique.new_required_task);
+           if (onChunk) customOnChunk("", `\n⚠️ Adaug în TODO List: "${critique.new_required_task}" \n`);
+        } else if (todoList.length === 0 && !critique.is_sufficient) {
+           todoList.push("Perform a final comprehensive search to fill remaining gaps.");
+           if (onChunk) customOnChunk("", `\n⚠️ Fallback: Listă goală dar informații insuficiente. Adaug o căutare de final.\n`);
+        }
       }
     }
 
@@ -3287,7 +3242,7 @@ export class LLMService {
 
     try {
       const response = await clientToUse.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-3.1-flash-tts-preview",
         contents: [{ parts: [{ text: text.substring(0, 4000) }] }],
         config: {
           responseModalities: [Modality.AUDIO],
@@ -3307,7 +3262,13 @@ export class LLMService {
         1,
       );
     } catch (e: any) {
-      console.error("TTS Error:", e);
+      const errorString = String(e?.message || e);
+      if (errorString.includes("429") || errorString.includes("RESOURCE_EXHAUSTED")) {
+         // Silently fail for Quota limits, as App.tsx handles this gracefully 
+         // with a fallback to the native browser TTS.
+      } else {
+         console.error("TTS Error:", e);
+      }
       return null;
     }
   }

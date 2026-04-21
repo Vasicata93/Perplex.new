@@ -167,7 +167,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
   const [detectedLangDisplay, setDetectedLangDisplay] = useState<string>(""); // For UI display (RO/EN)
 
   const recognitionRef = useRef<any>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
 
   // Drag Controls for Bottom Sheets
   const attachDragControls = useDragControls();
@@ -199,6 +198,12 @@ export const InputArea: React.FC<InputAreaProps> = ({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Clear input when switching threads (takes over the role of the 'key' prop on InputArea)
+  useEffect(() => {
+    setInput("");
+    setAttachments([]);
+  }, [activeThread?.id]);
+
   // Initialize selected model from settings
   useEffect(() => {
     if (settings) {
@@ -229,10 +234,6 @@ export const InputArea: React.FC<InputAreaProps> = ({
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((track) => track.stop());
-      micStreamRef.current = null;
-    }
     setIsListening(false);
     setRecordingSeconds(0);
     setDetectedLangDisplay("");
@@ -258,8 +259,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // By keeping this stream alive, we prevent Android Chrome from playing the noisy "beep" sound every time SpeechRecognition restarts.
-        micStreamRef.current = stream;
+        stream.getTracks().forEach((track) => track.stop());
       }
     } catch (e: any) {
       // If user denied or no mic, alert
@@ -274,13 +274,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
     const recognition = new SpeechRecognition();
 
     // Configuration for "Professional" feel
-    // FIX: Disable continuous mode on mobile to prevent text duplication bugs (Android Chrome issue)
-    const isMobile =
-      window.innerWidth < 768 ||
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent,
-      );
-    recognition.continuous = !isMobile;
+    recognition.continuous = true;
     recognition.interimResults = true; // Show results in real-time
 
     // --- SMART AUTO-DETECT LOGIC ---

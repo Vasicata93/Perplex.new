@@ -67,7 +67,10 @@ export class SystemContext {
           "safe_digital_tool"
         ],
         writeTools: [
-          "library_tool"
+          "library_tool",
+          "calendar_tool",
+          "portfolio_tool",
+          "safe_digital_tool"
         ]
       }
     };
@@ -75,6 +78,21 @@ export class SystemContext {
     // Deterministic JSON serialization with sorted keys
     this.cachedContext = this.deterministicStringify(contextData);
     return this.cachedContext;
+  }
+
+  static getReadTools(): string[] {
+    const contextData = JSON.parse(this.getContext());
+    return contextData.toolDefinitions.readTools || [];
+  }
+
+  static getWriteTools(): string[] {
+    const contextData = JSON.parse(this.getContext());
+    return contextData.toolDefinitions.writeTools || [];
+  }
+
+  static isWriteTool(toolName: string): boolean {
+    const writeTools = this.getWriteTools();
+    return writeTools.includes(toolName);
   }
 
   private static deterministicStringify(obj: any): string {

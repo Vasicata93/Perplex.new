@@ -224,6 +224,19 @@ export interface AppSettings {
   openAiApiKey: string; // Specific key for OpenAI
   openAiModelId: string; // Specific model for OpenAI
 
+  // Voice / TTS Configuration
+  elevenLabsApiKey: string;
+  openaiVoiceApiKey: string; // For Whisper/TTS
+  customVoiceApiKey: string; // Generic / Other
+
+  // Embeddings Configuration
+  embeddingProvider: "gemini" | "openai" | "custom";
+  customEmbeddingModelId: string;
+
+  // Memory Configuration
+  memoryModelProvider: "default" | "openai" | "openrouter";
+  customMemoryModelId: string;
+
   // Search Configuration
   searchProvider: "tavily" | "brave"; // Selector
   tavilyApiKey: string;
@@ -259,6 +272,16 @@ export const DEFAULT_SETTINGS: AppSettings = {
   openRouterModelId: "deepseek/deepseek-chat",
   openAiApiKey: "",
   openAiModelId: "gpt-4o",
+
+  elevenLabsApiKey: "",
+  openaiVoiceApiKey: "",
+  customVoiceApiKey: "",
+
+  embeddingProvider: "gemini",
+  customEmbeddingModelId: "",
+
+  memoryModelProvider: "default",
+  customMemoryModelId: "",
 
   searchProvider: "tavily",
   tavilyApiKey: "",

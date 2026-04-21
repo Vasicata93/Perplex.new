@@ -1,5 +1,6 @@
 import { db } from './db';
 import { SemanticMemory } from '../../types/memory';
+import { extractKeywords } from '../agent/localHeuristics';
 
 export const MemoryManager = {
   // ==========================================
@@ -67,12 +68,33 @@ export const MemoryManager = {
 
   /**
    * Retrieves relevant context for the current session.
+   * Filters semantic memory based on keywords from currentMessage or returns most recent.
    * In a full implementation, this would use vector search (RAG) for episodic.
    */
-  getRelevantContext: async () => {
+  getRelevantContext: async (currentMessage?: string) => {
     try {
-      const semantic = await db.semantic.toArray();
-      const procedural = await db.procedural.toArray();
+      let semantic = await db.semantic.toArray();
+      const procedural = await db.procedural.orderBy('weight').reverse().limit(10).toArray();
+
+      if (currentMessage) {
+        const keywords = extractKeywords(currentMessage);
+        if (keywords.length > 0) {
+          semantic = semantic.filter(s => {
+             const keyLower = s.key.toLowerCase();
+             const valLower = s.value.toLowerCase();
+             return keywords.some(kw => keyLower.includes(kw) || valLower.includes(kw));
+          });
+          
+          if (semantic.length === 0) {
+            semantic = await db.semantic.orderBy('updatedAt').reverse().limit(15).toArray();
+          }
+        } else {
+          semantic = await db.semantic.orderBy('updatedAt').reverse().limit(15).toArray();
+        }
+      } else {
+        semantic = await db.semantic.orderBy('updatedAt').reverse().limit(15).toArray();
+      }
+
       // Get only the 5 most recent episodes to save token context
       const recentEpisodes = await db.episodic.orderBy('date').reverse().limit(5).toArray();
       

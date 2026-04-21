@@ -25,18 +25,45 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
   const hasFatalErrorRef = useRef(false);
   const hasPendingRequestRef = useRef(false);
   const hasRequestedMicPermissionRef = useRef(false);
-  const micStreamRef = useRef<MediaStream | null>(null);
 
   const isPlayingAudioRef = useRef(isPlayingAudio);
+  const activeThreadRef = useRef(activeThread);
+
+  useEffect(() => {
+    activeThreadRef.current = activeThread;
+  }, [activeThread]);
+
+  // Safely track when audio stops to flush STT buffer
+  useEffect(() => {
+    const wasPlaying = isPlayingAudioRef.current;
+    isPlayingAudioRef.current = isPlayingAudio;
+
+    if (wasPlaying && !isPlayingAudio && isListening && recognitionRef.current) {
+        // Audio just stopped playing (either naturally finished or interrupted).
+        // The microphone likely recorded the AI's "echo" or the interrupt word in its buffer.
+        // We MUST abort the recognition to flush this dirty buffer.
+        // The `onend` handler will instantly fire and cleanly restart the mic.
+        try {
+            recognitionRef.current.abort();
+            setTranscript('');
+            hasPendingRequestRef.current = false;
+        } catch (e) {}
+    }
+  }, [isPlayingAudio, isListening]);
+
+  const onTTSRef = useRef(onTTS);
+  
+  useEffect(() => {
+    onTTSRef.current = onTTS;
+  }, [onTTS]);
 
   const startListening = useCallback(async () => {
-    if (recognitionRef.current && !synthRef.current?.speaking && !isPlayingAudioRef.current && !isThinkingRef.current && !hasPendingRequestRef.current) {
+    if (recognitionRef.current && !isThinkingRef.current && !hasPendingRequestRef.current && !isListening) {
       try {
         if (!hasRequestedMicPermissionRef.current && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
            try {
-             // By keeping this stream alive, we prevent Android Chrome from playing the noisy "beep" sound every time SpeechRecognition restarts.
              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-             micStreamRef.current = stream;
+             stream.getTracks().forEach(track => track.stop());
              hasRequestedMicPermissionRef.current = true;
            } catch (e) {
              // Let it fall through, recognitionRef.current.start() might still work or throw NotAllowed
@@ -54,7 +81,7 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
         }
       }
     }
-  }, []);
+  }, [isListening]);
 
   useEffect(() => {
     const wasPlaying = isPlayingAudioRef.current;
@@ -112,7 +139,7 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
       
       if (SpeechRecognition) {
         recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = false;
+        recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
         // --- SMART AUTO-DETECT LOGIC ---
         const appInterfaceRo = settings?.interfaceLanguage === "ro";
@@ -139,11 +166,66 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
           
           setTranscript(currentTranscript);
 
+          // INTERRUPT LOGIC: If we hear speech while audio is playing, stop the audio!
+          // We must ensure the transcript isn't just the AI hearing its own voice (echo).
+          let isEcho = false;
+          if (activeThreadRef.current && activeThreadRef.current.messages.length > 0) {
+              const lastMsg = activeThreadRef.current.messages[activeThreadRef.current.messages.length - 1];
+              if (lastMsg.role === 'model') {
+                  const normTrans = currentTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+                  const normMsg = lastMsg.content.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+                  
+                  // Strict substring match
+                  if (normTrans.length > 5 && normMsg.replace(/ /g, '').includes(normTrans.replace(/ /g, ''))) {
+                      isEcho = true;
+                  } else if (isPlayingAudioRef.current) {
+                      // Fuzzy word overlap match if audio is actively playing
+                      const transWords = normTrans.split(' ').filter(w => w.length > 2);
+                      const msgWords = normMsg.split(' ');
+                      
+                      if (transWords.length > 0) {
+                          let matchCount = 0;
+                          transWords.forEach(tw => {
+                              if (msgWords.some(mw => mw.includes(tw) || tw.includes(mw))) {
+                                  matchCount++;
+                              }
+                          });
+                          
+                          // If more than 40% of the transcribed substantial words match the AI's words, it's an echo.
+                          if ((matchCount / transWords.length) >= 0.4) {
+                              isEcho = true;
+                          }
+                      }
+                  }
+              }
+          }
+
+          // Add a check: don't interrupt if it's just a tiny noise (length <= 12) or an echo
+          const isSignificantSpeech = currentTranscript.trim().length > 12 && !isEcho;
+          if (isSignificantSpeech) {
+              if (isPlayingAudioRef.current) {
+                 if (onTTSRef.current) {
+                    onTTSRef.current(""); // empty string stops it
+                 }
+              }
+              if (synthRef.current?.speaking) {
+                 synthRef.current.cancel();
+              }
+          }
+
           if (isFinal && currentTranscript.trim()) {
-            hasPendingRequestRef.current = true; // Synchronously mark that we are waiting for LLM
-            onSendMessage(currentTranscript.trim());
-            setTranscript('');
-            setIsListening(false);
+            if (isEcho) {
+                // Ignore the echo, do not send it as a message
+                setTranscript('');
+                return;
+            }
+
+            if (!hasPendingRequestRef.current && !isThinkingRef.current) {
+                hasPendingRequestRef.current = true; // Synchronously mark that we are waiting for LLM
+                onSendMessage(currentTranscript.trim());
+                setTranscript('');
+                // Note: we DO NOT call setIsListening(false) or startListening() here because it is continuous.
+            }
           }
         };
 
@@ -165,13 +247,11 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
 
         recognitionRef.current.onend = () => {
           setIsListening(false);
-          // Auto-restart if still enabled, NOT waiting for a request, NOT thinking, NOT speaking, NOT playing audio, and no fatal error.
+          // Auto-restart if still enabled, NOT waiting for a request, NOT thinking, and no fatal error.
           if (
              enabledRef.current && 
              !hasPendingRequestRef.current && 
              !isThinkingRef.current && 
-             !synthRef.current?.speaking && 
-             !isPlayingAudioRef.current &&
              !hasFatalErrorRef.current
           ) {
              try {
@@ -213,6 +293,9 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
       
       if (lastMessage && lastMessage.role === Role.MODEL && lastMessage.content) {
         speak(lastMessage.content);
+        if (enabled) {
+          startListening();
+        }
       } else if (enabled) {
         startListening();
       }
@@ -227,12 +310,6 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     if (synthRef.current) {
       synthRef.current.cancel();
       setIsSpeaking(false);
-    }
-    // Only kill the background mic stream if the user explicitly stops listening (i.e. closes the live voice widget)
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach(track => track.stop());
-      micStreamRef.current = null;
-      hasRequestedMicPermissionRef.current = false;
     }
   }, []);
 

@@ -1064,26 +1064,30 @@ function App() {
       } catch (e) {}
     });
     activeSourcesRef.current = [];
-    window.speechSynthesis.cancel();
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+    }
     setIsPlayingAudio(false);
   };
   const handleTTS = async (textToRead?: string) => {
     if (isPlayingAudio) {
       stopAudio();
-      // If called without explicit text (like toggle button), just stop.
-      // If called WITH text, we want to stop the old audio and play the new one!
-      if (!textToRead) {
-        return;
-      }
+    }
+
+    // Explicit command to stop TTS entirely
+    if (textToRead === "") {
+      return;
     }
 
     let text = textToRead;
-    if (!text) {
+    if (text === undefined) {
       if (!activeThread || activeThread.messages.length === 0) return;
       const lastMsg = activeThread.messages[activeThread.messages.length - 1];
       if (lastMsg.role !== Role.MODEL) return;
       text = lastMsg.content;
     }
+
+    if (!text) return; // safety against empty model content
 
     const playbackId = Date.now();
     ttsPlaybackIdRef.current = playbackId;
@@ -1098,6 +1102,7 @@ function App() {
       await audioContextRef.current.resume();
     }
     const cleanText = text
+      .replace(/<think>[\s\S]*?<\/think>/gi, "")
       .replace(/[*#`_]/g, "")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
       .replace(/\n\n/g, ". ")
@@ -2403,6 +2408,10 @@ function App() {
 
             // pendingAction is now handled by requestConfirmation inside AgentEngine
 
+            if (isVoice && finalText) {
+              handleTTS(finalText);
+            }
+
             setThreads((prev) =>
               prev.map((t) =>
                 t.id === threadId
@@ -2629,6 +2638,10 @@ function App() {
           ),
         );
       } else {
+        if (isVoice && response.text) {
+          handleTTS(response.text);
+        }
+
         setThreads((prev) =>
           prev.map((t) =>
             t.id === threadId
@@ -4042,7 +4055,6 @@ function App() {
               >
                 <div className="pointer-events-auto">
                   <InputArea
-                    key={activeThreadId || "home"}
                     onSendMessage={handleSendMessage}
                     onAddMessage={handleAddMessage}
                     onUpdateMessage={handleUpdateMessage}
