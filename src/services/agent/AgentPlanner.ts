@@ -15,7 +15,107 @@ export interface AgentPlan {
 }
 
 export class AgentPlanner {
-  static async createPlan(
+  private static parseJsonResponse(responseText: string): AgentPlan {
+    let jsonString = responseText.trim();
+    
+    // Attempt standard parse first
+    try {
+      const parsed = JSON.parse(jsonString) as AgentPlan;
+      if (parsed.tasks && Array.isArray(parsed.tasks)) {
+        return parsed;
+      }
+    } catch (e) {
+      // Ignore initial parse fail
+    }
+
+    // Attempt to extract using {} braces
+    try {
+      const jsonStart = jsonString.indexOf('{');
+      const jsonEnd = jsonString.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
+        const parsed = JSON.parse(jsonString) as AgentPlan;
+        if (parsed.tasks && Array.isArray(parsed.tasks)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      // Ignore fallback parse fail
+    }
+
+    // Ultimate fallback if parsing fails or structure is invalid
+    return {
+      reasoning: "Fallback plan due to evaluation or parsing error.",
+      tasks: [
+        { id: "fallback_task_1", description: "Answer directly from context without tools", tool: null as any }
+      ]
+    };
+  }
+
+  static async createSingleToolPlan(
+    text: string,
+    perceptionContextStr: string,
+    activeToolsStr: string,
+    llmService: LLMService,
+    provider: ModelProvider = ModelProvider.GEMINI,
+    openRouterKey: string = "",
+    openRouterModel: string = "",
+    openAiKey: string = "",
+    openAiModel: string = "",
+    activeLocalModel: LocalModelConfig | undefined = undefined,
+    geminiApiKey?: string
+  ): Promise<AgentPlan> {
+    const prompt = `
+PERCEPTION CONTEXT:
+${perceptionContextStr}
+
+ACTIVE TOOLS (Prefix Masked):
+${activeToolsStr}
+
+You are the PLANNER layer of an advanced AI agent.
+Your job is to generate EXACTLY ONE task based on the user's request.
+
+User Request: "${text}"
+
+CRITICAL INSTRUCTION:
+Return a JSON object with EXACTLY ONE task in the "tasks" array. Do not generate more than one task.
+
+Output ONLY a JSON object with the following structure:
+{
+  "reasoning": "Explanation of why this task is optimal",
+  "tasks": [
+    {
+      "id": "task_1",
+      "description": "Clear description of what needs to be done",
+      "tool": "tool_name_if_applicable",
+      "toolArgs": { "arg1": "value1" }
+    }
+  ]
+}
+
+Respond ONLY with valid JSON. Do not include markdown formatting.
+`;
+
+    try {
+      const responseText = await llmService.generateSimpleText(
+        prompt,
+        provider,
+        openRouterKey,
+        openRouterModel,
+        openAiKey,
+        openAiModel,
+        activeLocalModel,
+        geminiApiKey,
+        true // requireJson
+      );
+      return this.parseJsonResponse(responseText);
+    } catch (error) {
+      console.error("Single Planner evaluation failed:", error);
+      return this.parseJsonResponse("");
+    }
+  }
+
+  static async createFullPlan(
     text: string,
     history: Message[],
     routingDecision: RoutingDecision,
@@ -24,6 +124,7 @@ export class AgentPlanner {
     perceptionContextStr: string,
     injectedSkillsStr: string,
     activeToolsStr: string,
+    accumulatedResults: any[],
     llmService: LLMService,
     provider: ModelProvider = ModelProvider.GEMINI,
     openRouterKey: string = "",
@@ -55,6 +156,9 @@ Your job is to break down the user's request into a sequence of actionable tasks
 Recent History:
 ${history.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')}
 
+Accumulated Results from previous iterations:
+${JSON.stringify(accumulatedResults, null, 2)}
+
 User Request: "${text}"
 Complexity: ${routingDecision.complexity}
 Priority: ${routingDecision.priority}
@@ -80,7 +184,6 @@ Output ONLY a JSON object with the following structure:
 
 Ensure the plan is logical, efficient, and directly addresses the user's request.
 Respond ONLY with valid JSON. Do not include markdown formatting like \`\`\`json.
-CRITICAL: Ensure all property names are enclosed in double quotes. Do not use single quotes for strings. Escape any internal double quotes using \\". Do not include trailing commas.
 `;
 
     try {
@@ -95,37 +198,11 @@ CRITICAL: Ensure all property names are enclosed in double quotes. Do not use si
         geminiApiKey,
         true // requireJson
       );
-      // Extract JSON from potential markdown blocks
-      let jsonString = responseText.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
-      
-      // Extract JSON object if there's surrounding text
-      const jsonStart = jsonString.indexOf('{');
-      const jsonEnd = jsonString.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
-      }
-
-      // Basic JSON repair for common LLM mistakes
-      jsonString = jsonString
-        // Fix unquoted keys (basic heuristic)
-        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
-        // Remove trailing commas
-        .replace(/,\s*([}\]])/g, '$1');
-
-      const plan = JSON.parse(jsonString) as AgentPlan;
-      if (!plan) throw new Error("Parsed plan is null");
-      return plan;
+      return this.parseJsonResponse(responseText);
     } catch (error) {
-      console.error("Planner evaluation failed:", error);
-      // Fallback plan
-      return {
-        reasoning: "Fallback plan due to evaluation error.",
-        tasks: [
-          { id: "task_1", description: "Analyze request", tool: "memory_retrieval" },
-          { id: "task_2", description: "Execute default action", dependencies: ["task_1"] },
-          { id: "task_3", description: "Synthesize response", dependencies: ["task_2"] }
-        ]
-      };
+      console.error("Full Planner evaluation failed:", error);
+      return this.parseJsonResponse("");
     }
   }
 }
+

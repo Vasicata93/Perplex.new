@@ -27,6 +27,7 @@ interface AgentStore extends AgentState {
   
   // Response Actions
   setConfidence: (score: ConfidenceScore) => void;
+  setSimplifyResponse: (simplify: boolean) => void;
   
   // Reset
   resetSession: () => void;
@@ -43,6 +44,7 @@ const initialState: AgentState = {
   totalSteps: 0,
   stepDescription: '',
   confidenceScore: null,
+  simplifyResponse: false,
 };
 
 export const useAgentStore = create<AgentStore>((set) => ({
@@ -126,6 +128,8 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set({ currentStep, totalSteps, stepDescription }),
     
   setConfidence: (confidenceScore) => set({ confidenceScore }),
+  
+  setSimplifyResponse: (simplifyResponse) => set({ simplifyResponse }),
   
   resetSession: () => set(initialState),
 }));

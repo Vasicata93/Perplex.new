@@ -1,4 +1,4 @@
-import { semanticRouter, SemanticCategory } from './SemanticRouter';
+import { ExtendedPerception } from './AgentPerception';
 
 export type ComplexityLevel = 'SIMPLU' | 'MEDIU' | 'COMPLEX' | 'AMBIGUU';
 export type PriorityLevel = 'URGENT_IMPORTANT' | 'IMPORTANT' | 'RUTINA' | 'OPTIONAL';
@@ -19,20 +19,13 @@ export class AgentRouter {
    * This implements Layer 4 of the Perplex Agent Architecture using 100% heuristics + Semantic Embeddings.
    */
   static async evaluate(
-    currentMessage: string
+    currentMessage: string,
+    perception: ExtendedPerception
   ): Promise<RoutingDecision> {
     const text = currentMessage.toLowerCase();
     
-    // Attempt Semantic Classification
-    let semanticIntent: SemanticCategory | null = null;
-    if (semanticRouter.isReady) {
-      try {
-        const result = await semanticRouter.classify(currentMessage);
-        semanticIntent = result.category;
-      } catch (e) {
-        console.warn("Semantic routing failed:", e);
-      }
-    }
+    const semanticIntent = perception.semanticCategory;
+    let reasoning = `Routing applied (Semantic: ${semanticIntent || 'None'}).`;
     
     // HEURISTIC 1: COMPLEXITY (Blended Semantic & Heuristic)
     let complexity: ComplexityLevel = 'SIMPLU';
@@ -63,11 +56,33 @@ export class AgentRouter {
       }
     }
     
+    if (perception.urgency === 'critical' && complexity === 'SIMPLU') {
+       complexity = 'MEDIU';
+       reasoning += ` Urgency is critical, forced complexity to MEDIU.`;
+    }
+    
+    if (perception.tone === 'frustrated' && complexity === 'COMPLEX') {
+       reasoning += ` User is frustrated, remember to simplify response.`;
+    }
+    
+    if (perception.eventDetection.blocks.includes("Low semantic confidence — heuristics only")) {
+       reasoning += ` Warning: Low semantic confidence, routing based heavily on heuristics.`;
+    }
+    
     // HEURISTIC 2: PRIORITY
     let priority: PriorityLevel = 'RUTINA';
-    if (text.includes('urgent') || text.includes('acum') || text.includes('rapid')) {
+    
+    if (perception.urgency === 'critical') {
+       priority = 'URGENT_IMPORTANT';
+    } else if (perception.urgency === 'high') {
+       priority = 'IMPORTANT';
+    } else if (text.includes('urgent') || text.includes('acum') || text.includes('rapid')) {
        priority = 'URGENT_IMPORTANT';
     } else if (text.includes('important')) {
+       priority = 'IMPORTANT';
+    }
+    
+    if (perception.tone === 'frustrated' && priority !== 'URGENT_IMPORTANT') {
        priority = 'IMPORTANT';
     }
 
@@ -86,12 +101,19 @@ export class AgentRouter {
     if (['scrie', 'articol', 'text', 'compune', 'email', 'mesaj'].some(w => text.includes(w)) && !skills.includes('writing_skill')) skills.push('writing_skill');
     if (['analizeaza', 'date', 'statistica', 'grafic', 'tabel'].some(w => text.includes(w)) && !skills.includes('data_analysis_skill')) skills.push('data_analysis_skill');
 
+    let toolState: ToolState = 'idle';
+    if (semanticIntent === 'ACTION' || skills.includes('coding_skill') || skills.includes('writing_skill')) {
+       toolState = 'writing';
+    } else if (complexity === 'AMBIGUU') {
+       toolState = 'confirming';
+    }
+
     return {
        complexity,
        priority,
-       toolState: 'idle',
+       toolState,
        injectedSkills: skills,
-       reasoning: `Routing applied (Semantic: ${semanticIntent || 'None'}). Detected complexity: ${complexity}.`
+       reasoning: `${reasoning} Detected complexity: ${complexity}.`
     };
   }
 }

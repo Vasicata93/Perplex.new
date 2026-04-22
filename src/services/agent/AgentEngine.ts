@@ -121,7 +121,6 @@ ${memoryContext.procedural.map(p => `- When [${p.pattern}] -> Do [${p.action}] (
       addStepLog('layer-2', 'result', `Loaded ${memoryContext.workingMemory.length} messages, ${memoryContext.episodic.length} episodes.`);
       completeStep('layer-2', 'Memory context retrieved.');
       console.log("Memory Context Loaded:", memoryContext.workingMemory.length, "messages", "Episodes:", memoryContext.episodic.length);
-      await this.simulateDelay(300);
 
       // ==========================================
       // [3] LAYER 3: PERCEPTION
@@ -161,14 +160,14 @@ EVENT DETECTION:
 - Opportunities: ${perceptionContext.eventDetection.opportunities.join(', ') || 'None'}
 - Blocks: ${perceptionContext.eventDetection.blocks.join(', ') || 'None'}
 `;
-      await this.simulateDelay(300);
 
       // ==========================================
       // [4] LAYER 4: ROUTING
       // ==========================================
       setStep(4, 10, '[4] Routing: Evaluating complexity and skills...', 'layer-4');
       const routingDecision = await AgentRouter.evaluate(
-        text
+        text,
+        perceptionContext
       );
       
       addStepLog('layer-4', 'thought', `Complexity: ${routingDecision.complexity}`);
@@ -206,6 +205,8 @@ EVENT DETECTION:
       // complex -> AGENT MODE
       // ambiguu -> CLARIFY FIRST
 
+      const minimalContextStr = SystemContext.getMinimalContext();
+
       if (routingDecision.complexity === 'AMBIGUU') {
         store.setMode('chat');
         setStep(4, 10, '[5] CLARIFY FIRST: Requesting user clarification...');
@@ -214,7 +215,7 @@ EVENT DETECTION:
         store.updateArchitectureStepStatus('layer-7', 'completed', 'Skipped');
         store.updateArchitectureStepStatus('layer-8', 'completed', 'Skipped');
         
-        const chatPrompt = `SYSTEM CONTEXT:\n${systemContextStr}\n\nMEMORY CONTEXT:\n${memoryContextStr}\n\nPERCEPTION CONTEXT:\n${perceptionContextStr}\n\nThe user's request is ambiguous: "${text}". Ask ONE concise question to clarify what is missing.`;
+        const chatPrompt = `SYSTEM CONTEXT:\n${minimalContextStr}\n\nMEMORY CONTEXT:\n${memoryContextStr}\n\nPERCEPTION CONTEXT:\n${perceptionContextStr}\n\nThe user's request is ambiguous: "${text}". Ask ONE concise question to clarify what is missing.`;
         
         const chatResponse = await llmService.generateSimpleText(chatPrompt, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey || "");
         
@@ -251,7 +252,7 @@ EVENT DETECTION:
              store.updateArchitectureStepStatus('layer-7', 'in_progress', 'Executing temporary tool for Chat Mode');
              
              // Lightweight planner call to grab exactly 1 required tool
-             const singleTaskPlan = await AgentPlanner.createPlan(text, history, routingDecision, systemContextStr, memoryContextStr, perceptionContextStr, injectedSkillsStr, activeToolsStr, llmService, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey || "");
+             const singleTaskPlan = await AgentPlanner.createSingleToolPlan(text, perceptionContextStr, activeToolsStr, llmService, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey || "");
              
              if (singleTaskPlan.tasks && singleTaskPlan.tasks.length > 0 && singleTaskPlan.tasks[0].tool) {
                  const t = singleTaskPlan.tasks[0];
@@ -272,7 +273,7 @@ EVENT DETECTION:
              store.updateArchitectureStepStatus('layer-7', 'completed', 'Chat Tool phase complete');
         }
 
-        let chatPrompt = `SYSTEM CONTEXT:\n${systemContextStr}\n\nMEMORY CONTEXT:\n${memoryContextStr}\n\nPERCEPTION CONTEXT:\n${perceptionContextStr}\n\nINJECTED SKILLS:\n${injectedSkillsStr}${toolContextStr}\n\nYou are a helpful assistant. User asked: "${text}". Respond concisely and naturally based on the provided context.`;
+        let chatPrompt = `SYSTEM CONTEXT:\n${minimalContextStr}\n\nMEMORY CONTEXT:\n${memoryContextStr}\n\nPERCEPTION CONTEXT:\n${perceptionContextStr}\n\nINJECTED SKILLS:\n${injectedSkillsStr}${toolContextStr}\n\nYou are a helpful assistant. User asked: "${text}". Respond concisely and naturally based on the provided context.`;
         
         const chatResponse = await llmService.generateSimpleText(
           chatPrompt,
@@ -289,12 +290,12 @@ EVENT DETECTION:
         setStep(9, 10, '[9] Response Generation: Delivering chat response...', 'layer-9');
         store.setConfidence('high');
         completeStep('layer-9', 'Chat response delivered.');
-        onComplete(chatResponse);
+        onComplete(chatResponse); // Deliver first!
         
         // [10] LEARNING
         setStep(10, 10, '[10] Learning: SYNC & ASYNC updates...', 'layer-10');
         await MemoryManager.syncUpdateSemantic('profile', 'last_interaction', new Date().toISOString());
-        MemoryManager.asyncSaveEpisode('Chat Interaction', `User asked: ${text}`, chatResponse.substring(0, 200));
+        MemoryManager.asyncSaveEpisode(perceptionContext.realIntent || 'Chat Interaction', `User asked: ${text}`, chatResponse.substring(0, 200));
         completeStep('layer-10', 'Learning phase complete.');
         
         setTimeout(() => store.setMode('idle'), 2000);
@@ -315,10 +316,11 @@ EVENT DETECTION:
 
       // Step 1: CLARIFY
       setStep(5, 10, '[5] Planner: Clarifying intent and decomposing...', 'layer-5');
-      await this.simulateDelay(400);
+      
+      const executionResults: any[] = [];
       
       // Step 2: DECOMPOSE & Step 3: PLAN
-      const agentPlan = await AgentPlanner.createPlan(
+      const agentPlan = await AgentPlanner.createFullPlan(
         text, 
         history, 
         routingDecision, 
@@ -327,6 +329,7 @@ EVENT DETECTION:
         perceptionContextStr,
         injectedSkillsStr,
         activeToolsStr,
+        executionResults,
         llmService,
         provider,
         openRouterKey,
@@ -346,8 +349,6 @@ EVENT DETECTION:
       store.setPlan(plan);
       addStepLog('layer-5', 'result', `Generated plan with ${plan.length} tasks.`);
       completeStep('layer-5', 'Plan created.');
-      
-      const executionResults: any[] = [];
       
       // Step 5: EXECUTE (Iterative)
       setStep(6, 10, '[6] Pre-Tool Safety: Evaluating constraints...', 'layer-6');
@@ -380,12 +381,7 @@ EVENT DETECTION:
 
         if (task.tool && executionResults.length > 0) {
             store.addTaskLog(task.id, { type: 'thought', content: `Checking if current context already satisfies task...` });
-            const checkPrompt = `
-We are on task: "${task.description}".
-Context so far: ${JSON.stringify(executionResults, null, 2).substring(0, 4000)}
-
-Do we already have enough information in the context to satisfy this task WITHOUT calling the tool "${task.tool}"? 
-Reply exactly YES or NO.`;
+            const checkPrompt = `Task: ${task.description}. Context: ${JSON.stringify(executionResults).substring(0, 500)}. Can task be satisfied WITHOUT calling "${task.tool}"? Reply exactly YES or NO.`;
             
             const checkResult = await llmService.generateSimpleText(checkPrompt, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey || "");
             if (checkResult.trim().toUpperCase().startsWith('YES')) {
@@ -460,7 +456,8 @@ Reply exactly YES or NO.`;
                   addStepLog('layer-6', 'action', `User confirmed the write operation.`);
                   store.addTaskLog(task.id, { type: 'action', content: `User confirmed the action. Executing...` });
                   // The UI already executed the action in handleConfirmAction, so we just mark it success
-                  toolResultStr = 'Action executed successfully by the UI.';
+                  toolResultStr = 'Write operation confirmed by user. Awaiting UI execution.';
+                  addStepLog('layer-6', 'action', `Write operation confirmed by user. Awaiting UI execution.`);
                   store.updateTaskStatus(task.id, 'completed');
                   completeStep('layer-6', 'Safety check passed.');
                   continue; // Skip actual tool execution since UI did it
@@ -469,9 +466,8 @@ Reply exactly YES or NO.`;
           }
           
           // 6.2 SENSITIVE DATA FILTER (Heuristic Scanner)
-          const isSearchTool = task.tool === 'perform_search' || task.tool === 'web_search' || task.tool === 'memory_retrieval';
-          if (isSearchTool) {
-             const payloadString = JSON.stringify(task.toolArgs || task.description);
+          if (task.toolArgs) {
+             const payloadString = JSON.stringify(task.toolArgs);
              
              // Advanced Regex for Sensitive Data
              const sensitivePatterns = [
@@ -540,13 +536,27 @@ Reply exactly YES or NO.`;
           
           let result;
           let retries = 0;
-          const MAX_RETRIES = 3;
+          const MAX_RETRIES = 1;
           let timeoutOccurred = false;
+          
+          const timeoutConfig: Record<string, number> = {
+            'memory_retrieval': 10000,
+            'workspace_tool': 10000,
+            'library_tool': 10000,
+            'portfolio_tool': 10000,
+            'safe_digital_tool': 10000,
+            'calendar_tool': 10000,
+            'get_calendar_holidays': 10000,
+            'perform_search': 25000,
+            'web_search': 25000,
+            'execute_code': 45000
+          };
+          const timeoutMs = timeoutConfig[task.tool as string] || 15000;
           
           while (retries < MAX_RETRIES) {
             try {
               // Add a timeout wrapper
-              const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000));
+              const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeoutMs));
               const executionPromise = ToolRegistry.executeTool(task.tool as string, task.toolArgs || { query: task.description }, { llmService });
               
               result = await Promise.race([executionPromise, timeoutPromise]) as any;
@@ -583,22 +593,34 @@ Reply exactly YES or NO.`;
               onChunk("", `[7] Tools: Result > 5000 tokens. Externalizing to RAG.\n`);
               store.addTaskLog(task.id, { type: 'thought', content: `Result too large (>5000 tokens). Externalizing to RAG.` });
               
-              // Mock RAG externalization
-              const path = `rag/ext_${Date.now()}.json`;
+              // Real RAG externalization using db
+              const path = `rag/ext_${Date.now()}`;
               const title = `Externalized data for ${task.tool}`;
               const summary = resultString.substring(0, 400) + "..."; // ~100 tokens summary
               
-              result.data = { 
-                externalized: true,
-                path: path,
-                title: title,
-                summary: summary
-              };
-              result.summary = `Data externalized to RAG. Path: ${path}. Summary: ${summary}`;
+              try {
+                const { db } = await import('../memory/db');
+                await db.semantic.add({
+                  category: 'rag_cache',
+                  key: path,
+                  value: summary,
+                  updatedAt: Date.now()
+                });
+                result.data = { 
+                  externalized: true,
+                  path: path,
+                  title: title,
+                  summary: summary
+                };
+                result.summary = `Data externalized to RAG (IndexedDB). Path: ${path}. Summary: ${summary}`;
+              } catch (err) {
+                 console.error("Failed to externalize RAG to IndexedDB", err);
+              }
             }
           }
           
           duration = Date.now() - startTime;
+          addStepLog('layer-7', 'result', `Tool ${task.tool} completed in ${duration}ms`);
           toolResultStr = result ? result.summary : 'Failed';
           store.addTaskLog(task.id, { type: 'result', content: `Tool execution completed. Summary: ${toolResultStr}`, toolName: task.tool });
           executionResults.push({ task: task.description, tool: task.tool, result: result?.success ? result.data : result?.error });
@@ -625,15 +647,27 @@ Reply exactly YES or NO.`;
         // 8.3 Self-Correction Loop (Fast LLM Check)
         // We need to check if result is defined, as it might not be for non-tool tasks or if the tool failed
         // We also need to be careful with the scope of `result`
-        let toolResultData = null;
-        if (task.tool) {
-           const lastResult = executionResults[executionResults.length - 1];
-           if (lastResult && lastResult.tool === task.tool && lastResult.result !== 'Timeout' && lastResult.result !== 'Failed') {
-              toolResultData = lastResult.result;
+        
+        const skippedResults = [
+           'Context sufficient', 
+           'Executed default action.', 
+           'Action executed successfully by the UI.', 
+           'Write operation confirmed by user. Awaiting UI execution.'
+        ];
+        
+        if (skippedResults.includes(toolResultStr)) {
+           addStepLog('layer-8', 'thought', "QC bypassed — no external tool result to evaluate.");
+           completeStep('layer-8', 'Safety verification passed (bypassed).');
+        } else {
+           let toolResultData = null;
+           if (task.tool) {
+              const lastResult = executionResults[executionResults.length - 1];
+              if (lastResult && lastResult.tool === task.tool && lastResult.result !== 'Timeout' && lastResult.result !== 'Failed') {
+                 toolResultData = lastResult.result;
+              }
            }
-        }
 
-        if (task.tool && toolResultData) {
+           if (task.tool && toolResultData) {
            addStepLog('layer-8', 'thought', `Evaluating quality of tool results...`);
            store.addTaskLog(task.id, { type: 'thought', content: `Evaluating quality of tool results...` });
            
@@ -654,6 +688,7 @@ User Request: "${text}"
 Task: "${task.description}"
 Tool Used: "${task.tool}"
 Tool Result Snippet: "${snippet}"
+Previously completed tasks: ${executionResults.slice(0, -1).map(r => r.task).join(', ') || 'None'}
 
 Are these results sufficient and correct to answer the user's request?
 CRITICAL RULES: 
@@ -679,8 +714,8 @@ Reply ONLY with "YES" or "NO: [reason]".
               
               // Only retry once per task
               if (!task.retried) {
-                 addStepLog('layer-8', 'action', `Initiating self-correction loop. Returning to Planner.`);
-                 store.addTaskLog(task.id, { type: 'action', content: `Initiating self-correction loop. Returning to Planner.` });
+                 addStepLog('layer-8', 'action', `Initiating self-correction loop. Replanning with new arguments.`);
+                 store.addTaskLog(task.id, { type: 'action', content: `Initiating self-correction loop. Replanning with new arguments.` });
                  
                  // Mark task as failed so planner knows
                  store.updateTaskStatus(task.id, 'failed');
@@ -688,10 +723,10 @@ Reply ONLY with "YES" or "NO: [reason]".
                  // Add a new task to the plan dynamically
                  const newTask = {
                     id: `task-${Date.now()}`,
-                    description: `RETRY: ${task.description}. Previous attempt failed because: ${evalResult}. Try a different approach or search terms.`,
+                    description: `RETRY: ${task.description}. Previous args failed. Replanner must generate new tool arguments based on accumulated context: ${JSON.stringify(executionResults).substring(0, 300)}`,
                     status: 'pending' as const,
                     tool: task.tool,
-                    toolArgs: task.toolArgs, // Ideally planner would generate new args, but we reuse for now or let fallback handle it
+                    toolArgs: null, // Wipe args to let default or next cycle fallback correctly
                     logs: [],
                     retried: true
                  };
@@ -707,14 +742,17 @@ Reply ONLY with "YES" or "NO: [reason]".
                  completeStep('layer-8', 'Self-correction loop triggered.');
                  continue; // Move to the next task (which is the retry we just added)
               } else {
-                 addStepLog('layer-8', 'thought', `Already retried. Accepting partial results.`);
-                 store.addTaskLog(task.id, { type: 'thought', content: `Already retried. Accepting partial results.` });
+                 addStepLog('layer-8', 'thought', `Task already retried. Accepting sub-optimal result.`);
+                 store.addTaskLog(task.id, { type: 'thought', content: `Proceeding despite suboptimal results after retry.` });
+                 completeStep('layer-8', 'Safety verification complete (accepted with warnings).');
               }
            } else {
-              addStepLog('layer-8', 'thought', `Quality check passed.`);
-              store.addTaskLog(task.id, { type: 'thought', content: `Quality check passed.` });
+              addStepLog('layer-8', 'result', `Quality check passed.`);
+              store.addTaskLog(task.id, { type: 'result', content: `Quality check passed.` });
+              completeStep('layer-8', 'Safety verification passed.');
            }
         }
+      }
 
         // 8.4 Response Sanity Check: Handled in synthesis prompt
         completeStep('layer-8', 'Post-tool safety checks passed.');
@@ -741,8 +779,27 @@ Reply ONLY with "YES" or "NO: [reason]".
       setStep(9, 10, '[9] Response Generation: Synthesizing final response...', 'layer-9');
       addStepLog('layer-9', 'thought', 'Synthesizing execution results into final response.');
       
-      const finalPrompt = `
-SYSTEM CONTEXT:
+      const compressedResults = executionResults.map(r => {
+        let compressedResultStr = '';
+        if (typeof r.result === 'object' && r.result !== null) {
+           try {
+              compressedResultStr = JSON.stringify(r.result).substring(0, 500);
+              if (JSON.stringify(r.result).length > 500) compressedResultStr += '... <truncated>';
+           } catch(e) {
+              compressedResultStr = String(r.result).substring(0, 500);
+           }
+        } else {
+           compressedResultStr = String(r.result).substring(0, 500);
+           if (String(r.result).length > 500) compressedResultStr += '... <truncated>';
+        }
+        return {
+           task: r.task,
+           tool: r.tool,
+           result: compressedResultStr
+        };
+      });
+
+      const finalPrompt = `SYSTEM CONTEXT:
 ${systemContextStr}
 
 MEMORY CONTEXT:
@@ -758,7 +815,7 @@ You are the SYNTHESIS layer of an advanced AI agent.
 User asked: "${text}"
 
 Execution Results:
-${JSON.stringify(executionResults, null, 2)}
+${JSON.stringify(compressedResults)}
 
 CRITICAL INSTRUCTIONS:
 1. Provide a final, conversational response based on the execution results.
@@ -774,7 +831,9 @@ FORMAT SELECTION:
 - **DIAGRAM PROTOCOL:** Use \`\`\`mermaid ... \`\`\` for Mermaid.js.
 - **WIDGET PROTOCOL:** Use \`\`\`widget { "type": "portfolio-dashboard" } \`\`\` for special widgets.
 
-Include a Confidence Score (High/Medium/Low) at the very end of your response in the format: "Confidence Score: [Score]".
+${useAgentStore.getState().simplifyResponse ? "IMPORTANT: User is frustrated. Respond in plain conversational text. No markdown headers. No bullet lists. No code blocks unless absolutely necessary. Be direct and concise." : ""}
+
+At the very end of your response, on a new line, output your confidence in this format exactly: <confidence>High</confidence> or <confidence>Medium</confidence> or <confidence>Low</confidence>. Nothing else on that line.
 
 Final Response:
 `;
@@ -795,12 +854,14 @@ Final Response:
         .replace(/### Plan:?[\s\S]*?(?=###|$)/gi, '')
         .replace(/### Todo:?[\s\S]*?(?=###|$)/gi, '')
         .replace(/Task \d+:[\s\S]*?(?=\n\n|$)/gi, '')
-        .replace(/\[\d+\]\s*[^:]+:\s*[\s\S]*?(?=\n\n|$)/gi, '')
         .trim();
       
-      // Extract Confidence Score (Mock implementation)
-      const confidenceMatch = finalResponse.match(/Confidence Score:\s*(High|Medium|Low)/i);
+      // Extract Confidence Score 
+      const confidenceMatch = finalResponse.match(/<confidence>(High|Medium|Low)<\/confidence>/i);
       const confidence = confidenceMatch ? confidenceMatch[1].toLowerCase() as 'high' | 'medium' | 'low' : 'medium';
+      
+      finalResponse = finalResponse.replace(/<confidence>(High|Medium|Low)<\/confidence>/i, '').trim();
+
       store.setConfidence(confidence);
       
       addStepLog('layer-9', 'result', `Response generated with ${confidence} confidence.`);
@@ -819,17 +880,25 @@ Final Response:
       
       // ASYNC: Episode save, patterns (Non-blocking)
       MemoryManager.asyncSaveEpisode(
-        'Agent Execution', 
+        perceptionContext.realIntent || 'Agent Execution', 
         `User asked: ${text}`, 
         finalResponse.substring(0, 200)
       );
       
-      // Profile Update & Proactivity Prep (Async)
-      MemoryManager.asyncUpdateProcedural(
-        `User asked about ${perceptionContext.realIntent}`,
-        `Provide widgets and structured data`,
-        1
-      );
+      // Update procedural memory based on conditions
+      if (useAgentStore.getState().simplifyResponse) {
+         MemoryManager.asyncUpdateProcedural(
+           "When user is frustrated",
+           "Simplify response format, avoid markdown",
+           2
+         );
+      } else if (routingDecision.injectedSkills && routingDecision.injectedSkills.length > 0) {
+         MemoryManager.asyncUpdateProcedural(
+           `When intent is ${perceptionContext.realIntent}`,
+           `Inject skills: ${routingDecision.injectedSkills.join(', ')}`,
+           1
+         );
+      }
       
       addStepLog('layer-10', 'result', 'ASYNC updates dispatched.');
       completeStep('layer-10', 'Learning phase complete.');

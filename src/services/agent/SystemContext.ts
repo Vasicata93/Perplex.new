@@ -80,6 +80,20 @@ export class SystemContext {
     return this.cachedContext;
   }
 
+  /**
+   * Minimal context for Chat Mode and simple conversational routing
+   */
+  static getMinimalContext(): string {
+    const fullContext = JSON.parse(this.getContext());
+    const minimalData = {
+      identity: {
+        personality: fullContext.identity.personality,
+      },
+      behavioralRules: fullContext.behavioralRules
+    };
+    return this.deterministicStringify(minimalData);
+  }
+
   static getReadTools(): string[] {
     const contextData = JSON.parse(this.getContext());
     return contextData.toolDefinitions.readTools || [];

@@ -42,24 +42,56 @@ export const MemoryManager = {
       outcome
     }).then(() => {
       console.log(`[Memory:ASYNC] Saved episode: ${topic}`);
+      MemoryManager.pruneEpisodicMemory(50);
     }).catch(err => {
       console.error('[Memory:ASYNC] Failed to save episode:', err);
     });
   },
 
   /**
-   * Updates procedural memory (patterns and preferences) asynchronously.
+   * Cleans up older episodic entries to keep DB lightweight and fast.
    */
-  asyncUpdateProcedural: (pattern: string, action: string, weight: number = 1): void => {
-    db.procedural.add({
-      pattern,
-      action,
-      weight
-    }).then(() => {
-      console.log(`[Memory:ASYNC] Learned procedure: When [${pattern}] -> Do [${action}]`);
-    }).catch(err => {
+  pruneEpisodicMemory: async (maxEntries: number = 50): Promise<void> => {
+    try {
+      const count = await db.episodic.count();
+      if (count > maxEntries) {
+        const excess = count - maxEntries;
+        const oldestRecords = await db.episodic.orderBy('date').limit(excess).toArray();
+        const idsToDelete = oldestRecords.map(r => r.id!).filter(id => id !== undefined);
+        if (idsToDelete.length > 0) {
+           await db.episodic.bulkDelete(idsToDelete);
+           console.log(`[Memory:ASYNC] Pruned ${idsToDelete.length} old episodic memories.`);
+        }
+      }
+    } catch (err) {
+      console.error('[Memory:ASYNC] Failed to prune episodic memory:', err);
+    }
+  },
+
+  /**
+   * Updates procedural memory (patterns and preferences) asynchronously.
+   * Prevents duplicates by incrementing weight instead.
+   */
+  asyncUpdateProcedural: async (pattern: string, action: string, initialWeight: number = 1): Promise<void> => {
+    try {
+      const existing = await db.procedural
+        .filter(p => p.pattern === pattern && p.action === action)
+        .first();
+        
+      if (existing && existing.id) {
+         await db.procedural.update(existing.id, { weight: existing.weight + 1 });
+         console.log(`[Memory:ASYNC] Updated procedure weight: When [${pattern}] -> Do [${action}] (New weight: ${existing.weight + 1})`);
+      } else {
+         await db.procedural.add({
+            pattern,
+            action,
+            weight: initialWeight
+         });
+         console.log(`[Memory:ASYNC] Learned new procedure: When [${pattern}] -> Do [${action}]`);
+      }
+    } catch (err) {
       console.error('[Memory:ASYNC] Failed to save procedural memory:', err);
-    });
+    }
   },
 
   // ==========================================

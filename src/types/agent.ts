@@ -84,4 +84,5 @@ export interface AgentState {
   
   // Response
   confidenceScore: ConfidenceScore | null;
+  simplifyResponse: boolean;
 }

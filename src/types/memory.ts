@@ -8,7 +8,7 @@ export interface EpisodicMemory {
 
 export interface SemanticMemory {
   id?: number;
-  category: 'profile' | 'project' | 'preference' | 'decision';
+  category: 'profile' | 'project' | 'preference' | 'decision' | 'rag_cache';
   key: string;
   value: string;
   updatedAt: number;
