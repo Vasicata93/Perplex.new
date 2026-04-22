@@ -25,6 +25,8 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
   const hasFatalErrorRef = useRef(false);
   const hasPendingRequestRef = useRef(false);
   const hasRequestedMicPermissionRef = useRef(false);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSpeakingRef = useRef(false);
 
   const isPlayingAudioRef = useRef(isPlayingAudio);
   const activeThreadRef = useRef(activeThread);
@@ -32,30 +34,6 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
   useEffect(() => {
     activeThreadRef.current = activeThread;
   }, [activeThread]);
-
-  // Safely track when audio stops to flush STT buffer
-  useEffect(() => {
-    const wasPlaying = isPlayingAudioRef.current;
-    isPlayingAudioRef.current = isPlayingAudio;
-
-    if (wasPlaying && !isPlayingAudio && isListening && recognitionRef.current) {
-        // Audio just stopped playing (either naturally finished or interrupted).
-        // The microphone likely recorded the AI's "echo" or the interrupt word in its buffer.
-        // We MUST abort the recognition to flush this dirty buffer.
-        // The `onend` handler will instantly fire and cleanly restart the mic.
-        try {
-            recognitionRef.current.abort();
-            setTranscript('');
-            hasPendingRequestRef.current = false;
-        } catch (e) {}
-    }
-  }, [isPlayingAudio, isListening]);
-
-  const onTTSRef = useRef(onTTS);
-  
-  useEffect(() => {
-    onTTSRef.current = onTTS;
-  }, [onTTS]);
 
   const startListening = useCallback(async () => {
     if (recognitionRef.current && !isThinkingRef.current && !hasPendingRequestRef.current && !isListening) {
@@ -83,14 +61,31 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     }
   }, [isListening]);
 
+  // Safely track when audio stops to flush STT buffer and restart mic
   useEffect(() => {
     const wasPlaying = isPlayingAudioRef.current;
     isPlayingAudioRef.current = isPlayingAudio;
-    // Auto start listening when high-quality TTS finishes
-    if (wasPlaying && !isPlayingAudio && enabledRef.current && !isThinkingRef.current) {
-       startListening();
+
+    if (wasPlaying && !isPlayingAudio) {
+      if (isListening && recognitionRef.current) {
+        try {
+            recognitionRef.current.abort();
+            setTranscript('');
+            hasPendingRequestRef.current = false;
+        } catch (e) {}
+      }
+      
+      if (enabledRef.current && !isThinkingRef.current) {
+         startListening();
+      }
     }
-  }, [isPlayingAudio, startListening]);
+  }, [isPlayingAudio, isListening, startListening]);
+
+  const onTTSRef = useRef(onTTS);
+  
+  useEffect(() => {
+    onTTSRef.current = onTTS;
+  }, [onTTS]);
 
   const speak = useCallback((text: string) => {
     if (onTTS) {
@@ -104,10 +99,12 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     const cleanText = text.replace(/[*#_`]/g, '').replace(/\[.*?\]\(.*?\)/g, '');
     
     setIsSpeaking(true);
+    isSpeakingRef.current = true;
     const utterance = new SpeechSynthesisUtterance(cleanText);
     
     utterance.onend = () => {
       setIsSpeaking(false);
+      isSpeakingRef.current = false;
       if (enabledRef.current) {
         startListening();
       }
@@ -115,6 +112,7 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     
     utterance.onerror = () => {
       setIsSpeaking(false);
+      isSpeakingRef.current = false;
       if (enabledRef.current) {
         startListening();
       }
@@ -154,14 +152,14 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
         recognitionRef.current.lang = langCode;
 
         recognitionRef.current.onresult = (event: any) => {
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+          }
+
           let chunks = [];
-          let isFinal = false;
           
           for (let i = event.resultIndex; i < event.results.length; ++i) {
             let chunkText = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              isFinal = true;
-            }
             if (!chunkText) continue;
 
             if (chunks.length > 0) {
@@ -181,68 +179,31 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
           
           let currentTranscript = chunks.join('');
           
+          // 1. SILENCE MIC IF AI IS SPEAKING
+          // Prevents the AI from hearing itself and repeating "echoes".
+          if (isPlayingAudioRef.current || isSpeakingRef.current || isThinkingRef.current) {
+             setTranscript('');
+             try {
+                recognitionRef.current.abort(); // Shut off the mic immediately
+             } catch(e) {}
+             return;
+          }
+
           setTranscript(currentTranscript);
 
-          // INTERRUPT LOGIC: If we hear speech while audio is playing, stop the audio!
-          // We must ensure the transcript isn't just the AI hearing its own voice (echo).
-          let isEcho = false;
-          if (activeThreadRef.current && activeThreadRef.current.messages.length > 0) {
-              const lastMsg = activeThreadRef.current.messages[activeThreadRef.current.messages.length - 1];
-              if (lastMsg.role === 'model') {
-                  const normTrans = currentTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, '');
-                  const normMsg = lastMsg.content.toLowerCase().replace(/[^a-z0-9 ]/g, '');
-                  
-                  // Strict substring match
-                  if (normTrans.length > 5 && normMsg.replace(/ /g, '').includes(normTrans.replace(/ /g, ''))) {
-                      isEcho = true;
-                  } else if (isPlayingAudioRef.current) {
-                      // Fuzzy word overlap match if audio is actively playing
-                      const transWords = normTrans.split(' ').filter(w => w.length > 2);
-                      const msgWords = normMsg.split(' ');
-                      
-                      if (transWords.length > 0) {
-                          let matchCount = 0;
-                          transWords.forEach(tw => {
-                              if (msgWords.some(mw => mw.includes(tw) || tw.includes(mw))) {
-                                  matchCount++;
-                              }
-                          });
-                          
-                          // If more than 40% of the transcribed substantial words match the AI's words, it's an echo.
-                          if ((matchCount / transWords.length) >= 0.4) {
-                              isEcho = true;
-                          }
-                      }
-                  }
-              }
-          }
-
-          // Add a check: don't interrupt if it's just a tiny noise (length <= 12) or an echo
-          const isSignificantSpeech = currentTranscript.trim().length > 12 && !isEcho;
-          if (isSignificantSpeech) {
-              if (isPlayingAudioRef.current) {
-                 if (onTTSRef.current) {
-                    onTTSRef.current(""); // empty string stops it
-                 }
-              }
-              if (synthRef.current?.speaking) {
-                 synthRef.current.cancel();
-              }
-          }
-
-          if (isFinal && currentTranscript.trim()) {
-            if (isEcho) {
-                // Ignore the echo, do not send it as a message
-                setTranscript('');
-                return;
-            }
-
-            if (!hasPendingRequestRef.current && !isThinkingRef.current) {
-                hasPendingRequestRef.current = true; // Synchronously mark that we are waiting for LLM
-                onSendMessage(currentTranscript.trim());
-                setTranscript('');
-                // Note: we DO NOT call setIsListening(false) or startListening() here because it is continuous.
-            }
+          // 2. WAIT FOR HUMAN TO FINISH SPEAKING (DEBOUNCE)
+          // Wait for 1.8 seconds of silence before finalizing.
+          if (currentTranscript.trim()) {
+             silenceTimerRef.current = setTimeout(() => {
+                if (!hasPendingRequestRef.current && !isThinkingRef.current && !isPlayingAudioRef.current && !isSpeakingRef.current) {
+                    hasPendingRequestRef.current = true;
+                    onSendMessage(currentTranscript.trim());
+                    setTranscript('');
+                    try {
+                       recognitionRef.current.abort(); // Pause listening until AI replies
+                    } catch(e) {}
+                }
+             }, 1800);
           }
         };
 
@@ -264,11 +225,13 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
 
         recognitionRef.current.onend = () => {
           setIsListening(false);
-          // Auto-restart if still enabled, NOT waiting for a request, NOT thinking, and no fatal error.
+          // Auto-restart if still enabled, NOT waiting for a request, NOT thinking, NOT playing audio, and no fatal error.
           if (
              enabledRef.current && 
              !hasPendingRequestRef.current && 
              !isThinkingRef.current && 
+             !isPlayingAudioRef.current &&
+             !isSpeakingRef.current &&
              !hasFatalErrorRef.current
           ) {
              try {
@@ -327,6 +290,7 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
     if (synthRef.current) {
       synthRef.current.cancel();
       setIsSpeaking(false);
+      isSpeakingRef.current = false;
     }
   }, []);
 
