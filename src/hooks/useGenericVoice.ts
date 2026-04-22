@@ -154,15 +154,32 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
         recognitionRef.current.lang = langCode;
 
         recognitionRef.current.onresult = (event: any) => {
-          let currentTranscript = '';
+          let chunks = [];
           let isFinal = false;
           
           for (let i = event.resultIndex; i < event.results.length; ++i) {
-            currentTranscript += event.results[i][0].transcript;
+            let chunkText = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
               isFinal = true;
             }
+            if (!chunkText) continue;
+
+            if (chunks.length > 0) {
+               let prev = chunks[chunks.length - 1];
+               if (chunkText.toLowerCase().trim().startsWith(prev.toLowerCase().trim()) && chunkText.length > prev.trim().length) {
+                  chunks[chunks.length - 1] = chunkText;
+                  continue;
+               }
+               const isAndroid = /Android/i.test(navigator.userAgent);
+               if (isAndroid && chunkText.toLowerCase().trim() === prev.toLowerCase().trim()) {
+                  chunks[chunks.length - 1] = chunkText;
+                  continue;
+               }
+            }
+            chunks.push(chunkText);
           }
+          
+          let currentTranscript = chunks.join('');
           
           setTranscript(currentTranscript);
 

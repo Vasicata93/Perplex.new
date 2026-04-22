@@ -22,6 +22,12 @@ export class AgentDatabase extends Dexie {
     this.version(2).stores({
       connectors: 'connectorId'
     });
+
+    // Version 3: Add sorting indices for semantic (updatedAt) and procedural (weight)
+    this.version(3).stores({
+      semantic: '++id, category, key, updatedAt',
+      procedural: '++id, pattern, weight'
+    });
   }
 }
 

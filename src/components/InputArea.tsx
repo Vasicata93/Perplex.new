@@ -295,14 +295,33 @@ export const InputArea: React.FC<InputAreaProps> = ({
     const initialText = input;
 
     recognition.onresult = (event: any) => {
-      let sessionTranscript = "";
+      let chunks = [];
 
-      // Iterate through ALL results in the current session.
-      // This is safer than appending because mobile browsers (esp. Android)
-      // can fire events with duplicate 'isFinal' chunks or messy indices.
       for (let i = 0; i < event.results.length; ++i) {
-        sessionTranscript += event.results[i][0].transcript;
+        let chunkText = event.results[i][0].transcript;
+        if (!chunkText) continue;
+
+        // Smart Deduplication for Android Cumulative Bug
+        // Android Chrome often returns cumulative strings in new indices 
+        // e.g. results[0]="mama", results[1]="mama are".
+        if (chunks.length > 0) {
+           let prev = chunks[chunks.length - 1];
+           // If the chunk completely encompasses the previous chunk, it's cumulative.
+           if (chunkText.toLowerCase().trim().startsWith(prev.toLowerCase().trim()) && chunkText.length > prev.trim().length) {
+              chunks[chunks.length - 1] = chunkText; // Overwrite
+              continue;
+           }
+           // If it's an exact duplicate on Android, it's a redundant event.
+           const isAndroid = /Android/i.test(navigator.userAgent);
+           if (isAndroid && chunkText.toLowerCase().trim() === prev.toLowerCase().trim()) {
+              chunks[chunks.length - 1] = chunkText; // Overwrite identically to avoid spam
+              continue;
+           }
+        }
+        chunks.push(chunkText);
       }
+
+      const sessionTranscript = chunks.join('');
 
       // Combine the text that was there before + the new session transcript
       const separator =

@@ -148,15 +148,28 @@ export const MessageRenderer = React.memo<MessageRendererProps>(
                   lang === "mermaid" ||
                   lang === "diagram")
               ) {
+                const configStr = props.children ? String(props.children) : "";
+                let widgetType = lang === "mermaid" || lang === "diagram" ? "mermaid" : "chart";
+                
+                if (lang === "widget") {
+                   try {
+                      // Attempt to extract the type directly from the JSON if possible
+                      const parsed = JSON.parse(configStr);
+                      if (parsed.type) {
+                         widgetType = parsed.type;
+                      } else {
+                         widgetType = "widget";
+                      }
+                   } catch(e) {
+                      widgetType = "widget";
+                   }
+                }
+
                 return (
                   <div className="my-4">
                     <WidgetRenderer
-                      type={
-                        lang === "mermaid" || lang === "diagram"
-                          ? "mermaid"
-                          : "chart"
-                      }
-                      configStr={props.children ? String(props.children) : ""}
+                      type={widgetType}
+                      configStr={configStr}
                     />
                   </div>
                 );

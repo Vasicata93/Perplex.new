@@ -273,7 +273,13 @@ EVENT DETECTION:
              store.updateArchitectureStepStatus('layer-7', 'completed', 'Chat Tool phase complete');
         }
 
-        let chatPrompt = `SYSTEM CONTEXT:\n${minimalContextStr}\n\nMEMORY CONTEXT:\n${memoryContextStr}\n\nPERCEPTION CONTEXT:\n${perceptionContextStr}\n\nINJECTED SKILLS:\n${injectedSkillsStr}${toolContextStr}\n\nYou are a helpful assistant. User asked: "${text}". Respond concisely and naturally based on the provided context.`;
+        let chatPrompt = `SYSTEM CONTEXT:\n${minimalContextStr}\n\nMEMORY CONTEXT:\n${memoryContextStr}\n\nPERCEPTION CONTEXT:\n${perceptionContextStr}\n\nINJECTED SKILLS:\n${injectedSkillsStr}${toolContextStr}\n\nYou are a helpful assistant. User asked: "${text}". Respond concisely and naturally based on the provided context.
+
+FORMAT SELECTION:
+- Use Markdown for structured explanations.
+- **CHART GENERATION PROTOCOL:** You MUST use the exact tag \`\`\`chart (not json) followed by strict JSON for Chart.js. Example: \`\`\`chart\n{"type": "bar", "data": {...}}\n\`\`\`
+- **DIAGRAM PROTOCOL:** You MUST use the exact tag \`\`\`mermaid (not json) followed by Mermaid syntax. Example: \`\`\`mermaid\ngraph TD;\n...\n\`\`\`
+- **WIDGET PROTOCOL:** You MUST use the exact tag \`\`\`widget followed by JSON for special widgets. Example: \`\`\`widget\n{"type": "portfolio-dashboard"}\n\`\`\``;
         
         const chatResponse = await llmService.generateSimpleText(
           chatPrompt,
@@ -587,32 +593,69 @@ EVENT DETECTION:
           
           // 7.4 CONTEXT EXTERNALIZATION
           if (result && result.data) {
-            const resultString = JSON.stringify(result.data);
-            // Rough estimate: 1 char ~ 0.25 tokens. 5000 tokens ~ 20000 chars.
-            if (resultString.length > 20000) {
-              onChunk("", `[7] Tools: Result > 5000 tokens. Externalizing to RAG.\n`);
-              store.addTaskLog(task.id, { type: 'thought', content: `Result too large (>5000 tokens). Externalizing to RAG.` });
+            const resultString = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+            
+            // Raise threshold to 60k chars (~15k tokens) to use context better, compress intelligently when approaching limits
+            const COMPACTION_THRESHOLD = 60000;
+            
+            if (resultString.length > COMPACTION_THRESHOLD) {
+              onChunk("", `[7] Tools: Result is massive (${resultString.length} chars). Running intelligent compaction...\n`);
+              store.addTaskLog(task.id, { type: 'thought', content: `Result too large (>60k chars). Running intelligent information compaction to preserve key points.` });
+              
+              let smartSummary = "";
+              try {
+                const compactionPrompt = `
+You are an advanced data compaction system.
+The following raw data was returned by the tool "${task.tool}" while attempting to solve this task: "${task.description}".
+The data is extremely large (${resultString.length} characters).
+
+CRITICAL INSTRUCTIONS:
+1. Create a comprehensive, highly dense summary of the data. 
+2. DO NOT just read the beginning. You must extract and preserve EVERY important element, decision, metric, link, or factual information.
+3. Remove redundant formatting, boilerplate, or repetitive structures, but KEEP ALL context crucial to the user's task.
+4. If the data is code, describe its structure, main functions, and any extracted logic without pasting massive blocks.
+
+RAW DATA (truncated safely to prevent hard limits):
+${resultString.substring(0, 100000)}
+`;
+                smartSummary = await llmService.generateSimpleText(
+                  compactionPrompt,
+                  provider,
+                  openRouterKey,
+                  openRouterModel,
+                  openAiKey,
+                  openAiModel,
+                  activeLocalModel,
+                  geminiApiKey || ""
+                );
+              } catch (compactionError) {
+                console.error("Compaction LLM failed, falling back to basic extraction", compactionError);
+                // Fallback to substring if it crashes
+                smartSummary = "COMPACTION FAILED. Basic extraction: " + resultString.substring(0, 4000) + "... [DATA TOO LARGE TO SUMMARIZE FULLY].";
+              }
               
               // Real RAG externalization using db
               const path = `rag/ext_${Date.now()}`;
               const title = `Externalized data for ${task.tool}`;
-              const summary = resultString.substring(0, 400) + "..."; // ~100 tokens summary
               
               try {
                 const { db } = await import('../memory/db');
                 await db.semantic.add({
                   category: 'rag_cache',
                   key: path,
-                  value: summary,
+                  value: smartSummary,
                   updatedAt: Date.now()
                 });
+                
                 result.data = { 
                   externalized: true,
                   path: path,
                   title: title,
-                  summary: summary
+                  smartSummary: smartSummary
                 };
-                result.summary = `Data externalized to RAG (IndexedDB). Path: ${path}. Summary: ${summary}`;
+                result.summary = `Data compacted intelligently and full version externalized. Summary: ${smartSummary.substring(0, 200)}...`;
+                
+                addStepLog('layer-7', 'result', `Performed intelligent compaction on ${resultString.length} characters.`);
               } catch (err) {
                  console.error("Failed to externalize RAG to IndexedDB", err);
               }
@@ -782,15 +825,19 @@ Reply ONLY with "YES" or "NO: [reason]".
       const compressedResults = executionResults.map(r => {
         let compressedResultStr = '';
         if (typeof r.result === 'object' && r.result !== null) {
-           try {
-              compressedResultStr = JSON.stringify(r.result).substring(0, 500);
-              if (JSON.stringify(r.result).length > 500) compressedResultStr += '... <truncated>';
-           } catch(e) {
-              compressedResultStr = String(r.result).substring(0, 500);
+           if ((r.result as any).smartSummary) {
+              compressedResultStr = (r.result as any).smartSummary;
+           } else {
+              try {
+                 compressedResultStr = JSON.stringify(r.result).substring(0, 4000);
+                 if (JSON.stringify(r.result).length > 4000) compressedResultStr += '... <truncated>';
+              } catch(e) {
+                 compressedResultStr = String(r.result).substring(0, 4000);
+              }
            }
         } else {
-           compressedResultStr = String(r.result).substring(0, 500);
-           if (String(r.result).length > 500) compressedResultStr += '... <truncated>';
+           compressedResultStr = String(r.result).substring(0, 4000);
+           if (String(r.result).length > 4000) compressedResultStr += '... <truncated>';
         }
         return {
            task: r.task,
@@ -827,9 +874,10 @@ CRITICAL INSTRUCTIONS:
 
 FORMAT SELECTION:
 - Use Markdown for structured explanations.
-- **CHART GENERATION PROTOCOL:** Use \`\`\`chart { ... } \`\`\` for Chart.js.
-- **DIAGRAM PROTOCOL:** Use \`\`\`mermaid ... \`\`\` for Mermaid.js.
-- **WIDGET PROTOCOL:** Use \`\`\`widget { "type": "portfolio-dashboard" } \`\`\` for special widgets.
+- **CHART GENERATION PROTOCOL:** You MUST use the exact tag \`\`\`chart (not json) followed by strict JSON for Chart.js. Example: \`\`\`chart\n{"type": "bar", "data": {...}}\n\`\`\`
+- **DIAGRAM PROTOCOL:** You MUST use the exact tag \`\`\`mermaid (not json) followed by Mermaid syntax. Example: \`\`\`mermaid\ngraph TD;\n...\n\`\`\`
+- **WIDGET PROTOCOL:** You MUST use the exact tag \`\`\`widget followed by JSON for special widgets. Example: \`\`\`widget\n{"type": "portfolio-dashboard"}\n\`\`\`
+
 
 ${useAgentStore.getState().simplifyResponse ? "IMPORTANT: User is frustrated. Respond in plain conversational text. No markdown headers. No bullet lists. No code blocks unless absolutely necessary. Be direct and concise." : ""}
 

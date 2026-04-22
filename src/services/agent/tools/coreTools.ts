@@ -49,10 +49,11 @@ export function registerCoreTools() {
       try {
         // Try to get API key from settings
         const settings = await db.get<any>(STORES.SETTINGS, 'user_settings');
-        const apiKey = settings?.tavilyApiKey;
+        const searchProvider = settings?.searchProvider || 'tavily';
+        const apiKey = searchProvider === 'brave' ? settings?.braveApiKey : settings?.tavilyApiKey;
         
         if (apiKey) {
-          const searchData = await TavilyService.search(args.query, apiKey, 'tavily');
+          const searchData = await TavilyService.search(args.query, apiKey, searchProvider);
           if (searchData && searchData.results) {
             return {
               success: true,

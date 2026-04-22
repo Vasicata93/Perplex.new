@@ -39,8 +39,6 @@ import {
   XCircle,
   Wallet,
   Sliders,
-  Mic,
-  Layers,
 } from "lucide-react";
 import {
   AppSettings,
@@ -1431,24 +1429,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   {/* --- VOICE CATEGORY --- */}
-                  <div className="space-y-6 py-6 border-b border-pplx-border/50">
-                    <div className="flex items-center gap-3 mb-6 px-2">
-                      <Mic size={24} className="text-pplx-accent" />
-                      <h2 className="text-xl font-bold text-pplx-text">Voice Input & Output</h2>
-                    </div>
-                    <div className="bg-pplx-card rounded-3xl p-6 mb-6 shadow-sm border border-pplx-border/50">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Mic size={20} className="text-pplx-accent" />
-                        <h3 className="text-lg font-bold text-pplx-text">
-                          Voice Providers
-                        </h3>
-                      </div>
-                      <p className="text-sm text-pplx-muted leading-relaxed">
-                        Configure API keys for Text-to-Speech (TTS) and Speech-to-Text (STT) models like Whisper, ElevenLabs, or others.
+                  <div className="space-y-6 pt-10 pb-6 border-t border-pplx-border/20">
+                    <div className="px-2">
+                      <h2 className="text-xl font-bold text-pplx-text mb-2">Voice Providers</h2>
+                      <p className="text-sm text-pplx-muted">
+                        Configure API keys for Text-to-Speech and Speech-to-Text inference models.
                       </p>
                     </div>
 
-                    <InputGroup label="ElevenLabs API Key" description="For ultra-realistic voices and custom voice cloning.">
+                    <InputGroup label="ElevenLabs API Key" description="Ultra-realistic voices and custom cloning.">
                       <div className="relative">
                         <Key className="absolute left-4 top-4 text-pplx-muted opacity-50" size={16} />
                         <input
@@ -1461,7 +1450,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                     </InputGroup>
 
-                    <InputGroup label="OpenAI Voice API Key" description="Key for OpenAI Whisper (STT) and OpenAI TTS.">
+                    <InputGroup label="OpenAI API Key" description="Whisper (STT) and OpenAI (TTS).">
                       <div className="relative">
                         <Key className="absolute left-4 top-4 text-pplx-muted opacity-50" size={16} />
                         <input
@@ -1474,7 +1463,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                     </InputGroup>
 
-                    <InputGroup label="Custom Voice API Key" description="Key for custom instances or other supported platforms (e.g., Cartesia, Wizard).">
+                    <InputGroup label="Custom API Key" description="Custom instances (e.g., Cartesia).">
                       <div className="relative">
                         <Key className="absolute left-4 top-4 text-pplx-muted opacity-50" size={16} />
                         <input
@@ -1489,20 +1478,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   {/* --- EMBEDDINGS CATEGORY --- */}
-                  <div className="space-y-6 py-6 border-b border-pplx-border/50">
-                    <div className="flex items-center gap-3 mb-6 px-2">
-                       <Layers size={24} className="text-pplx-accent" />
-                       <h2 className="text-xl font-bold text-pplx-text">Embeddings Configuration</h2>
-                    </div>
-                    <div className="bg-pplx-card rounded-3xl p-6 mb-6 shadow-sm border border-pplx-border/50">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Layers size={20} className="text-pplx-accent" />
-                        <h3 className="text-lg font-bold text-pplx-text">
-                          Embeddings Model
-                        </h3>
-                      </div>
-                      <p className="text-sm text-pplx-muted leading-relaxed">
-                        Embeddings are used for specific retrieval tasks and semantic searches.
+                  <div className="space-y-6 pt-10 pb-6 border-t border-pplx-border/20">
+                    <div className="px-2">
+                      <h2 className="text-xl font-bold text-pplx-text mb-2">Embeddings Configuration</h2>
+                      <p className="text-sm text-pplx-muted">
+                        Models used for specific retrieval tasks and semantic searches.
                       </p>
                     </div>
 
@@ -1538,21 +1518,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   {/* --- MEMORY CONFIG CATEGORY --- */}
-                  <div className="space-y-6 pt-6 pb-2 border-b border-pplx-border/50">
-                    <div className="flex items-center gap-3 mb-6 px-2">
-                       <Brain size={24} className="text-pplx-accent" />
-                       <h2 className="text-xl font-bold text-pplx-text">Memory System</h2>
-                    </div>
-                    <div className="bg-pplx-card rounded-3xl p-6 mb-6 shadow-sm border border-pplx-border/50">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Brain size={20} className="text-pplx-accent" />
-                        <h3 className="text-lg font-bold text-pplx-text">
-                          Memory Settings
-                        </h3>
-                      </div>
-                      <p className="text-sm text-pplx-muted leading-relaxed">
-                        Select which Large Language Model behaves as the processor for maintaining context and memory lists in your chat. 
-                      </p>
+                  <div className="space-y-6 pt-10 pb-6 border-t border-pplx-border/20">
+                    <div className="px-2">
+                       <h2 className="text-xl font-bold text-pplx-text mb-2">Memory Settings</h2>
+                       <p className="text-sm text-pplx-muted">
+                        Processor model for context maintenance and memory management.
+                       </p>
                     </div>
 
                     <InputGroup label="Processor Provider" description="Select the platform responsible for context.">
@@ -1964,8 +1935,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2">
                     {/* Tavily Search */}
                     <div 
-                      className="border border-pplx-border rounded-2xl p-5 flex flex-col transition-all bg-pplx-card hover:border-pplx-border/80 shadow-sm cursor-pointer"
-                      onClick={() => setFormData({ ...formData, searchProvider: "tavily" })}
+                      className="border border-pplx-border rounded-2xl p-5 flex flex-col transition-all bg-pplx-card hover:border-pplx-border/80 shadow-sm"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="p-2.5 bg-pplx-hover rounded-xl shadow-sm">
@@ -1984,33 +1954,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       
                       <h3 className="text-lg font-medium text-pplx-text mb-1 flex items-center justify-between">
                         Tavily Search
-                        {formData.searchProvider === "tavily" && (
-                          <div className="w-5 h-5 rounded-full bg-pplx-text flex items-center justify-center shadow-sm">
-                            <Check size={12} className="text-pplx-primary" strokeWidth={3} />
-                          </div>
+                        {formData.searchProvider === "tavily" && formData.tavilyApiKey && (
+                          <span className="text-[10px] bg-blue-500/10 text-blue-500 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border border-blue-500/20">Active</span>
                         )}
                       </h3>
                       <p className="text-sm text-pplx-muted mb-6 flex-1 leading-relaxed">
                         AI-optimized search engine for fast, accurate real-time data.
                       </p>
 
-                      <div className="mt-auto space-y-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative">
+                      {editingConnector === "tavily" ? (
+                        <div className="mt-auto space-y-3">
                           <input
                             type="password"
-                            value={formData.tavilyApiKey || ""}
-                            onChange={(e) => setFormData({ ...formData, tavilyApiKey: e.target.value })}
                             placeholder="Enter API Key (tvly-...)"
-                            className="w-full px-4 py-3 bg-pplx-input border border-pplx-border/50 rounded-xl text-sm text-pplx-text focus:outline-none focus:ring-1 focus:ring-blue-500/50 placeholder-pplx-muted transition-colors font-mono"
+                            value={apiKeyInput}
+                            onChange={(e) => setApiKeyInput(e.target.value)}
+                            className="w-full px-3 py-2.5 bg-pplx-input border border-pplx-border rounded-xl text-sm text-pplx-text focus:outline-none focus:border-pplx-accent placeholder-pplx-muted transition-colors"
                           />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setFormData({ ...formData, tavilyApiKey: apiKeyInput, searchProvider: "tavily" });
+                                setEditingConnector(null);
+                              }}
+                              className="flex-1 bg-pplx-accent hover:opacity-90 text-white px-3 py-2.5 rounded-xl text-sm font-medium transition-opacity"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingConnector(null)}
+                              className="flex-1 bg-pplx-hover hover:bg-pplx-border text-pplx-text px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="mt-auto">
+                          {formData.tavilyApiKey ? (
+                            <div className="flex gap-2">
+                              {formData.searchProvider !== "tavily" && (
+                                <button
+                                  onClick={() => setFormData({ ...formData, searchProvider: "tavily" })}
+                                  className="flex-1 py-2.5 px-4 bg-pplx-text text-pplx-primary hover:opacity-90 rounded-xl text-sm font-medium transition-opacity"
+                                >
+                                  Set Active
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setFormData({ ...formData, tavilyApiKey: "", searchProvider: formData.searchProvider === "tavily" && formData.braveApiKey ? "brave" : formData.searchProvider })}
+                                className="flex-1 py-2.5 px-4 border border-pplx-border text-pplx-text hover:bg-pplx-hover rounded-xl text-sm font-medium transition-colors"
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setApiKeyInput(formData.tavilyApiKey || "");
+                                setEditingConnector("tavily");
+                              }}
+                              className="w-full py-2.5 px-4 bg-pplx-text text-pplx-primary hover:opacity-90 rounded-xl text-sm font-medium transition-opacity flex items-center justify-center gap-2"
+                            >
+                              <Key className="w-4 h-4" /> Connect
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Brave Search */}
                     <div 
-                      className="border border-pplx-border rounded-2xl p-5 flex flex-col transition-all bg-pplx-card hover:border-pplx-border/80 shadow-sm cursor-pointer"
-                      onClick={() => setFormData({ ...formData, searchProvider: "brave" })}
+                      className="border border-pplx-border rounded-2xl p-5 flex flex-col transition-all bg-pplx-card hover:border-pplx-border/80 shadow-sm"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="p-2.5 bg-pplx-hover rounded-xl shadow-sm">
@@ -2029,27 +2044,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       
                       <h3 className="text-lg font-medium text-pplx-text mb-1 flex items-center justify-between">
                         Brave Search
-                        {formData.searchProvider === "brave" && (
-                          <div className="w-5 h-5 rounded-full bg-pplx-text flex items-center justify-center shadow-sm">
-                            <Check size={12} className="text-pplx-primary" strokeWidth={3} />
-                          </div>
+                        {formData.searchProvider === "brave" && formData.braveApiKey && (
+                          <span className="text-[10px] bg-orange-500/10 text-orange-500 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border border-orange-500/20">Active</span>
                         )}
                       </h3>
                       <p className="text-sm text-pplx-muted mb-6 flex-1 leading-relaxed">
                         Privacy-preserving search engine for real-time web access.
                       </p>
 
-                      <div className="mt-auto space-y-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative">
+                      {editingConnector === "brave" ? (
+                        <div className="mt-auto space-y-3">
                           <input
                             type="password"
-                            value={formData.braveApiKey || ""}
-                            onChange={(e) => setFormData({ ...formData, braveApiKey: e.target.value })}
                             placeholder="Enter API Key (BSA-...)"
-                            className="w-full px-4 py-3 bg-pplx-input border border-pplx-border/50 rounded-xl text-sm text-pplx-text focus:outline-none focus:ring-1 focus:ring-orange-500/50 placeholder-pplx-muted transition-colors font-mono"
+                            value={apiKeyInput}
+                            onChange={(e) => setApiKeyInput(e.target.value)}
+                            className="w-full px-3 py-2.5 bg-pplx-input border border-pplx-border rounded-xl text-sm text-pplx-text focus:outline-none focus:border-pplx-accent placeholder-pplx-muted transition-colors"
                           />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setFormData({ ...formData, braveApiKey: apiKeyInput, searchProvider: "brave" });
+                                setEditingConnector(null);
+                              }}
+                              className="flex-1 bg-pplx-accent hover:opacity-90 text-white px-3 py-2.5 rounded-xl text-sm font-medium transition-opacity"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingConnector(null)}
+                              className="flex-1 bg-pplx-hover hover:bg-pplx-border text-pplx-text px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="mt-auto">
+                          {formData.braveApiKey ? (
+                            <div className="flex gap-2">
+                              {formData.searchProvider !== "brave" && (
+                                <button
+                                  onClick={() => setFormData({ ...formData, searchProvider: "brave" })}
+                                  className="flex-1 py-2.5 px-4 bg-pplx-text text-pplx-primary hover:opacity-90 rounded-xl text-sm font-medium transition-opacity"
+                                >
+                                  Set Active
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setFormData({ ...formData, braveApiKey: "", searchProvider: formData.searchProvider === "brave" && formData.tavilyApiKey ? "tavily" : formData.searchProvider })}
+                                className="flex-1 py-2.5 px-4 border border-pplx-border text-pplx-text hover:bg-pplx-hover rounded-xl text-sm font-medium transition-colors"
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setApiKeyInput(formData.braveApiKey || "");
+                                setEditingConnector("brave");
+                              }}
+                              className="w-full py-2.5 px-4 bg-pplx-text text-pplx-primary hover:opacity-90 rounded-xl text-sm font-medium transition-opacity flex items-center justify-center gap-2"
+                            >
+                              <Key className="w-4 h-4" /> Connect
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {Object.values(connectors).map((connector) => (
