@@ -27,6 +27,8 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
   const hasRequestedMicPermissionRef = useRef(false);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSpeakingRef = useRef(false);
+  const lastProcessedIndexRef = useRef(0);
+  const latestResultsLengthRef = useRef(0);
 
   const isPlayingAudioRef = useRef(isPlayingAudio);
   const activeThreadRef = useRef(activeThread);
@@ -68,11 +70,8 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
 
     if (wasPlaying && !isPlayingAudio) {
       if (isListening && recognitionRef.current) {
-        try {
-            recognitionRef.current.abort();
-            setTranscript('');
-            hasPendingRequestRef.current = false;
-        } catch (e) {}
+        setTranscript('');
+        hasPendingRequestRef.current = false;
       }
       
       if (enabledRef.current && !isThinkingRef.current) {
@@ -156,9 +155,21 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
             clearTimeout(silenceTimerRef.current);
           }
 
+          latestResultsLengthRef.current = event.results.length;
+
+          // 1. SILENCE MIC IF AI IS SPEAKING OR WE ARE THINKING
+          // Prevents the AI from hearing itself and repeating "echoes" 
+          // without triggering the system beep caused by abort().
+          if (isPlayingAudioRef.current || isSpeakingRef.current || isThinkingRef.current || hasPendingRequestRef.current) {
+             setTranscript('');
+             lastProcessedIndexRef.current = event.results.length;
+             return;
+          }
+
           let chunks = [];
           
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
+          let startIndex = Math.max(event.resultIndex, lastProcessedIndexRef.current);
+          for (let i = startIndex; i < event.results.length; ++i) {
             let chunkText = event.results[i][0].transcript;
             if (!chunkText) continue;
 
@@ -178,30 +189,16 @@ export const useGenericVoice = ({ onSendMessage, isThinking, activeThread, enabl
           }
           
           let currentTranscript = chunks.join('');
-          
-          // 1. SILENCE MIC IF AI IS SPEAKING
-          // Prevents the AI from hearing itself and repeating "echoes".
-          if (isPlayingAudioRef.current || isSpeakingRef.current || isThinkingRef.current) {
-             setTranscript('');
-             try {
-                recognitionRef.current.abort(); // Shut off the mic immediately
-             } catch(e) {}
-             return;
-          }
-
           setTranscript(currentTranscript);
 
           // 2. WAIT FOR HUMAN TO FINISH SPEAKING (DEBOUNCE)
-          // Wait for 1.8 seconds of silence before finalizing.
           if (currentTranscript.trim()) {
              silenceTimerRef.current = setTimeout(() => {
                 if (!hasPendingRequestRef.current && !isThinkingRef.current && !isPlayingAudioRef.current && !isSpeakingRef.current) {
                     hasPendingRequestRef.current = true;
                     onSendMessage(currentTranscript.trim());
                     setTranscript('');
-                    try {
-                       recognitionRef.current.abort(); // Pause listening until AI replies
-                    } catch(e) {}
+                    lastProcessedIndexRef.current = latestResultsLengthRef.current;
                 }
              }, 1800);
           }
