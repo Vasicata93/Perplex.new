@@ -665,7 +665,7 @@ async function startServer() {
     try {
       const { deltaY } = req.body;
       const page = await getActivePage();
-      await page.evaluate((dy) => {
+      await page.evaluate((dy: any) => {
         window.scrollBy({
           top: typeof dy === 'number' ? dy : 400,
           left: 0,

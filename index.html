@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Perplex Clone</title>
     
+    <!-- Shim global and process variables for browser production compatibility -->
+    <script>
+      window.global = window;
+      if (typeof window.process === 'undefined') {
+        window.process = {
+          env: { NODE_ENV: 'production' },
+          platform: 'browser',
+          nextTick: function(fn) { setTimeout(fn, 0); }
+        };
+      }
+    </script>
+    
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#191A1A" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
