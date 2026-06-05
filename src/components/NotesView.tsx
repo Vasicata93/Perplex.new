@@ -161,7 +161,7 @@ const MobileBlockRow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-2.5 active:bg-pplx-secondary/50 transition-colors text-left rounded-lg mx-1 ${isDestructive ? "text-red-400" : "text-pplx-text"}`}
+    className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-pplx-bg-secondary active:bg-pplx-secondary/50 transition-colors text-left rounded-lg mx-1 ${isDestructive ? "text-red-400" : "text-pplx-text"}`}
   >
     <div
       className={`flex items-center justify-center ${isDestructive ? "text-red-400" : "text-pplx-muted"}`}
@@ -407,182 +407,53 @@ const AddBlockMenu = ({
   return (
     <div
       ref={menuRef}
-      className="absolute left-10 top-0 z-50 bg-pplx-bg/95 backdrop-blur-2xl border border-pplx-border shadow-premium rounded-2xl p-2 w-80 animate-in fade-in zoom-in duration-200 max-h-[500px] overflow-y-auto custom-scrollbar"
+      className="absolute left-10 top-0 z-50 w-80 bg-pplx-card border border-pplx-border shadow-xl rounded-xl p-2 animate-fadeIn flex flex-col opacity-100 max-h-[500px] overflow-y-auto custom-scrollbar"
     >
-      {onDeleteBlock && (
-        <button
-          onClick={onDeleteBlock}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 rounded-xl text-left mb-2 transition-colors font-medium"
-        >
-          <Trash2 size={18} /> Delete Block
-        </button>
-      )}
-      <div className="px-4 py-2 text-[10px] font-display font-bold text-pplx-muted uppercase tracking-[0.2em] mb-1">
-        Basic Blocks
-      </div>
-      <button
-        onClick={() => onSelectType("newpage")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg group-hover/btn:bg-blue-500 group-hover/btn:text-white transition-colors">
-          <FileText size={16} />
-        </div>{" "}
-        New Page
-      </button>
-      <button
-        onClick={() => onSelectType("text")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-slate-500/10 text-slate-500 rounded-lg group-hover/btn:bg-slate-500 group-hover/btn:text-white transition-colors">
-          <Type size={16} />
-        </div>{" "}
-        Text
-      </button>
-      <button
-        onClick={() => onSelectType("h1")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-pplx-accent/10 text-pplx-accent rounded-lg group-hover/btn:bg-pplx-accent group-hover/btn:text-white transition-colors">
-          <Heading1 size={16} />
-        </div>{" "}
-        Heading 1
-      </button>
-      <button
-        onClick={() => onSelectType("h2")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-pplx-accent/10 text-pplx-accent rounded-lg group-hover/btn:bg-pplx-accent group-hover/btn:text-white transition-colors">
-          <Heading2 size={16} />
-        </div>{" "}
-        Heading 2
-      </button>
-      <button
-        onClick={() => onSelectType("h3")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-pplx-accent/10 text-pplx-accent rounded-lg group-hover/btn:bg-pplx-accent group-hover/btn:text-white transition-colors">
-          <Heading3 size={16} />
-        </div>{" "}
-        Heading 3
-      </button>
+      <div className="flex flex-col gap-0.5">
+        {onDeleteBlock && (
+          <MobileBlockRow
+            icon={Trash2}
+            label="Delete Block"
+            onClick={onDeleteBlock}
+            isDestructive
+          />
+        )}
+        <div className="px-4 py-2 text-[10px] font-display font-bold text-pplx-muted uppercase tracking-[0.2em] mb-1">
+          Basic Blocks
+        </div>
+        <MobileBlockRow icon={FileText} label="New Page" onClick={() => onSelectType("newpage")} />
+        <MobileBlockRow icon={Type} label="Text" onClick={() => onSelectType("text")} />
+        <MobileBlockRow icon={Heading1} label="Heading 1" onClick={() => onSelectType("h1")} />
+        <MobileBlockRow icon={Heading2} label="Heading 2" onClick={() => onSelectType("h2")} />
+        <MobileBlockRow icon={Heading3} label="Heading 3" onClick={() => onSelectType("h3")} />
 
-      <div className="px-4 py-2 text-[10px] font-display font-bold text-pplx-muted uppercase tracking-[0.2em] mt-4 mb-1">
-        Lists & Media
-      </div>
-      <button
-        onClick={() => onSelectType("todo")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg group-hover/btn:bg-emerald-500 group-hover/btn:text-white transition-colors">
-          <CheckSquare size={16} />
-        </div>{" "}
-        To-do List
-      </button>
-      <button
-        onClick={() => onSelectType("bullet")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg group-hover/btn:bg-emerald-500 group-hover/btn:text-white transition-colors">
-          <List size={16} />
-        </div>{" "}
-        Bullet List
-      </button>
-      <button
-        onClick={() => onSelectType("image")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg group-hover/btn:bg-purple-500 group-hover/btn:text-white transition-colors">
-          <ImageIcon size={16} />
-        </div>{" "}
-        Image
-      </button>
-      <button
-        onClick={() => onSelectType("file")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg group-hover/btn:bg-purple-500 group-hover/btn:text-white transition-colors">
-          <Upload size={16} />
-        </div>{" "}
-        File / Video
-      </button>
-      <button
-        onClick={() => onSelectType("quote")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg group-hover/btn:bg-amber-500 group-hover/btn:text-white transition-colors">
-          <Quote size={16} />
-        </div>{" "}
-        Quote
-      </button>
-      <button
-        onClick={() => onSelectType("code")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-indigo-500/10 text-indigo-500 rounded-lg group-hover/btn:bg-indigo-500 group-hover/btn:text-white transition-colors">
-          <Code size={16} />
-        </div>{" "}
-        Code Block
-      </button>
+        <div className="px-4 py-2 text-[10px] font-display font-bold text-pplx-muted uppercase tracking-[0.2em] mt-4 mb-1">
+          Lists & Media
+        </div>
+        <MobileBlockRow icon={CheckSquare} label="To-do List" onClick={() => onSelectType("todo")} />
+        <MobileBlockRow icon={List} label="Bullet List" onClick={() => onSelectType("bullet")} />
+        <MobileBlockRow icon={ImageIcon} label="Image" onClick={() => onSelectType("image")} />
+        <MobileBlockRow icon={Upload} label="File / Video" onClick={() => onSelectType("file")} />
+        <MobileBlockRow icon={Quote} label="Quote" onClick={() => onSelectType("quote")} />
+        <MobileBlockRow icon={Code} label="Code Block" onClick={() => onSelectType("code")} />
 
-      <div className="px-4 py-2 text-[10px] font-display font-bold text-pplx-muted uppercase tracking-[0.2em] mt-4 mb-1">
-        Data & Advanced
-      </div>
-      <button
-        onClick={() => onSelectType("table")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-rose-500/10 text-rose-500 rounded-lg group-hover/btn:bg-rose-500 group-hover/btn:text-white transition-colors">
-          <TableIcon size={16} />
-        </div>{" "}
-        Table
-      </button>
-      <button
-        onClick={() => onSelectType("calendar")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-rose-500/10 text-rose-500 rounded-lg group-hover/btn:bg-rose-500 group-hover/btn:text-white transition-colors">
-          <CalendarDays size={16} />
-        </div>{" "}
-        Calendar View
-      </button>
-      <button
-        onClick={() => onSelectType("chart_bar_v")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-pplx-accent/10 text-pplx-accent rounded-lg group-hover/btn:bg-pplx-accent group-hover/btn:text-white transition-colors">
-          <BarChart size={16} />
-        </div>{" "}
-        Chart
-      </button>
-      <button
-        onClick={() => onSelectType("widget")}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn"
-      >
-        <div className="p-1.5 bg-pplx-accent/10 text-pplx-accent rounded-lg group-hover/btn:bg-pplx-accent group-hover/btn:text-white transition-colors">
-          <Layers size={16} />
-        </div>{" "}
-        Widget
-      </button>
+        <div className="px-4 py-2 text-[10px] font-display font-bold text-pplx-muted uppercase tracking-[0.2em] mt-4 mb-1">
+          Data & Advanced
+        </div>
+        <MobileBlockRow icon={TableIcon} label="Table" onClick={() => onSelectType("table")} />
+        <MobileBlockRow icon={CalendarDays} label="Calendar View" onClick={() => onSelectType("calendar")} />
+        <MobileBlockRow icon={BarChart} label="Chart" onClick={() => onSelectType("chart_bar_v")} />
+        <MobileBlockRow icon={Layers} label="Widget" onClick={() => onSelectType("widget")} />
 
-      {onAddTag && (
-        <button
-          onClick={onAddTag}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-pplx-text hover:bg-pplx-bg-secondary rounded-xl text-left transition-all group/btn mt-2 border-t border-pplx-border/30 pt-4"
-        >
-          <div className="p-1.5 bg-pplx-muted/10 text-pplx-muted rounded-lg group-hover/btn:bg-pplx-muted group-hover/btn:text-white transition-colors">
-            <Tag size={16} />
-          </div>{" "}
-          Add Tag
-        </button>
-      )}
-      {onDeletePage && (
-        <button
-          onClick={onDeletePage}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 rounded-xl text-left mt-2 transition-colors font-medium"
-        >
-          <Trash2 size={18} /> Delete Page
-        </button>
-      )}
+        {onAddTag && (
+          <div className="mt-2 border-t border-pplx-border/30 pt-2">
+            <MobileBlockRow icon={Tag} label="Add Tag" onClick={onAddTag} />
+          </div>
+        )}
+        {onDeletePage && (
+          <MobileBlockRow icon={Trash2} label="Delete Page" onClick={onDeletePage} isDestructive />
+        )}
+      </div>
     </div>
   );
 };
@@ -2099,23 +1970,7 @@ export const NotesView: React.FC<NotesViewProps> = ({
             </DndContext>
 
             {!activeNote.isLocked && (
-              <div className="mt-12 group/add-btn flex items-center justify-center">
-                <button
-                  onClick={() => {
-                    const lastBlock = blocks[blocks.length - 1];
-                    if (lastBlock && lastBlock.content === "")
-                      setActiveBlockId(lastBlock.id);
-                    else addBlock(lastBlock?.id || uid());
-                  }}
-                  className="flex items-center gap-3 px-8 py-4 bg-pplx-bg-secondary hover:bg-pplx-accent hover:text-white text-pplx-text-secondary rounded-3xl transition-all duration-300 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 active:scale-95 group/btn"
-                >
-                  <div className="p-2 bg-pplx-bg rounded-2xl group-hover/btn:bg-white/20 transition-colors">
-                    <Plus size={20} />
-                  </div>
-                  <span className="font-display font-bold text-sm uppercase tracking-[0.2em]">
-                    Add New Block
-                  </span>
-                </button>
+              <div className="mt-12 mb-8 group/add-btn flex items-center justify-center">
               </div>
             )}
           </div>

@@ -30,6 +30,20 @@ export const listVercelDeploymentsSkill: ISkill = {
     }
 
     const limit = params.limit || 5;
+
+    // Return dummy data if using a simulated token
+    if (creds.apiKey.startsWith('simulated_token_')) {
+      console.log('Using simulated Vercel token, returning mock data.');
+      return Array.from({ length: limit }, (_, i) => ({
+        uid: `dep_${i}_simulated`,
+        name: params.projectId ? `project-${params.projectId}` : `demo-project-${i}`,
+        url: `https://demo-project-${i}.vercel.app`,
+        state: i === 0 ? 'READY' : 'BUILDING',
+        creator: 'demo_user',
+        createdAt: new Date(Date.now() - i * 3600000).toISOString()
+      }));
+    }
+
     let url = `https://api.vercel.com/v6/deployments?limit=${limit}`;
     if (params.projectId) {
       url += `&projectId=${params.projectId}`;

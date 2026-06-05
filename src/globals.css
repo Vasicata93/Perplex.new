@@ -131,3 +131,22 @@
     scrollbar-width: none;
   }
 }
+
+/* Widget Editor Mode Styles */
+body.widget-editor-mode [data-role="user"] {
+  display: none !important;
+}
+
+body.widget-editor-mode [data-role="model"] > .flex.items-center.mb-2 {
+  display: none !important;
+}
+
+body.widget-editor-mode [data-role="model"] .markdown-prose > *:not(:has(.active-widget)) {
+  display: none !important;
+}
+
+body.widget-editor-mode [data-role="model"] .mt-4.w-full.pt-2,
+body.widget-editor-mode [data-role="model"] .flex.items-center.gap-1.mt-4 {
+  display: none !important;
+}
+

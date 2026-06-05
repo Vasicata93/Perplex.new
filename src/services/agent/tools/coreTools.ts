@@ -8,6 +8,141 @@ import { safeDigitalService } from '../../safeDigitalService';
 export function registerCoreTools() {
   ToolRegistry.register(
     {
+      name: 'search_youtube',
+      description: 'Căutare dedicată pentru videoclipuri sau material media YouTube. Returnează link-uri pe care le poți pune în mesaje sau le poți deschide direct pe partea dreaptă în Browser Companion folosind unealta open_browser_url.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Ce anume dorești să cauți pe YouTube?'
+          }
+        },
+        required: ['query']
+      }
+    },
+    async (args: { query: string }) => {
+      try {
+        const settings = await db.get<any>(STORES.SETTINGS, 'user_settings');
+        const searchProvider = settings?.searchProvider || 'tavily';
+        const apiKey = searchProvider === 'brave' ? settings?.braveApiKey : settings?.tavilyApiKey;
+        const advancedQuery = `${args.query} site:youtube.com/watch`;
+
+        if (apiKey) {
+          const searchData = await TavilyService.search(advancedQuery, apiKey, searchProvider);
+          if (searchData && searchData.results) {
+            // Filter strictly for youtube.com watch links and map them
+            const youtubeResults = searchData.results
+              .filter(r => r.url.includes('youtube.com/watch') || r.url.includes('youtu.be/'))
+              .slice(0, 3)
+              .map(r => ({ title: r.title, url: r.url }));
+              
+            if (youtubeResults.length > 0) {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(
+                  new CustomEvent("open-companion", {
+                    detail: { url: youtubeResults[0].url, title: youtubeResults[0].title },
+                  })
+                );
+              }
+              return {
+                success: true,
+                data: youtubeResults,
+                summary: `Am găsit ${youtubeResults.length} videoclipuri pe YouTube pentru "${args.query}" și am deschis automat primul în companion.`
+              };
+            }
+          }
+        }
+        
+        // Query our active backend search scraper
+        const res = await fetch(`/api/browser/search-youtube?query=${encodeURIComponent(args.query)}`);
+        const result = await res.json();
+        if (result && result.success && result.data && result.data.length > 0) {
+          const firstVideo = result.data[0];
+          const firstUrl = firstVideo.url || firstVideo.link;
+          if (firstUrl && typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent("open-companion", {
+                detail: { url: firstUrl, title: firstVideo.title },
+              })
+            );
+          }
+          return {
+            success: true,
+            data: result.data,
+            summary: `Am căutat pe YouTube pentru "${args.query}" și am deschis automat primul rezultat (${firstVideo.title}) în companion.`
+          };
+        }
+
+        // Ultimate search query fallback string if ever everything fails
+        const fallbackUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(args.query)}`;
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent("open-companion", {
+              detail: { url: fallbackUrl, title: `YouTube: ${args.query}` },
+            })
+          );
+        }
+        return {
+          success: true,
+          data: [
+            { title: `Caută direct pe YouTube: ${args.query}`, url: fallbackUrl }
+          ],
+          summary: `Am generat și deschis căutarea directă pe YouTube pentru "${args.query}".`
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: String(error),
+          summary: `Search failed for YouTube: "${args.query}".`
+        };
+      }
+    }
+  );
+
+  ToolRegistry.register(
+    {
+      name: 'open_browser_url',
+      description: 'Deschide automat o pagină web sau un videoclip extern direct în Browser Companion din partea dreaptă a ecranului. Folosește această unealtă oricând utilizatorul îți cere să deschizi sau să îi arăți un site, link, clip sau să facă browse, sau când dorești să prezinți o pagină integrată.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: 'URL-ul complet care dorește să fie deschis (ex: https://example.com sau link YouTube).'
+          },
+          title: {
+            type: 'string',
+            description: 'Titlul sugestiv al filei de browser (ex: "Video YouTube", "Wikipedia").'
+          }
+        },
+        required: ['url']
+      }
+    },
+    async (args: { url: string; title?: string }) => {
+      let targetUrl = args.url.trim();
+      if (!/^https?:\/\//i.test(targetUrl)) {
+        targetUrl = 'https://' + targetUrl;
+      }
+      
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent("open-companion", {
+            detail: { url: targetUrl, title: args.title || "Browser View" },
+          })
+        );
+      }
+      
+      return {
+        success: true,
+        data: { url: targetUrl, title: args.title || "Browser View" },
+        summary: `Am deschis cu succes pagina web ${targetUrl} în Browser Companion pe dreapta.`
+      };
+    }
+  );
+
+  ToolRegistry.register(
+    {
       name: 'memory_retrieval',
       description: 'Fetch relevant context from memory (semantic, episodic, procedural).',
       parameters: {

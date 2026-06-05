@@ -33,6 +33,60 @@ export const ActionConfirmation: React.FC<ActionConfirmationProps> = ({
   const isCalendarEvent = action.type === "calendar_event";
   const isComplexModule = action.type === "complex_module_action";
   const isSensitiveData = action.type === "sensitive_data_warning";
+  const isRunCommand = action.type === "run_command";
+
+  // --- RUN COMMAND ---
+  if (isRunCommand) {
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-pplx-card sm:border border-pplx-border sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-h-[90vh] max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 flex flex-col">
+          <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-pplx-border bg-blue-500/10 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg text-blue-500 bg-blue-500/20">
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <h2 className="text-[15px] sm:text-lg font-bold text-pplx-text tracking-tight">
+                  Terminal Command Execution
+                </h2>
+                <p className="text-[11px] sm:text-xs text-pplx-muted">
+                  The agent wants to run a shell command.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 sm:px-6 sm:py-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 sm:gap-6">
+            <div className="space-y-1 flex-1 flex flex-col min-h-0">
+              <label className="text-[11px] sm:text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5 shrink-0 mb-1.5 sm:mb-2">
+                <FileText size={12} /> Command
+              </label>
+              <div className="flex-1 w-full bg-pplx-input border border-pplx-border rounded-xl p-3 sm:p-4 text-[11px] sm:text-xs font-mono text-pplx-text shadow-sm overflow-auto">
+                <pre>{action.data.command}</pre>
+              </div>
+            </div>
+            <div className="p-2.5 sm:p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] sm:text-xs shrink-0">
+              Warning: Execution sandbox restrictions apply.
+            </div>
+          </div>
+          <div className="px-4 py-3 sm:px-6 sm:py-5 border-t border-pplx-border bg-pplx-card flex flex-col gap-2.5 sm:gap-3 shrink-0">
+            <button
+              onClick={() => onConfirm(action.data)}
+              className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-95"
+            >
+              <Check size={16} strokeWidth={3} />
+              Confirm Execution
+            </button>
+            <button
+              onClick={onCancel}
+              className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover transition-colors"
+            >
+              <X size={16} /> Cancel Action
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // --- SENSITIVE DATA WARNING ---
   if (isSensitiveData) {

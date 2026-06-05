@@ -26,16 +26,29 @@ export const searchGoogleDriveSkill: ISkill = {
   
   execute: async (params: { query: string; limit?: number }) => {
     const creds = await connectorManager.getCredentials('google_workspace');
-    if (!creds || !creds.accessToken) {
+    const token = creds?.accessToken || creds?.apiKey;
+    if (!token) {
       throw new Error('Google Workspace credentials not found. Please authenticate.');
     }
 
     const limit = params.limit || 5;
+
+    // Return dummy data if using a simulated token
+    if (token.startsWith('simulated_token_')) {
+      console.log('Using simulated Google token, returning mock data.');
+      return Array.from({ length: limit }, (_, i) => ({
+        id: `gdrive_file_${i}_simulated`,
+        name: params.query ? `simulated-${params.query}-doc-${i}` : `simulated-doc-${i}`,
+        type: 'application/vnd.google-apps.document',
+        url: `https://docs.google.com/document/d/simulated_id_${i}/edit`
+      }));
+    }
+
     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(params.query)}&pageSize=${limit}&fields=files(id,name,mimeType,webViewLink)`;
 
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${creds.accessToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
 

@@ -32,6 +32,8 @@ interface SideChatPanelProps {
   onNewChat?: () => void;
   mode?: "sidebar" | "floating";
   onModeChange?: (mode: "sidebar" | "floating") => void;
+  hideWidgets?: boolean;
+  onWidthChange?: (width: number) => void;
 }
 
 export const SideChatPanel: React.FC<SideChatPanelProps> = ({
@@ -52,6 +54,8 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
   onNewChat,
   mode: propMode,
   onModeChange,
+  hideWidgets = false,
+  onWidthChange,
 }) => {
   const [width, setWidth] = useState(320);
   const [mobileHeight, setMobileHeight] = useState(50); // in vh
@@ -77,6 +81,16 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
   const isResizingFloatTL = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0, posX: 0, posY: 0 });
+
+  useEffect(() => {
+    if (onWidthChange) {
+      if (!isOpen || mode === "floating") {
+        onWidthChange(0);
+      } else {
+        onWidthChange(width);
+      }
+    }
+  }, [width, isOpen, mode, onWidthChange]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -236,6 +250,7 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
       copiedId={copiedId}
       isSidePanel={true}
       activeNote={activeNote}
+      hideWidgets={hideWidgets}
     />
   );
 
@@ -244,7 +259,7 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
       {/* Desktop Panel */}
       {mode === "sidebar" ? (
         <div
-          className="hidden lg:flex flex-col border-l border-white/10 bg-pplx-card h-full shadow-2xl z-30 transition-[width] duration-150 relative"
+          className="hidden lg:flex flex-col border-l border-white/10 bg-pplx-card h-full shadow-2xl z-[70] transition-[width] duration-150 relative"
           style={{ width: `${width}px` }}
         >
           {/* Resize Handle */}
@@ -263,7 +278,7 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
         </div>
       ) : (
         <div
-          className="hidden lg:flex flex-col fixed bg-pplx-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+          className="hidden lg:flex flex-col fixed bg-pplx-card border border-white/10 rounded-xl shadow-2xl z-[80] overflow-hidden"
           style={{
             width: floatSize.width,
             height: floatSize.height,
@@ -326,7 +341,7 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
 
       {/* Mobile Drawer - Optimized Height & Design */}
       <div
-        className={`lg:hidden fixed left-0 right-0 bg-pplx-card/95 backdrop-blur-2xl border-t border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-150 ease-out rounded-t-[32px] ${isOpen ? "translate-y-0" : "translate-y-full"}`}
+        className={`lg:hidden fixed left-0 right-0 bg-pplx-card/95 backdrop-blur-2xl border-t border-white/10 shadow-2xl z-[80] flex flex-col transition-transform duration-150 ease-out rounded-t-[32px] ${isOpen ? "translate-y-0" : "translate-y-full"}`}
         style={{
           height: `${mobileHeight}vh`,
           bottom: document.body.classList.contains("dock-active")

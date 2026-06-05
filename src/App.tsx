@@ -2,17 +2,26 @@ import React, { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { InputArea } from "./components/InputArea";
 import { SettingsModal } from "./components/SettingsModal";
-import { SpacesModal } from "./components/SpacesModal";
+import { SpaceConfigView } from "./components/spaces/SpaceConfigView";
 import { NotesView } from "./components/NotesView";
 import { ChatHeader } from "./components/ChatHeader";
+import { ModelMessageActions } from "./components/ModelMessageActions";
 import { DashboardView } from "./components/DashboardView";
+import { TasksView } from "./components/TasksView";
+import { TrashView } from "./components/TrashView";
 import { CalendarView } from "./components/CalendarView";
-import { PortfolioDashboard } from "./components/portfolio/PortfolioDashboard";
-import SafeDigitalPage from "./components/safedigital/SafeDigitalPage";
 import { SearchView } from "./components/SearchView";
+import { AgentControlView } from "./components/agent/AgentControlView";
+import { AgentOrgChart } from "./components/spaces/AgentOrgChart";
 import { ActionConfirmation } from "./components/ActionConfirmation";
+import { LibraryDashboard } from "./components/LibraryDashboard";
+import { SpacesDashboard } from "./components/SpacesDashboard";
+import { ConfirmDeleteModal } from "./components/ConfirmDeleteModal";
 import { SideChatPanel } from "./components/SideChatPanel";
+import { CompanionPanel } from "./components/CompanionPanel";
 import { MobileDock } from "./components/MobileDock";
+import { MobileHomeActions } from "./components/MobileHomeActions";
+import { DesktopMenuBar } from "./components/DesktopMenuBar";
 import { TornadoIndicator } from "./components/TornadoIndicator";
 import { MessageRenderer } from "./components/MessageRenderer";
 import { PerplexityLogo } from "./constants";
@@ -37,6 +46,7 @@ import { AgentEngine } from "./services/agent/AgentEngine";
 import { useAgentStore } from "./store/agentStore";
 import { Block } from "./types/blockStructure";
 import { SidebarToggle } from "./components/SidebarToggle";
+import { useNotificationsStore } from "./store/useNotificationsStore";
 import {
   User,
   BookOpen,
@@ -59,6 +69,7 @@ import {
   Languages,
   FolderInput,
   Undo2,
+  Redo2,
   Brain,
   RefreshCw,
   Share2,
@@ -68,6 +79,9 @@ import {
   ArrowDown,
   MessageSquare,
   Plus,
+  Menu,
+  History,
+  SquarePen,
 } from "lucide-react";
 import { db, STORES } from "./services/db";
 import { initializeIntegrations } from "./services/integration/init";
@@ -78,18 +92,29 @@ import { v4 as uuidv4 } from "uuid";
 import { portfolioService } from "./services/portfolioService";
 import { safeDigitalService } from "./services/safeDigitalService";
 import { semanticRouter } from "./services/agent/SemanticRouter";
+import { getLatestWidget } from "./utils/widgetUtils";
+import { WidgetRenderer } from "./components/WidgetRenderer";
 
 // --- End of imports ---
+import { Toaster } from 'react-hot-toast';
+
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-// Initialize integrations once
-initializeIntegrations();
-
-// Pre-warm the semantic router (starts download/init in background)
-semanticRouter.init().catch(console.error);
+// Initialize integrations once (moved inside useEffect)
+// Pre-warm the semantic router (moved inside useEffect)
 
 // --- Premium Tornado Thinking Component (Updated: Persistent Visibility) ---
 function App() {
+  useEffect(() => {
+    // Moved from top-level to prevent module evaluation crashes
+    try {
+      initializeIntegrations();
+      semanticRouter.init().catch(console.error);
+    } catch (e) {
+      console.error("Initialization error:", e);
+    }
+  }, []);
+
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = sessionStorage.getItem("pplx_sidebarWidth");
     return saved !== null ? Number(saved) : 280;
@@ -108,6 +133,7 @@ function App() {
     return width > 0 && width <= 70;
   });
   const [isSpaceFilesModalOpen, setIsSpaceFilesModalOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState("");
 
   const handleOpenSidebar = () => {
     if (window.innerWidth >= 768) {
@@ -119,6 +145,63 @@ function App() {
       setSidebarOpen(true);
     }
   };
+
+  useEffect(() => {
+    const handleOpenSettings = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.tab) {
+        setSettingsInitialTab(customEvent.detail.tab);
+      }
+      setSettingsOpen(true);
+    };
+    window.addEventListener('openSettings', handleOpenSettings);
+    return () => window.removeEventListener('openSettings', handleOpenSettings);
+  }, []);
+
+  useEffect(() => {
+    const handleSaveArtifact = (ev: any) => {
+      if (ev.detail && ev.detail.content) {
+        const { content, title } = ev.detail;
+        const newNote: Note = {
+          id: Date.now().toString(),
+          title: title || "New Saved Artifact",
+          content: content,
+          updatedAt: Date.now(),
+          isFavorite: false
+        };
+        setNotes(prev => [newNote, ...prev]);
+        setActiveNoteId(newNote.id);
+        setOpenNoteIds(prev => [newNote.id, ...prev.filter(id => id !== newNote.id)]);
+        setIsDashboardMode(false);
+        setActiveView('library');
+        setExpandedSidebarSection('library');
+      }
+    };
+    
+    const handleUpdateAgentTeam = (ev: any) => {
+      if (ev.detail && ev.detail.spaceId && ev.detail.subAgents) {
+        setSpaces((prev) => prev.map((s) => {
+          if (s.id === ev.detail.spaceId) {
+            const updated = {
+              ...s,
+              isTeamMode: true,
+              subAgents: ev.detail.subAgents
+            };
+            db.set(STORES.SPACES, updated.id, updated);
+            return updated;
+          }
+          return s;
+        }));
+      }
+    };
+
+    window.addEventListener('save-artifact-to-library', handleSaveArtifact);
+    window.addEventListener('update-agent-team', handleUpdateAgentTeam);
+    return () => {
+      window.removeEventListener('save-artifact-to-library', handleSaveArtifact);
+      window.removeEventListener('update-agent-team', handleUpdateAgentTeam);
+    };
+  }, []);
 
   // Sync sidebar open/collapsed state with width (Desktop only)
   useEffect(() => {
@@ -146,42 +229,83 @@ function App() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  
+  const [deleteConfirmState, setDeleteConfirmState] = useState<{
+    id: string;
+    type: "thread" | "space" | "note" | "event";
+    title?: string;
+  } | null>(null);
+
+  const processDelete = () => {
+    if (!deleteConfirmState) return;
+    const { id, type } = deleteConfirmState;
+    if (type === "space") {
+      setSpaces((prev) => prev.filter((s) => s.id !== id));
+      if (activeSpaceId === id) setActiveSpaceId(null);
+    } else if (type === "thread") {
+      setThreads((prev) => prev.filter((t) => t.id !== id));
+      if (activeThreadId === id) {
+        setActiveView("chat");
+        setActiveThreadId(null);
+        setActiveNoteId(null);
+        setIsDashboardMode(false);
+        stopAudio();
+      }
+    } else if (type === "note") {
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+      setOpenNoteIds((prev) => prev.filter((tid) => tid !== id));
+      if (activeNoteId === id) setActiveNoteId(null);
+      delete noteHistoryRef.current[id];
+    } else if (type === "event") {
+      const updatedEvents = events.filter((e) => e.id !== id);
+      setEvents(updatedEvents);
+      db.set(STORES.CALENDAR, "all_events", updatedEvents);
+      window.dispatchEvent(new CustomEvent("calendar-updated"));
+    }
+    setDeleteConfirmState(null);
+  };
 
   // UI State - Initialize from LocalStorage to persist on refresh and closure
   const [activeView, setActiveView] = useState<
-    "chat" | "library" | "calendar" | "search" | "portfolio"
-  >(
-    () =>
-      (localStorage.getItem("pplx_activeView") as
-        | "chat"
-        | "library"
-        | "calendar"
-        | "search"
-        | "portfolio") || "chat",
-  );
+    | "chat"
+    | "library"
+    | "spaces"
+    | "calendar"
+    | "search"
+    | "dashboard"
+    | "tasks"
+    | "trash"
+    | "agent"
+    | "team_dashboard"
+    | "mix"
+  >("chat");
   const [previousViewBeforeSearch, setPreviousViewBeforeSearch] = useState<
-    "chat" | "library" | "calendar" | "search" | "portfolio"
+    | "chat"
+    | "library"
+    | "spaces"
+    | "calendar"
+    | "search"
+    | "dashboard"
+    | "tasks"
+    | "trash"
+    | "agent"
+    | "team_dashboard"
+    | "mix"
   >("chat");
 
   // Update isDashboardMode based on activeView
   useEffect(() => {
-    setIsDashboardMode(activeView === "portfolio");
+    setIsDashboardMode(false);
   }, [activeView]);
 
-  const viewToRender =
-    activeView === "search" ? previousViewBeforeSearch : activeView;
+  const viewToRender = activeView;
 
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(
-    () => localStorage.getItem("pplx_activeThreadId") || null,
-  );
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
-  const [activeSpaceId, setActiveSpaceId] = useState<string | null>(
-    () => localStorage.getItem("pplx_activeSpaceId") || null,
-  );
+  const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
 
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(
-    () => localStorage.getItem("pplx_activeNoteId") || null,
-  );
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
   const [isThinking, setIsThinking] = useState(false);
   const [isLearning, setIsLearning] = useState(false);
@@ -195,9 +319,6 @@ function App() {
   const [inputIsAgentMode, setInputIsAgentMode] = useState(
     () => localStorage.getItem("pplx_inputIsAgentMode") === "true",
   );
-  const [inputIsAgentProMode, setInputIsAgentProMode] = useState(
-    () => localStorage.getItem("pplx_inputIsAgentProMode") === "true",
-  );
   const [inputIsLongThinking, setInputIsLongThinking] = useState(
     () => localStorage.getItem("pplx_inputIsLongThinking") === "true",
   );
@@ -210,10 +331,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem("pplx_inputIsAgentMode", String(inputIsAgentMode));
   }, [inputIsAgentMode]);
-
-  useEffect(() => {
-    localStorage.setItem("pplx_inputIsAgentProMode", String(inputIsAgentProMode));
-  }, [inputIsAgentProMode]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -302,7 +419,9 @@ function App() {
   const [isDashboardMode, setIsDashboardMode] = useState(
     () => localStorage.getItem("pplx_isDashboardMode") === "true",
   );
+  const [isWidgetFullscreen, setIsWidgetFullscreen] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [sideChatWidth, setSideChatWidth] = useState(0);
 
   // Pending Actions (Human in the loop)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
@@ -370,12 +489,142 @@ function App() {
   const [chatMode, setChatMode] = useState<"sidebar" | "floating">("sidebar");
   const [sideChatThreadId, setSideChatThreadId] = useState<string | null>(null);
 
+  // Companion Panel State
+  const [isCompanionOpen, setIsCompanionOpen] = useState(false);
+  const [companionWidth, setCompanionWidth] = useState(0);
+  const [companionUrl, setCompanionUrl] = useState("");
+  const [companionTitle, setCompanionTitle] = useState("Companion Panel");
+
+  const lastOpenedMessageIdRef = useRef<string | null>(null);
+
+  // Automatically open the Companion Panel when a browser-view link is returned in the model message
+  useEffect(() => {
+    const activeThread = threads.find((t) => t.id === activeThreadId);
+    if (!activeThread || !activeThread.messages.length) return;
+
+    const lastMessage = activeThread.messages[activeThread.messages.length - 1];
+    if (lastMessage && lastMessage.role === Role.MODEL) {
+      let urlToOpen = "";
+      let titleToOpen = "Web Source";
+
+      // 1. Check if there are citations
+      if (lastMessage.citations && lastMessage.citations.length > 0) {
+        urlToOpen = lastMessage.citations[0].uri;
+        titleToOpen = lastMessage.citations[0].title || "Web Source";
+      }
+
+      // 2. Or match a URL in the text content
+      if (!urlToOpen) {
+        const urlRegex = /(https?:\/\/[^\s\)]+)/gi;
+        const matches = lastMessage.content.match(urlRegex);
+        if (matches && matches.length > 0) {
+          let foundUrl = matches[0];
+          // Strip ending punctuations
+          if (foundUrl.endsWith('.') || foundUrl.endsWith(')') || foundUrl.endsWith(']')) {
+            foundUrl = foundUrl.slice(0, -1);
+          }
+          urlToOpen = foundUrl;
+          titleToOpen = "Discovered Link";
+        }
+      }
+
+      if (urlToOpen && lastOpenedMessageIdRef.current !== lastMessage.id) {
+        lastOpenedMessageIdRef.current = lastMessage.id;
+        setCompanionUrl(urlToOpen);
+        setCompanionTitle(titleToOpen);
+        setIsCompanionOpen(true);
+      }
+    }
+  }, [threads, activeThreadId]);
+
+  useEffect(() => {
+    const handleOpenCompanionEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ url: string; title: string }>;
+      if (customEvent.detail && customEvent.detail.url) {
+        setCompanionUrl(customEvent.detail.url);
+        setCompanionTitle(customEvent.detail.title || "Web Source");
+      }
+      setIsCompanionOpen(true);
+    };
+    window.addEventListener("open-companion", handleOpenCompanionEvent);
+    return () => {
+      window.removeEventListener("open-companion", handleOpenCompanionEvent);
+    };
+  }, []);
+
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize Service
   const [llmService] = useState(() => new LLMService());
+
+  useEffect(() => {
+    llmService.setActiveSpaceId(activeSpaceId);
+  }, [activeSpaceId, llmService]);
+
+  useEffect(() => {
+    const handleToggleSideChat = (ev: any) => {
+      if (ev.detail && ev.detail.open === true) {
+        setSideChatThreadId(activeThreadId);
+        setIsSideChatOpen(true);
+      }
+    };
+    window.addEventListener('toggle-side-chat', handleToggleSideChat);
+    return () => window.removeEventListener('toggle-side-chat', handleToggleSideChat);
+  }, [activeThreadId]);
+
+  useEffect(() => {
+    const handleWidgetAiEdit = async (ev: any) => {
+      const { eventId, code, prompt } = ev.detail;
+      const provider = settings.modelProvider;
+      const activeLocalModel = settings.localModels.find(
+        (m) => m.id === settings.activeLocalModelId,
+      );
+      
+      const fullPrompt = `The user wants to edit a UI widget. You must return ONLY the raw, updated code snippet (no markdown wrapping, no explanation).
+      
+CURRENT CODE:
+${code}
+
+USER EDIT REQUEST:
+${prompt}
+
+IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widget renderer.`;
+
+      try {
+        const newCode = await llmService.generateSimpleText(
+          fullPrompt,
+          provider,
+          settings.openRouterApiKey || "",
+          settings.openRouterModelId,
+          settings.openAiApiKey || "",
+          settings.openAiModelId,
+          activeLocalModel,
+          settings.geminiApiKey || ""
+        );
+        
+        window.dispatchEvent(new CustomEvent('response-widget-ai-edit', {
+           detail: { eventId, newCode: newCode.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '').trim() }
+        }));
+      } catch (e) {
+        window.dispatchEvent(new CustomEvent('response-widget-ai-edit', {
+           detail: { eventId, newCode: null, error: String(e) }
+        }));
+      }
+    };
+    
+    const handleFullscreenWidget = (ev: any) => {
+       setIsWidgetFullscreen(ev.detail?.open ?? true);
+    };
+
+    window.addEventListener('request-widget-ai-edit', handleWidgetAiEdit);
+    window.addEventListener('request-fullscreen-widget', handleFullscreenWidget);
+    return () => {
+      window.removeEventListener('request-widget-ai-edit', handleWidgetAiEdit);
+      window.removeEventListener('request-fullscreen-widget', handleFullscreenWidget);
+    };
+  }, [llmService, settings]);
 
   const touchStartRef = useRef<number | null>(null);
   const touchYRef = useRef<number | null>(null);
@@ -416,25 +665,42 @@ function App() {
     });
   }, [llmService]);
 
-  // Auto-close Side Chat when navigating away from a Note or opening modals
+  // Auto-close Side Chat
   useEffect(() => {
-    if (
-      activeView !== "library" ||
-      !activeNoteId ||
-      settingsOpen ||
-      spacesModalOpen
-    ) {
-      setIsSideChatOpen(false);
+    // If in chat mode, side chat is used for widgets
+    if (activeView === "chat") {
+      if (settingsOpen || spacesModalOpen) {
+         setIsSideChatOpen(false);
+      }
+    } else {
+      if (
+        activeView !== "library" ||
+        !activeNoteId ||
+        settingsOpen ||
+        spacesModalOpen
+      ) {
+        setIsSideChatOpen(false);
+      }
     }
   }, [activeView, activeNoteId, settingsOpen, spacesModalOpen]);
 
+  // Handle CSS class for widget editor mode
+  useEffect(() => {
+    if (isSideChatOpen && activeView === "chat") {
+      document.body.classList.add('widget-editor-mode');
+    } else {
+      document.body.classList.remove('widget-editor-mode');
+    }
+  }, [isSideChatOpen, activeView]);
+
+
   // --- Scroll Logic ---
-  const scrollToBottom = () => {
+  const scrollToBottom = (smooth = true) => {
     if (chatContainerRef.current) {
       // Force scroll to bottom to ensure last token is visible
       chatContainerRef.current.scrollTo({
         top: chatContainerRef.current.scrollHeight,
-        behavior: "smooth",
+        behavior: smooth ? "smooth" : "auto",
       });
     }
   };
@@ -461,7 +727,7 @@ function App() {
   // Auto-scroll when switching threads
   useEffect(() => {
     if (activeThreadId) {
-      setTimeout(scrollToBottom, 50);
+      setTimeout(() => scrollToBottom(true), 50);
     }
   }, [activeThreadId]);
 
@@ -474,10 +740,10 @@ function App() {
         const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
         // Only auto-scroll if the user is already near the bottom
         // This allows the user to scroll up and read previous messages without being forced down
-        // Reduced threshold from 300 to 30 so a small scroll up breaks the lock
-        const isBottom = scrollHeight - scrollTop - clientHeight <= 30;
+        // Increased threshold to 150 to be more forgiving during fast generation
+        const isBottom = scrollHeight - scrollTop - clientHeight <= 150;
         if (isBottom) {
-          scrollToBottom();
+          scrollToBottom(false); // Use auto instead of smooth to prevent vibration/jumping during fast streams
         }
       }
     }
@@ -538,7 +804,37 @@ function App() {
         const savedSpaces = await db.get<Space[]>(STORES.SPACES, "all_spaces");
         if (savedSpaces) setSpaces(savedSpaces);
         const savedNotes = await db.get<Note[]>(STORES.NOTES, "all_notes");
-        if (savedNotes) setNotes(savedNotes);
+        if (savedNotes && savedNotes.length > 0) {
+          setNotes(savedNotes);
+        } else {
+          // SEED: Initial default pages
+          const initialNotes: Note[] = [
+            {
+              id: "note-template-portfolio",
+              title: "Portfolio Tracker",
+              content: ":::widget[portfolio-dashboard]\n{}\n:::",
+              updatedAt: Date.now(),
+              status: "In Progress",
+              tags: ["portfolio", "finance", "tracker"],
+              emoji: "📈",
+              cover: "linear-gradient(to right, #0f2027, #203a43, #2c5364)",
+              isFavorite: false
+            },
+            {
+              id: "note-template-safedigital",
+              title: "Safe Digital",
+              content: ":::widget[safe-digital]\n{}\n:::",
+              updatedAt: Date.now(),
+              status: "In Progress",
+              tags: ["safedigital", "personal", "tracker"],
+              emoji: "🛡️",
+              cover: "linear-gradient(to right, #6366f1, #8b5cf6, #d946ef)",
+              isFavorite: false
+            }
+          ];
+          setNotes(initialNotes);
+          await db.set(STORES.NOTES, "all_notes", initialNotes);
+        }
         const savedEvents = await db.get<CalendarEvent[]>(
           STORES.CALENDAR,
           "all_events",
@@ -587,6 +883,11 @@ function App() {
       ...eventData,
       id: generateId(),
     };
+    useNotificationsStore.getState().addNotification({
+      title: "Calendar Event Created",
+      message: `Event "${eventData.title}" was scheduled.`,
+      type: "calendar"
+    });
     const updatedEvents = [...events, newEvent];
     setEvents(updatedEvents);
     db.set(STORES.CALENDAR, "all_events", updatedEvents);
@@ -597,16 +898,18 @@ function App() {
     const updatedEvents = events.map((e) =>
       e.id === id ? { ...e, ...updates } : e,
     );
+    useNotificationsStore.getState().addNotification({
+      title: "Calendar Event Updated",
+      message: `Event "${updates.title || 'updated'}" was modified.`,
+      type: "calendar"
+    });
     setEvents(updatedEvents);
     db.set(STORES.CALENDAR, "all_events", updatedEvents);
     window.dispatchEvent(new CustomEvent("calendar-updated"));
   };
 
   const handleDeleteEvent = (id: string) => {
-    const updatedEvents = events.filter((e) => e.id !== id);
-    setEvents(updatedEvents);
-    db.set(STORES.CALENDAR, "all_events", updatedEvents);
-    window.dispatchEvent(new CustomEvent("calendar-updated"));
+    setDeleteConfirmState({ id, type: 'event' });
   };
 
   // Save Data
@@ -642,7 +945,19 @@ function App() {
   const handleSaveSpace = (space: Space) => {
     setSpaces((prev) => {
       const exists = prev.find((s) => s.id === space.id);
-      if (exists) return prev.map((s) => (s.id === space.id ? space : s));
+      if (exists) {
+        useNotificationsStore.getState().addNotification({
+          title: "Space Updated",
+          message: `Space "${space.title}" has been updated.`,
+          type: "system"
+        });
+        return prev.map((s) => (s.id === space.id ? space : s));
+      }
+      useNotificationsStore.getState().addNotification({
+        title: "Space Created",
+        message: `Space "${space.title}" has been successfully created.`,
+        type: "system"
+      });
       return [...prev, space];
     });
   };
@@ -660,63 +975,32 @@ function App() {
     }
   };
   const handleDeleteSpace = (id: string) => {
-    setSpaces((prev) => prev.filter((s) => s.id !== id));
-    if (activeSpaceId === id) setActiveSpaceId(null);
+    setDeleteConfirmState({ id, type: 'space' });
   };
   const handleNewNote = (
     parentId?: string,
     initialContent: string = "",
     initialTags: string[] = [],
+    initialTitle?: string,
+    initialCategory?: string,
+    initialEmoji?: string,
   ) => {
     const newNote: Note = {
       id: generateId(),
-      title: "",
+      title: initialTitle !== undefined ? initialTitle : "",
       content: initialContent,
       updatedAt: Date.now(),
       status: "Idea",
       tags: initialTags,
       parentId,
+      category: initialCategory,
+      emoji: initialEmoji,
     };
-    setNotes((prev) => [newNote, ...prev]);
-    navigateToNote(newNote.id);
-    setExpandedSidebarSection("library");
-  };
-
-  const handleNewPortfolioTracker = () => {
-    const initialContent = `:::widget[portfolio-dashboard]
-{}
-:::`;
-
-    const newNote: Note = {
-      id: generateId(),
-      title: "Portfolio",
-      content: initialContent,
-      updatedAt: Date.now(),
-      status: "In Progress",
-      tags: ["portfolio", "finance", "tracker"],
-      emoji: "📈",
-      cover: "linear-gradient(to right, #0f2027, #203a43, #2c5364)",
-    };
-    setNotes((prev) => [newNote, ...prev]);
-    navigateToNote(newNote.id);
-    setExpandedSidebarSection("library");
-  };
-
-  const handleNewSafeDigital = () => {
-    const initialContent = `:::widget[safedigital-vault]
-{}
-:::`;
-
-    const newNote: Note = {
-      id: generateId(),
-      title: "Safe Digital",
-      content: initialContent,
-      updatedAt: Date.now(),
-      status: "In Progress",
-      tags: ["safedigital", "personal", "tracker"],
-      emoji: "🛡️",
-      cover: "linear-gradient(to right, #6366f1, #8b5cf6, #d946ef)",
-    };
+    useNotificationsStore.getState().addNotification({
+      title: "Note Created",
+      message: "A new note has been created.",
+      type: "message"
+    });
     setNotes((prev) => [newNote, ...prev]);
     navigateToNote(newNote.id);
     setExpandedSidebarSection("library");
@@ -724,10 +1008,7 @@ function App() {
 
   // New: Delete Thread Handler
   const handleDeleteThread = (id: string) => {
-    setThreads((prev) => prev.filter((t) => t.id !== id));
-    if (activeThreadId === id) {
-      handleNewThread();
-    }
+    setDeleteConfirmState({ id, type: 'thread' });
   };
 
   const handleSelectNote = (id: string) => {
@@ -830,10 +1111,7 @@ function App() {
       noteHistoryRef.current[activeNote.id].stack.length - 1;
 
   const handleDeleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-    setOpenNoteIds((prev) => prev.filter((tid) => tid !== id));
-    if (activeNoteId === id) setActiveNoteId(null);
-    delete noteHistoryRef.current[id];
+    setDeleteConfirmState({ id, type: 'note' });
   };
 
   // Refactored to accept optional ID for sidebar actions
@@ -1243,6 +1521,16 @@ function App() {
       threadId: string | null;
       noteId: string | null;
       spaceId: string | null;
+      folderId?: string | null;
+    }[]
+  >([]);
+  const [navForwardHistory, setNavForwardHistory] = useState<
+    {
+      view: string;
+      threadId: string | null;
+      noteId: string | null;
+      spaceId: string | null;
+      folderId?: string | null;
     }[]
   >([]);
   const [showFavorites, setShowFavorites] = useState(false);
@@ -1259,6 +1547,7 @@ function App() {
         threadId: activeThreadId,
         noteId: activeNoteId,
         spaceId: activeSpaceId,
+        folderId: currentFolderId,
       };
       // Avoid duplicates at the top of the stack
       if (prev.length > 0) {
@@ -1266,15 +1555,83 @@ function App() {
         if (
           last.view === current.view &&
           last.threadId === current.threadId &&
-          last.noteId === current.noteId
+          last.noteId === current.noteId &&
+          last.folderId === current.folderId
         ) {
           return prev;
         }
       }
       return [...prev, current].slice(-50); // Keep last 50
     });
+    setNavForwardHistory([]); // Clear forward history on new navigation
     lastNavAction.current = "navigate";
     setIsHomeBackActive(false);
+  };
+
+  const handleNavBack = () => {
+    if (navHistory.length === 0) return;
+    
+    const previous = navHistory[navHistory.length - 1];
+    setNavHistory((prev) => prev.slice(0, -1)); // Pop
+    
+    // Push the current state to forward history before navigating
+    const currentState = {
+      view: activeView,
+      threadId: activeThreadId,
+      noteId: activeNoteId,
+      spaceId: activeSpaceId,
+      folderId: currentFolderId,
+    };
+    setNavForwardHistory((prev) => [...prev, currentState]);
+    
+    // Restore previous state
+    setActiveView(previous.view as any);
+    setActiveThreadId(previous.threadId);
+    setActiveNoteId(previous.noteId);
+    setActiveSpaceId(previous.spaceId);
+    if (previous.folderId !== undefined) {
+      setCurrentFolderId(previous.folderId);
+    }
+    
+    // Expand appropriate sidebar section
+    if (previous.view === "library" || previous.noteId) {
+      setExpandedSidebarSection("library");
+    } else if (previous.view === "chat" || previous.threadId) {
+      setExpandedSidebarSection("chat");
+    }
+  };
+
+  const handleNavForward = () => {
+    if (navForwardHistory.length === 0) return;
+    
+    const next = navForwardHistory[navForwardHistory.length - 1];
+    setNavForwardHistory((prev) => prev.slice(0, -1)); // Pop
+    
+    // Push the current state to back history before navigating
+    const currentState = {
+      view: activeView,
+      threadId: activeThreadId,
+      noteId: activeNoteId,
+      spaceId: activeSpaceId,
+      folderId: currentFolderId,
+    };
+    setNavHistory((prev) => [...prev, currentState]);
+    
+    // Restore next state
+    setActiveView(next.view as any);
+    setActiveThreadId(next.threadId);
+    setActiveNoteId(next.noteId);
+    setActiveSpaceId(next.spaceId);
+    if (next.folderId !== undefined) {
+      setCurrentFolderId(next.folderId);
+    }
+    
+    // Expand appropriate sidebar section
+    if (next.view === "library" || next.noteId) {
+      setExpandedSidebarSection("library");
+    } else if (next.view === "chat" || next.threadId) {
+      setExpandedSidebarSection("chat");
+    }
   };
 
   // ... existing handlers ...
@@ -1309,7 +1666,8 @@ function App() {
   const navigateToNote = (id: string) => {
     pushToHistory();
     setActiveView("library");
-    setActiveNoteId(id);
+    setActiveNoteId(id ? id : null);
+    if (!id) return;
     setOpenNoteIds((prev) => {
       if (!prev.includes(id)) return [...prev, id];
       return prev;
@@ -1793,6 +2151,8 @@ function App() {
         const moduleName =
           module === "safe_digital" ? "Safe Digital" : "Portfolio";
         confirmText = `Action confirmed. I've performed the "${action}" action in ${moduleName}.`;
+      } else if (actionToConfirm.type === "run_command") {
+        confirmText = `Action confirmed: executing command "${actionToConfirm.data.command}".`;
       } else {
         confirmText = `Action confirmed. I've ${actionToConfirm.type === "create_page" ? "created" : "updated"} the page "${titleToUse}".`;
       }
@@ -1855,6 +2215,8 @@ function App() {
       if (action.type === 'calendar_event' && destructiveOps.includes(action.data.operation + '_calendar_event')) isDestructive = true;
       if (action.type === 'update_page') isDestructive = true;
       if (action.type === 'sensitive_data_warning') isDestructive = true;
+      if (action.type === 'complex_module_action') isDestructive = true;
+      if (action.type === 'run_command') isDestructive = true;
 
       if (isDestructive) {
         setPendingAction({ ...action, resolvePromise: resolve });
@@ -1889,14 +2251,12 @@ function App() {
       prev.map((t) => (t.id === thread.id ? updatedThread : t)),
     );
 
-    // Trigger Generation
     await triggerGeneration(
       updatedThread.id,
       previousUserMsg.content,
       previousUserMsg.attachments || [],
       newMessages,
       inputIsAgentMode,
-      inputIsAgentProMode,
     );
   };
 
@@ -1936,7 +2296,6 @@ function App() {
       attachments,
       prunedMessages.slice(0, msgIndex),
       inputIsAgentMode,
-      inputIsAgentProMode,
     );
   };
 
@@ -1946,7 +2305,6 @@ function App() {
     attachments: Attachment[],
     history: Message[],
     isAgentMode: boolean = false,
-    isAgentProMode: boolean = false,
   ) => {
     setIsThinking(true);
     const tempBotId = generateId();
@@ -1970,17 +2328,28 @@ function App() {
       ),
     );
     
-    setTimeout(scrollToBottom, 50);
+    setTimeout(() => scrollToBottom(true), 50);
 
     let effectiveUseSearch = settings.useSearch;
     let modifiedPrompt = prompt;
     let combinedAttachments = [...attachments];
-    let customSystemInstructions = undefined;
+    let customSystemInstructions: string | undefined = undefined;
 
     // Logic duplicated from original handleSendMessage for consistency
     if (activeSpace) {
       if (activeSpace.systemInstructions)
         customSystemInstructions = activeSpace.systemInstructions;
+
+      if (activeSpace.isTeamMode && activeSpace.subAgents && activeSpace.subAgents.length > 0) {
+        if (!customSystemInstructions) customSystemInstructions = "You are the manager or orchestrator of a team.";
+        customSystemInstructions += "\n\n# SUB-AGENTS AVAILABLE TO YOU\n";
+        customSystemInstructions += "You are the manager / orchestrator of a team of specialized sub-agents. You should break down the user's request and explicitly simulate or delegate tasks to them by stating what each agent is doing, and then generating their output based on their profile.\n\n";
+        activeSpace.subAgents.forEach(agent => {
+           customSystemInstructions += `\n## Agent: ${agent.name} (Role: ${agent.role})\n`;
+           customSystemInstructions += `Profile/Instructions: ${agent.profile}\n`;
+        });
+      }
+
       if (activeSpace.files && activeSpace.files.length > 0) {
         combinedAttachments = [...combinedAttachments, ...activeSpace.files];
         modifiedPrompt += `\n\n[Context from Space '${activeSpace.title}': I have attached ${activeSpace.files.length} knowledge base files. Use them to answer.]`;
@@ -1996,6 +2365,23 @@ function App() {
       let activeLocalModel = settings.localModels.find(
         (m) => m.id === settings.activeLocalModelId,
       );
+
+      const resolvedModelId = activeSpace?.modelId;
+      if (resolvedModelId && resolvedModelId !== "auto") {
+        if (resolvedModelId.startsWith("gemini")) {
+          provider = ModelProvider.GEMINI;
+        } else if (resolvedModelId === "openrouter") {
+          provider = ModelProvider.OPENROUTER;
+        } else if (resolvedModelId === "openai") {
+          provider = ModelProvider.OPENAI;
+        } else {
+          const found = settings.localModels.find((m) => m.id === resolvedModelId);
+          if (found) {
+            activeLocalModel = found;
+            provider = ModelProvider.LOCAL;
+          }
+        }
+      }
 
       let textQueue = "";
       let reasoningQueue = "";
@@ -2030,7 +2416,7 @@ function App() {
                   ...m,
                   content: m.content + textChunk,
                   reasoning: (m.reasoning || "") + reasoningChunk,
-                  isAgentPro: isAgentProMode, // Tag message as Pro
+                  isAgentPro: isAgentMode, // Tag message as Pro if agent is active
                 };
               }),
             };
@@ -2049,17 +2435,19 @@ function App() {
         }
       };
 
-      if (isAgentProMode) {
+      if (isAgentMode) {
         await AgentEngine.processRequest(
           modifiedPrompt,
           history,
           llmService,
           onChunk,
-          (finalText) => {
+          (finalText, newPendingAction) => {
             const finalPlan = useAgentStore.getState().planPanel;
             const finalActions = useAgentStore.getState().actionFeed;
 
-            // pendingAction is now handled by requestConfirmation inside AgentEngine
+            if (newPendingAction) {
+              setPendingAction(newPendingAction);
+            }
 
             setThreads((prev) =>
               prev.map((t) =>
@@ -2085,6 +2473,7 @@ function App() {
             setIsThinking(false);
           },
           requestConfirmation,
+          isAgentMode,
           provider,
           settings.openRouterApiKey,
           settings.openRouterModelId,
@@ -2118,6 +2507,7 @@ function App() {
         settings.braveApiKey,
         onChunk,
         isAgentMode,
+        activeSpace?.isTeamMode ? activeSpace.subAgents : undefined
       );
 
       if (response.pendingAction) {
@@ -2257,7 +2647,7 @@ function App() {
           : t,
       ),
     );
-    setTimeout(scrollToBottom, 50);
+    setTimeout(() => scrollToBottom(true), 50);
     return id;
   };
 
@@ -2287,7 +2677,6 @@ function App() {
     attachments: Attachment[],
     modelId?: string,
     isAgentMode: boolean = false,
-    isAgentProMode: boolean = false,
     threadIdOverride?: string,
   ) => {
     isStoppedRef.current = false;
@@ -2340,7 +2729,7 @@ function App() {
       content: "",
       timestamp: Date.now(),
       isThinking: true,
-      isAgentPro: isAgentProMode,
+      isAgentPro: isAgentMode,
     };
 
     // Get current messages to pass as history
@@ -2361,19 +2750,50 @@ function App() {
       ),
     );
     
-    setTimeout(scrollToBottom, 50);
+    setTimeout(() => scrollToBottom(true), 50);
 
     // ==========================================
     // INTEGRATION: AGENT ENGINE ROUTING
     // ==========================================
-    if (isAgentProMode) {
+    // Auto-promote browser operations, youtube seeks, and media requests to Agent Mode to leverage multi-turn planners and active feedbacks
+    const normalizeForRouting = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+    const normalizedTextForCheck = normalizeForRouting(processedText);
+
+    // Multilingual keywords for media/browser/youtube operations
+    const mediaAndBrowserKeywords = [
+      // English
+      "play", "song", "music", "video", "track", "clip", "youtube", "search", "find", "browser", "site", "navigate", "open", "watch", "listen",
+      // Romanian
+      "reda", "pune", "pun", "muzica", "piesa", "melod", "youtube", "videoclip", "clip", "browser", "site", "pagina", "navigheaza", "cauta", "caut", "ascul", "prives", "vezi",
+      // Spanish
+      "reproducir", "reproduce", "reproduci", "pon", "cancion", "musica", "video", "navegar", "buscar", "pagina", "escucha",
+      // French
+      "jouer", "joue", "mets", "chanson", "musique", "video", "naviguer", "rechercher", "page", "ecoute",
+      // Italian
+      "riproduci", "metti", "canzone", "musica", "video", "navigare", "cerca", "pagina", "ascolta",
+      // General companion keywords
+      "browser companion"
+    ];
+
+    const isMediaOrBrowserQuery = mediaAndBrowserKeywords.some((w) => 
+      normalizedTextForCheck.includes(w)
+    );
+
+    const actualAgentMode = isAgentMode || isMediaOrBrowserQuery || isCompanionOpen;
+
+    if (actualAgentMode) {
       try {
         const currentThread = threads.find(t => t.id === threadId);
         const history = currentThread ? currentThread.messages : [];
         
-        const enginePrompt = isVoice 
-          ? `[SYSTEM: YOU ARE IN LIVE VOICE CONVERSATION MODE. DETECT MY LANGUAGE AND RESPOND NATURALLY IN THAT EXACT SAME LANGUAGE. BE VERY CONCISE FOR AUDIO.]\n\n${processedText}`
-          : processedText;
+        let enginePrompt = processedText;
+        if (isVoice) {
+          enginePrompt = `[SYSTEM: YOU ARE IN A LIVE VOICE CONVERSATION / EȘTI ÎNTR-O CONVERSAȚIE VOCALĂ LIVE. DETECT MY LANGUAGE AND RESPOND NATURALLY AND EXTREMELY CONCISELY IN THAT SAME LANGUAGE. If I ask you to interact with the page, click elements, write text, scroll, or navigate to websites, execute the browser tools (browser_navigate, browser_click, browser_type, browser_scroll) IMMEDIATELY and smoothly in real-time. Do not explain your steps or plan before typing or clicking. Be direct, natural, and helpful!]\n\n${processedText}`;
+        } else if (isCompanionOpen) {
+          enginePrompt = `[SYSTEM: BROWSER COMPANION CO-PILOT ACTIVE. Use tools like browser_navigate, browser_click, browser_type, browser_scroll as needed to control the live browser viewport dynamically and fulfill the request. Maintain smooth navigation and keep the user in the loop with short, natural explanations.]\n\n${processedText}`;
+        }
         
         await AgentEngine.processRequest(
           enginePrompt,
@@ -2398,15 +2818,17 @@ function App() {
               }),
             );
           },
-          (finalText) => {
+          (finalText, newPendingAction) => {
             if (isStoppedRef.current) return;
             
             const finalPlan = useAgentStore.getState().planPanel;
             const finalActions = useAgentStore.getState().actionFeed;
+
+            if (newPendingAction) {
+              setPendingAction(newPendingAction);
+            }
             
             console.log("onComplete called. finalPlan:", finalPlan, "finalActions:", finalActions);
-
-            // pendingAction is now handled by requestConfirmation inside AgentEngine
 
             if (isVoice && finalText) {
               handleTTS(finalText);
@@ -2435,6 +2857,7 @@ function App() {
             );
           },
           requestConfirmation,
+          actualAgentMode,
           settings.modelProvider,
           settings.openRouterApiKey,
           settings.openRouterModelId,
@@ -2474,7 +2897,7 @@ function App() {
     let effectiveUseSearch = settings.useSearch;
     let modifiedPrompt = processedText;
     let combinedAttachments = [...attachments];
-    let customSystemInstructions = undefined;
+    let customSystemInstructions: string | undefined = undefined;
 
     // --- FOCUS MODE LOGIC UPDATE (Handle Library Mode) ---
     if (focusModes.includes(FocusMode.LIBRARY)) {
@@ -2507,6 +2930,17 @@ function App() {
     if (activeSpace) {
       if (activeSpace.systemInstructions)
         customSystemInstructions = activeSpace.systemInstructions;
+        
+      if (activeSpace.isTeamMode && activeSpace.subAgents && activeSpace.subAgents.length > 0) {
+        if (!customSystemInstructions) customSystemInstructions = "You are the manager or orchestrator of a team.";
+        customSystemInstructions += "\n\n# SUB-AGENTS AVAILABLE TO YOU\n";
+        customSystemInstructions += "You are the manager / orchestrator of a team of specialized sub-agents. You should break down the user's request and explicitly simulate or delegate tasks to them by stating what each agent is doing, and then generating their output based on their profile.\n\n";
+        activeSpace.subAgents.forEach(agent => {
+           customSystemInstructions += `\n## Agent: ${agent.name} (Role: ${agent.role})\n`;
+           customSystemInstructions += `Profile/Instructions: ${agent.profile}\n`;
+        });
+      }
+        
       if (activeSpace.files && activeSpace.files.length > 0) {
         combinedAttachments = [...combinedAttachments, ...activeSpace.files];
         modifiedPrompt += `\n\n[Context from Space '${activeSpace.title}': I have attached ${activeSpace.files.length} knowledge base files. Use them to answer.]`;
@@ -2612,6 +3046,7 @@ function App() {
         settings.braveApiKey,
         onChunk, // Pass the streaming callback
         isAgentMode,
+        activeSpace?.isTeamMode ? activeSpace.subAgents : undefined
       );
 
       if (isStoppedRef.current) return;
@@ -2802,8 +3237,14 @@ function App() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      <Toaster 
+        position="top-right" 
+        toastOptions={{ 
+          className: 'bg-white dark:bg-pplx-card text-black dark:text-pplx-text border border-pplx-border' 
+        }} 
+      />
       <Sidebar
-        isOpen={sidebarOpen}
+        isOpen={sidebarOpen && !isWidgetFullscreen}
         isCollapsed={sidebarCollapsed}
         sidebarWidth={sidebarWidth}
         setSidebarWidth={setSidebarWidth}
@@ -2816,37 +3257,31 @@ function App() {
         activeSpaceId={activeSpaceId}
         activeNoteId={activeNoteId}
         activeView={activeView}
-        events={events}
         onSelectThread={handleSelectThread}
         onSelectSpace={handleSelectSpace}
         onSelectNote={handleSelectNote}
-        onSelectEvent={() => {
-          setActiveView("calendar");
-        }}
         onChangeView={(view) => {
           if (view === "search" && activeView !== "search") {
             setPreviousViewBeforeSearch(activeView);
           }
           pushToHistory();
-          setActiveView(
-            view as "chat" | "library" | "calendar" | "search" | "portfolio",
-          );
+          setActiveView(view);
         }}
         onNewThread={handleNewThread}
         onNewNote={handleNewNote}
         onNewSpace={(parentId?: string) => {
           setSpaceModalInitialId("new");
           setSpaceModalInitialParentId(parentId || null);
+          setActiveView("spaces");
           setSpacesModalOpen(true);
         }}
         onOpenSpaceFiles={(id) => {
           setActiveSpaceId(id);
           setIsSpaceFilesModalOpen(true);
         }}
-        onNewPortfolioTracker={handleNewPortfolioTracker}
-        onNewSafeDigital={handleNewSafeDigital}
         onManageSpaces={(id?: string) => {
           setSpaceModalInitialId(id || null);
+          setActiveView("spaces");
           setSpacesModalOpen(true);
         }}
         onDuplicateSpace={handleDuplicateSpace}
@@ -2873,8 +3308,49 @@ function App() {
             settings.enableMobileDock && window.innerWidth < 640
               ? "calc(72px + env(safe-area-inset-bottom))"
               : "0px",
+          marginLeft: isWidgetFullscreen && window.innerWidth >= 768 ? "0" : "0", // Could be used to force reset if needed
         }}
       >
+        <DesktopMenuBar 
+          activeView={activeView} 
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={handleOpenSidebar}
+          searchQuery={globalSearchQuery}
+          setSearchQuery={setGlobalSearchQuery}
+          threads={threads}
+          notes={notes}
+          events={events}
+          spaces={spaces}
+          activeSpaceId={activeSpace?.id}
+          activeThread={activeThread}
+          isGenerating={isThinking}
+          onSelectThread={handleSelectThread}
+          onSelectNote={navigateToNote}
+          onSelectEvent={() => setActiveView("calendar")}
+          onSelectSpace={handleSelectSpace}
+          isCompanionOpen={isCompanionOpen}
+          onToggleCompanion={() => {
+            setIsCompanionOpen(!isCompanionOpen);
+            if (!isCompanionOpen && !companionUrl) {
+              setCompanionUrl("https://www.youtube.com");
+              setCompanionTitle("Companion Space");
+            }
+          }}
+          onManageTeam={() => {
+            if (activeSpace) {
+              setSpaceModalInitialId(activeSpace.id);
+              setActiveView("spaces");
+              setSpacesModalOpen(true);
+            }
+          }}
+          setActiveView={(view) => {
+            if (view === "search" && activeView !== "search") {
+              setPreviousViewBeforeSearch(activeView);
+            }
+            pushToHistory();
+            setActiveView(view as any);
+          }}
+        />
         {/* Premium Dark Background Effect for Home Page */}
         {!activeThreadId && viewToRender === "chat" && (
           <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-center bg-pplx-primary transition-colors duration-150">
@@ -2911,7 +3387,7 @@ function App() {
           />
         )}
 
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <div className="fixed top-2 md:top-4 right-4 z-50 flex items-center gap-2 md:hidden">
           {isLearning && (
             <div className="flex items-center gap-2 bg-pplx-card border border-pplx-accent/30 rounded-full px-3 py-1.5 shadow-lg animate-pulse">
               <Brain size={14} className="text-pplx-accent" />
@@ -2920,6 +3396,23 @@ function App() {
               </span>
             </div>
           )}
+          <button
+            onClick={() => {
+              setIsCompanionOpen(!isCompanionOpen);
+              if (!isCompanionOpen && !companionUrl) {
+                setCompanionUrl("https://www.youtube.com");
+                setCompanionTitle("Companion Space");
+              }
+            }}
+            className={`flex items-center justify-center w-9 h-9 rounded-full border shadow-lg transition-all duration-150 cursor-pointer pointer-events-auto select-none ${
+              isCompanionOpen
+                ? "bg-pplx-accent border-pplx-accent text-white"
+                : "bg-pplx-card hover:bg-pplx-hover border-pplx-border/50 text-pplx-text"
+            }`}
+            title="Toggle Companion Panel"
+          >
+            <Globe size={16} className={isCompanionOpen ? "animate-spin-[12s]" : ""} />
+          </button>
         </div>
 
         {/* --- PENDING ACTION CONFIRMATION MODAL --- */}
@@ -2937,31 +3430,32 @@ function App() {
             <div className="flex items-center h-10 px-3 select-none bg-pplx-primary border-none z-50 w-full relative border-b border-pplx-border/50 md:border-none">
               <div className="flex-1 flex items-center min-w-0">
                 {/* SIDEBAR TOGGLE & UNDO / REDO BUTTONS */}
-                <div className="flex items-center gap-4 mr-2 shrink-0 -ml-2">
+                <div className="flex items-center gap-2 mr-2 shrink-0 -ml-2">
                   {!sidebarOpen && (
                     <SidebarToggle
                       onClick={handleOpenSidebar}
-                      className="hidden md:flex p-1 hover:bg-pplx-hover rounded text-pplx-muted transition-all"
+                      className="flex p-1 hover:bg-pplx-hover rounded text-pplx-muted transition-all mr-1 animate-fadeIn"
                       size={20}
                     />
                   )}
+                  {/* Navigation Back */}
                   <button
-                    onClick={handleUndo}
-                    disabled={!canUndo}
-                    className={`p-1 rounded transition-colors ${canUndo ? "text-pplx-text hover:bg-pplx-hover cursor-pointer" : "text-pplx-muted/30 cursor-default"}`}
-                    title="Undo (Back)"
+                    onClick={handleNavBack}
+                    disabled={navHistory.length === 0}
+                    className={`p-1 rounded transition-colors ${navHistory.length > 0 ? "text-pplx-text hover:bg-pplx-hover cursor-pointer" : "text-pplx-muted/33 cursor-default"}`}
+                    title="Anterior (Go Back)"
                   >
-                    {" "}
-                    <ChevronLeft size={22} />{" "}
+                    <ChevronLeft size={20} />
                   </button>
+
+                  {/* Navigation Forward */}
                   <button
-                    onClick={handleRedo}
-                    disabled={!canRedo}
-                    className={`p-1 rounded transition-colors ${canRedo ? "text-pplx-text hover:bg-pplx-hover cursor-pointer" : "text-pplx-muted/30 cursor-default"}`}
-                    title="Redo (Forward)"
+                    onClick={handleNavForward}
+                    disabled={navForwardHistory.length === 0}
+                    className={`p-1 rounded transition-colors ${navForwardHistory.length > 0 ? "text-pplx-text hover:bg-pplx-hover cursor-pointer" : "text-pplx-muted/33 cursor-default"}`}
+                    title="Următor (Go Forward)"
                   >
-                    {" "}
-                    <ChevronRight size={22} />{" "}
+                    <ChevronRight size={20} />
                   </button>
                 </div>
 
@@ -3239,68 +3733,87 @@ function App() {
 
         {/* Home Header */}
         {!activeThreadId && viewToRender === "chat" && !activeSpaceId && (
-          <div className="absolute top-0 left-0 right-0 z-20 p-6 pt-12 md:p-2 md:pt-4 flex flex-col items-start gap-6 md:gap-4 pointer-events-none">
-            {/* Profile Section (Click to Open Settings) */}
-            <div
-              onClick={() => setSettingsOpen(true)}
-              className="md:hidden flex items-center gap-5 pointer-events-auto cursor-pointer active:opacity-80 transition-opacity"
-            >
-              {/* Avatar (Larger) - Simple, no border/bg colors */}
-              <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0 shadow-lg border border-white/10">
-                {settings.userProfile.avatar ? (
-                  <img
-                    src={settings.userProfile.avatar}
-                    alt="Avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-pplx-secondary flex items-center justify-center text-pplx-text text-3xl font-bold">
-                    {settings.userProfile.name
-                      ? settings.userProfile.name.substring(0, 1).toUpperCase()
-                      : "U"}
+          <>
+            <div className="absolute top-0 left-0 right-0 z-20 p-6 pt-12 md:p-2 md:pt-4 flex flex-col items-start gap-6 md:gap-4 pointer-events-none">
+              <div className="w-full flex items-start justify-between">
+                {/* Profile Section (Click to Open Settings) */}
+                <div
+                  onClick={() => setSettingsOpen(true)}
+                  className="md:hidden flex items-center gap-5 pointer-events-auto cursor-pointer active:opacity-80 transition-opacity"
+                >
+                  {/* Avatar (Larger) - Simple, no border/bg colors */}
+                  <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0 shadow-lg border border-white/10">
+                    {settings.userProfile.avatar ? (
+                      <img
+                        src={settings.userProfile.avatar}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-pplx-secondary flex items-center justify-center text-pplx-text text-3xl font-bold">
+                        {settings.userProfile.name
+                          ? settings.userProfile.name.substring(0, 1).toUpperCase()
+                          : "U"}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Name & Subtitle (Larger Name, Smaller Subtitle) */}
+                  <div className="flex flex-col">
+                    <span className="text-[28px] font-semibold text-pplx-text leading-tight drop-shadow-md">
+                      {settings.userProfile.name || "User"}
+                    </span>
+                    <span className="text-sm text-pplx-muted font-light tracking-wide opacity-90 drop-shadow-sm mt-1">
+                      Where knowledge begins
+                    </span>
+                  </div>
+                </div>
+
+                <div className="hidden md:hidden sm:flex md:pointer-events-none pointer-events-auto">
+                   {/* Optional: Add spacing or render if screen is big enough, 
+                       but MobileHomeActions might wrap Profile if screen is too small, 
+                       so it's better placed below or wrapped properly */}
+                </div>
+              </div>
+
+              {/* Mobile Actions: Only on mobile, below profile or right aligned if enough space. Let's put it standalone below profile */}
+              <div className="w-full flex items-center justify-between md:hidden">
+                {/* Sidebar Toggle */}
+                {!sidebarOpen && (
+                  <SidebarToggle
+                    onClick={handleOpenSidebar}
+                    className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden"
+                    size={36}
+                  />
                 )}
+
+                <div className="ml-auto pointer-events-auto">
+                  <MobileHomeActions 
+                    activeView={viewToRender} 
+                    setActiveView={(view) => {
+                      if (view === "search" && activeView !== "search") {
+                        setPreviousViewBeforeSearch(activeView);
+                      }
+                      pushToHistory();
+                      setActiveView(view as any);
+                    }}
+                  />
+                </div>
               </div>
 
-              {/* Name & Subtitle (Larger Name, Smaller Subtitle) */}
-              <div className="flex flex-col">
-                <span className="text-[28px] font-semibold text-pplx-text leading-tight drop-shadow-md">
-                  {settings.userProfile.name || "User"}
-                </span>
-                <span className="text-sm text-pplx-muted font-light tracking-wide opacity-90 drop-shadow-sm mt-1">
-                  Where knowledge begins
-                </span>
-              </div>
+              {/* Desktop Sidebar Toggle removed, it's in DesktopMenuBar */}
             </div>
+          </>
+        )}
 
-            {/* Sidebar Toggle */}
+        {/* Space Header Toggle */}
+        {!activeThreadId && viewToRender === "chat" && activeSpaceId && (
+          <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
             {!sidebarOpen && (
               <SidebarToggle
                 onClick={handleOpenSidebar}
                 className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden"
                 size={36}
-              />
-            )}
-
-            {/* Desktop Sidebar Toggle */}
-            {!sidebarOpen && (
-              <SidebarToggle
-                onClick={handleOpenSidebar}
-                className="hidden md:flex p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted pointer-events-auto transition-all"
-                size={24}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Space Header Toggle */}
-        {!activeThreadId && viewToRender === "chat" && activeSpaceId && (
-          <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none">
-            {!sidebarOpen && (
-              <SidebarToggle
-                onClick={handleOpenSidebar}
-                className="hidden md:flex p-2 hover:bg-pplx-hover rounded-xl text-pplx-muted pointer-events-auto transition-all"
-                size={24}
               />
             )}
           </div>
@@ -3309,66 +3822,35 @@ function App() {
         {activeThreadId && viewToRender === "chat" && !isDashboardMode && (
           <>
             {/* TOP GRADIENT MASK */}
-            <div className="fixed top-0 left-0 right-0 h-32 bg-gradient-to-b from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-30" />
+            <div className="fixed top-0 left-0 right-0 h-16 bg-gradient-to-b from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-30" />
 
             <div className="absolute top-0 left-0 right-0 z-40 pointer-events-none [&>div]:!bg-transparent [&>div]:!backdrop-blur-none [&>div]:pointer-events-auto">
-              {(() => {
-                // Use focused message if available, otherwise fallback to last model message
-                const focusedMsg = activeThread?.messages.find(
-                  (m) => m.id === focusedMessageId,
-                );
-                const lastModelMessage = activeThread?.messages
-                  .filter((m) => m.role === Role.MODEL)
-                  .slice(-1)[0];
-                const targetMessage =
-                  focusedMsg && focusedMsg.role === Role.MODEL
-                    ? focusedMsg
-                    : lastModelMessage;
-
-                return (
-                  <ChatHeader
-                    title={activeThread?.title}
-                    onBack={handleBackToNewThread}
-                    showActions={!!targetMessage && !targetMessage.isThinking}
-                    onTTS={() =>
-                      targetMessage && handleTTS(targetMessage.content)
-                    }
-                    isPlayingAudio={isPlayingAudio}
-                    onDashboard={() => setIsDashboardMode(true)}
-                    onCopy={() =>
-                      targetMessage &&
-                      handleCopyText(targetMessage.id, targetMessage.content)
-                    }
-                    onShare={() =>
-                      targetMessage && handleShare(targetMessage.content)
-                    }
-                    onSave={() =>
-                      targetMessage && setActiveAddToSpaceId(targetMessage.id)
-                    }
-                    activeSpace={activeSpace}
-                    onToggleSidebar={handleOpenSidebar}
-                    isSidebarOpen={sidebarOpen}
-                  />
-                );
-              })()}
+              <ChatHeader
+                title={activeThread?.title}
+                onBack={handleBackToNewThread}
+                activeSpace={activeSpace}
+                onToggleSidebar={handleOpenSidebar}
+                isSidebarOpen={sidebarOpen}
+              />
             </div>
           </>
         )}
 
         {viewToRender === "library" ? (
-          <div className="flex-1 flex flex-col overflow-hidden bg-pplx-primary">
-            {activeNote?.tags?.includes("portfolio") ? (
-              <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar">
-                <PortfolioDashboard
-                  hasDock={settings.enableMobileDock && window.innerWidth < 640}
-                />
-              </div>
-            ) : activeNote?.tags?.includes("safedigital") ? (
-              <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar">
-                <SafeDigitalPage
-                  hasDock={settings.enableMobileDock && window.innerWidth < 640}
-                />
-              </div>
+          <div className="flex-1 flex flex-col overflow-hidden bg-pplx-primary md:pt-10">
+            {!activeNoteId ? (
+              <LibraryDashboard
+                notes={notes}
+                onSelectNote={handleSelectNote}
+                onCreateNote={(parentId, content, tags, title, category, emoji) => handleNewNote(parentId, content, tags, title, category, emoji)}
+                onDeleteNote={handleDeleteNote}
+                onUpdateNote={(note) => handleSaveNote(note, false)}
+                currentFolderId={currentFolderId}
+                setCurrentFolderId={(id) => {
+                  pushToHistory();
+                  setCurrentFolderId(id);
+                }}
+              />
             ) : (
               <NotesView
                 activeNoteId={activeNoteId}
@@ -3382,13 +3864,78 @@ function App() {
               />
             )}
           </div>
+        ) : viewToRender === "spaces" ? (
+          <div className="flex-1 flex flex-col overflow-hidden bg-pplx-primary md:pt-10 relative">
+             <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
+               {!sidebarOpen && (
+                 <>
+                   <SidebarToggle
+                     onClick={handleOpenSidebar}
+                     className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden"
+                     size={36}
+                   />
+                 </>
+               )}
+             </div>
+             {spacesModalOpen ? (
+               <SpaceConfigView
+                 space={spaceModalInitialId === "new" ? {
+                   id: Math.random().toString(36).substr(2, 9),
+                   title: "",
+                   emoji: "📁",
+                   description: "",
+                   systemInstructions: "",
+                   files: [],
+                   createdAt: Date.now(),
+                   parentId: spaceModalInitialParentId || undefined,
+                 } : spaces.find(s => s.id === spaceModalInitialId) || {
+                   id: Math.random().toString(36).substr(2, 9),
+                   title: "",
+                   emoji: "📁",
+                   description: "",
+                   systemInstructions: "",
+                   files: [],
+                   createdAt: Date.now(),
+                   parentId: spaceModalInitialParentId || undefined,
+                 }}
+                 onSaveSpace={handleSaveSpace}
+                 onDeleteSpace={handleDeleteSpace}
+                 onClose={() => {
+                   setSpacesModalOpen(false);
+                   setSpaceModalInitialId(null);
+                   setSpaceModalInitialParentId(null);
+                 }}
+                 settings={settings}
+               />
+             ) : (
+               <SpacesDashboard
+                 spaces={spaces}
+                 threads={threads}
+                 onSelectSpace={(id) => {
+                   setActiveView("chat");
+                   setActiveSpaceId(id);
+                 }}
+                 onCreateSpace={() => {
+                   setSpaceModalInitialId("new");
+                   setSpacesModalOpen(true);
+                 }}
+                 onManageSpaces={(id) => {
+                   setSpaceModalInitialId(id || null);
+                   setSpacesModalOpen(true);
+                 }}
+               />
+             )}
+          </div>
         ) : viewToRender === "search" ? (
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden md:pt-10">
             <SearchView
               threads={threads}
               notes={notes}
               events={events}
               spaces={spaces}
+              searchQuery={globalSearchQuery}
+              setSearchQuery={setGlobalSearchQuery}
+              onClose={() => setActiveView(previousViewBeforeSearch)}
               onSelectThread={(id) => {
                 setActiveView("chat");
                 setActiveThreadId(id);
@@ -3409,28 +3956,115 @@ function App() {
               }}
             />
           </div>
+        ) : viewToRender === "team_dashboard" ? (
+          <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar relative z-50 md:pt-0 pt-10">
+             <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
+               {!sidebarOpen && (
+                 <SidebarToggle onClick={handleOpenSidebar} className="flex p-0 hover:bg-transparent text-white/50 pointer-events-auto transition-all -ml-1 md:hidden" size={36} />
+               )}
+             </div>
+             {activeSpace ? (
+               <AgentOrgChart 
+                 space={activeSpace} 
+                 onManageTeam={() => setSpacesModalOpen(true)}
+                 onClose={() => setActiveView("chat")}
+                 onUpdateSpace={(updatedSpace) => {
+                   setSpaces((prev) => prev.map((s) => (s.id === updatedSpace.id ? updatedSpace : s)));
+                   db.set(STORES.SPACES, updatedSpace.id, updatedSpace);
+                 }}
+               />
+             ) : (
+               <div className="flex-1 flex items-center justify-center text-white/50">No space active</div>
+             )}
+          </div>
         ) : viewToRender === "calendar" ? (
-          <div className="flex-1 overflow-hidden bg-pplx-primary">
+          <div className="flex-1 overflow-hidden bg-pplx-primary md:pt-10 relative">
+             <div className="absolute top-0 left-0 right-0 z-50 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none">
+               {!sidebarOpen && (
+                 <>
+                   <SidebarToggle
+                     onClick={handleOpenSidebar}
+                     className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden"
+                     size={36}
+                   />
+                 </>
+               )}
+             </div>
             <CalendarView
               events={events}
               onAddEvent={handleAddEvent}
               onUpdateEvent={handleUpdateEvent}
               onDeleteEvent={handleDeleteEvent}
-              onToggleSidebar={handleOpenSidebar}
-              isSidebarOpen={sidebarOpen}
             />
           </div>
-        ) : viewToRender === "portfolio" ? (
-          <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar">
-            <PortfolioDashboard />
+        ) : viewToRender === "dashboard" ? (
+          <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar pt-12 md:pt-10 relative">
+             <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
+               {!sidebarOpen && (
+                 <>
+                   <SidebarToggle
+                     onClick={handleOpenSidebar}
+                     className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden"
+                     size={36}
+                   />
+                 </>
+               )}
+             </div>
+             <DashboardView onClose={() => setActiveView("chat")} settings={settings} onUpdateSettings={(updates) => setSettings({ ...settings, ...updates })} />
+          </div>
+        ) : viewToRender === "tasks" ? (
+          <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar pt-12 md:pt-10 relative">
+             <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
+               {!sidebarOpen && (
+                 <>
+                   <SidebarToggle
+                     onClick={handleOpenSidebar}
+                     className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden"
+                     size={36}
+                   />
+                 </>
+               )}
+             </div>
+             <TasksView />
+          </div>
+        ) : viewToRender === "trash" ? (
+          <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar pt-12 md:pt-10 relative">
+             <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
+               {!sidebarOpen && (
+                 <>
+                   <SidebarToggle
+                     onClick={handleOpenSidebar}
+                     className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden"
+                     size={36}
+                   />
+                 </>
+               )}
+             </div>
+             <TrashView />
+          </div>
+        ) : viewToRender === "agent" ? (
+          <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar pt-12 md:pt-10 relative">
+             <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
+               {!sidebarOpen && (
+                 <SidebarToggle onClick={handleOpenSidebar} className="flex p-0 hover:bg-transparent text-pplx-muted pointer-events-auto transition-all -ml-1 md:hidden" size={36} />
+               )}
+             </div>
+             <AgentControlView />
           </div>
         ) : (
-          <>
-            <div
-              ref={chatContainerRef}
-              onScroll={handleScroll}
-              className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-2 md:p-0 scroll-smooth pt-24 pb-28 ${viewToRender === "chat" && !activeThreadId ? "md:pb-0" : "md:pb-64"}`} // Reduced padding-bottom on mobile
-            >
+          <div className="flex-1 flex flex-row overflow-hidden w-full relative">
+            {/* LEFT COLUMN: CHAT PANEL */}
+            <div className={`flex-1 flex flex-col overflow-hidden relative h-full transition-all duration-150 ${
+              isCompanionOpen 
+                ? "bg-[#f4f4f6] dark:bg-pplx-primary text-zinc-900 dark:text-pplx-text border-r border-zinc-200/85 dark:border-white/5" 
+                : "border-r border-white/5 bg-pplx-primary text-pplx-text"
+            }`}>
+              {/* Top action headers shown in sidebar-hidden or companion-open conditions */}
+              <div
+                ref={chatContainerRef}
+                onScroll={handleScroll}
+                className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-2 md:p-0 scroll-smooth pt-24 md:pt-10 pb-28 ${viewToRender === "chat" && !activeThreadId ? "md:pb-0" : "md:pb-64"} ${isWidgetFullscreen ? "!overflow-hidden flex flex-col" : ""}`} // Reduced padding-bottom on mobile
+              >
               {!activeThreadId || !activeThread ? (
                 <div className="flex flex-col min-h-full relative z-10">
                   {activeSpace ? (
@@ -3445,6 +4079,7 @@ function App() {
                       </div>
 
                       <div className="flex-1 no-scrollbar px-4 md:px-12 pb-4 md:pb-32">
+                        {/* Dashboard removed from here, moved into grid or left column */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
                           {/* LEFT COLUMN: Info & Activity */}
                           <div className="md:col-span-2 flex flex-col gap-8">
@@ -3469,11 +4104,14 @@ function App() {
                               </p>
                             </div>
 
+
+
                             {/* Mobile Actions (Instructions & Files) */}
                             <div className="grid grid-cols-2 gap-3 md:hidden">
                               <button
                                 onClick={() => {
                                   setSpaceModalInitialId(activeSpace.id);
+                                  setActiveView("spaces");
                                   setSpacesModalOpen(true);
                                 }}
                                 className="flex flex-col items-start gap-2 p-4 bg-pplx-card/40 border border-pplx-border/60 rounded-xl hover:bg-pplx-hover/30 transition-colors text-left"
@@ -3510,6 +4148,8 @@ function App() {
                                 </div>
                               </button>
                             </div>
+
+
 
                             {/* Recent Activity */}
                             <div className="flex flex-col gap-4">
@@ -3570,7 +4210,10 @@ function App() {
                                     Instructions
                                   </h3>
                                   <button
-                                    onClick={() => setSpacesModalOpen(true)} // Opens space settings where instructions are
+                                    onClick={() => {
+                                      setActiveView("spaces");
+                                      setSpacesModalOpen(true);
+                                    }}
                                     className="text-pplx-muted hover:text-pplx-text transition-colors p-1 hover:bg-pplx-hover rounded"
                                   >
                                     <Plus size={16} />
@@ -3650,10 +4293,37 @@ function App() {
               ) : // ... existing active thread view ...
               isDashboardMode ? (
                 <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900 overflow-y-auto animate-fadeIn">
-                  <DashboardView onClose={() => setIsDashboardMode(false)} />
+                  <DashboardView onClose={() => setIsDashboardMode(false)} settings={settings} onUpdateSettings={(updates) => setSettings({ ...settings, ...updates })} />
                 </div>
-              ) : (
-                <div className="max-w-3xl mx-auto w-full py-4 space-y-6 px-4 md:px-0 mt-4 md:mt-0 relative z-0 bg-pplx-secondary/5 rounded-2xl">
+              ) : isWidgetFullscreen && getLatestWidget(activeThread.messages) ? (() => {
+                const latestWidget = getLatestWidget(activeThread.messages)!;
+                return (
+                  <div 
+                    className="fixed inset-0 z-[160] bg-white dark:bg-[#1a1a1c] animate-fadeIn flex flex-col"
+                    style={{ 
+                      right: window.innerWidth >= 1024 ? sideChatWidth : 0 
+                    }}
+                  >
+                    {/* Widget Content - Taking full space of allowed area */}
+                    <div className="flex-1 w-full h-full overflow-hidden">
+                      <div className="w-full h-full relative">
+                         <WidgetRenderer 
+                           type={latestWidget.type} 
+                           configStr={latestWidget.configStr} 
+                           isFullscreen={true} 
+                           onCloseFullscreen={() => setIsWidgetFullscreen(false)}
+                         />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div className={`max-w-3xl mx-auto w-full py-4 space-y-6 mt-4 md:mt-0 relative z-0 ${
+                  isCompanionOpen 
+                    ? "px-6 md:px-6 bg-transparent" 
+                    : "px-6 md:px-8 bg-pplx-secondary/5 rounded-2xl"
+                }`}>
+
                   {activeThread.messages.map((msg) => (
                     // ... existing message mapping ...
                     <div
@@ -3668,29 +4338,55 @@ function App() {
                       >
                         {/* Header Row for Model: Avatar + Status Text */}
                         {msg.role === Role.MODEL && (
-                          <div className="flex items-center gap-3 mb-2 select-none">
-                            {/* Avatar/Icon */}
-                            <div className="w-8 h-8 rounded-full bg-pplx-accent/10 flex items-center justify-center border border-transparent shrink-0">
-                              <PerplexityLogo
-                                className={`w-5 h-5 text-pplx-accent ${msg.isThinking ? "animate-spin-y" : ""}`}
+                          <div className="flex items-center justify-between w-full mb-2 select-none">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              {/* Avatar/Icon */}
+                              <div className="w-8 h-8 rounded-full bg-pplx-accent/10 flex items-center justify-center border border-transparent shrink-0">
+                                <PerplexityLogo
+                                  className={`w-5 h-5 text-pplx-accent ${msg.isThinking ? "animate-spin-y" : ""}`}
+                                />
+                              </div>
+
+                              {/* Reasoning Indicator (Now to the right of avatar) */}
+                              <TornadoIndicator
+                                isThinking={!!msg.isThinking}
+                                reasoning={msg.reasoning}
+                                currentStep={
+                                  msg.reasoning
+                                    ? msg.reasoning
+                                        .split("\n")
+                                        .filter(Boolean)
+                                        .pop()
+                                    : undefined
+                                }
+                                agentPlan={msg.agentPlan}
+                                agentActions={msg.agentActions}
                               />
                             </div>
 
-                            {/* Reasoning Indicator (Now to the right of avatar) */}
-                            <TornadoIndicator
-                              isThinking={!!msg.isThinking}
-                              reasoning={msg.reasoning}
-                              currentStep={
-                                msg.reasoning
-                                  ? msg.reasoning
-                                      .split("\n")
-                                      .filter(Boolean)
-                                      .pop()
-                                  : undefined
-                              }
-                              agentPlan={msg.agentPlan}
-                              agentActions={msg.agentActions}
-                            />
+                            {/* Message Actions */}
+                            {!msg.isThinking && (
+                              <div className="flex items-center shrink-0 ml-4">
+                                <ModelMessageActions
+                                  onTTS={() => {
+                                    if (isPlayingAudio && focusedMessageId === msg.id) {
+                                      handleTTS(""); // Stop audio explicitly
+                                    } else {
+                                      setFocusedMessageId(msg.id);
+                                      handleTTS(msg.content);
+                                    }
+                                  }}
+                                  isPlayingAudio={isPlayingAudio && focusedMessageId === msg.id}
+                                  onDashboard={() => {
+                                    setFocusedMessageId(msg.id);
+                                    setIsDashboardMode(true);
+                                  }}
+                                  onCopy={() => handleCopyText(msg.id, msg.content)}
+                                  onShare={() => handleShare(msg.content)}
+                                  onSave={() => setActiveAddToSpaceId(msg.id)}
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -3805,14 +4501,18 @@ function App() {
                             <div
                               className={`font-normal leading-7 transition-all relative ${
                                 msg.role === Role.USER
-                                  ? "text-[13px] bg-pplx-card px-4 py-3 rounded-3xl rounded-tr-sm text-pplx-text text-right whitespace-pre-wrap shadow-md backdrop-blur-md"
-                                  : "text-[16px] w-full text-pplx-text"
+                                  ? isCompanionOpen
+                                    ? "text-[13px] bg-zinc-200 dark:bg-pplx-card text-zinc-900 dark:text-pplx-text px-4 py-3 rounded-2xl rounded-tr-sm text-right whitespace-pre-wrap shadow-sm"
+                                    : "text-[13px] bg-pplx-card px-4 py-3 rounded-3xl rounded-tr-sm text-pplx-text text-right whitespace-pre-wrap shadow-md backdrop-blur-md"
+                                  : isCompanionOpen
+                                    ? "text-[15px] w-full text-zinc-800 dark:text-pplx-text"
+                                    : "text-[16px] w-full text-pplx-text"
                               }`}
                             >
                               {msg.role === Role.USER ? (
                                 msg.content
                               ) : (
-                                <MessageRenderer content={msg.content} />
+                                <MessageRenderer content={msg.content} isCompanionOpen={isCompanionOpen} />
                               )}
                             </div>
                           )}
@@ -3828,9 +4528,17 @@ function App() {
                                     <a
                                       key={idx}
                                       href={cit.uri}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="flex items-center gap-1.5 px-1.5 py-1 bg-pplx-card hover:bg-pplx-hover border border-pplx-border/50 hover:border-pplx-muted/50 rounded-md transition-all group overflow-hidden"
+                                      onClick={(e) => {
+                                        if (cit.uri && !e.metaKey && !e.ctrlKey) {
+                                          e.preventDefault();
+                                          window.dispatchEvent(
+                                            new CustomEvent("open-companion", {
+                                              detail: { url: cit.uri, title: cit.title || "Web Source" },
+                                            })
+                                          );
+                                        }
+                                      }}
+                                      className="flex items-center gap-1.5 px-1.5 py-1 bg-pplx-card hover:bg-pplx-hover border border-pplx-border/50 hover:border-pplx-muted/50 rounded-md transition-all group overflow-hidden cursor-pointer"
                                     >
                                       <div className="bg-pplx-secondary p-0.5 rounded-full shrink-0">
                                         {" "}
@@ -4020,7 +4728,7 @@ function App() {
               {/* Floating Scroll to Bottom Button */}
               {showScrollButton && (
                 <button
-                  onClick={scrollToBottom}
+                  onClick={() => scrollToBottom(true)}
                   className={`fixed left-1/2 -translate-x-1/2 z-30 p-1.5 md:p-2 bg-pplx-card/60 md:bg-pplx-secondary/80 backdrop-blur-md border border-pplx-border/50 md:border-transparent rounded-full shadow-sm md:shadow-none text-pplx-muted md:text-pplx-text hover:text-pplx-text hover:bg-pplx-hover/50 md:hover:bg-pplx-hover transition-all duration-150 animate-in fade-in zoom-in group`}
                   style={{
                     bottom:
@@ -4038,20 +4746,24 @@ function App() {
             </div>
 
             {/* BOTTOM GRADIENT MASK */}
-            <div className="fixed bottom-[60px] left-0 right-0 h-9 bg-gradient-to-t from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-10 hidden md:block" />
+            {!isWidgetFullscreen && <div className={`fixed bottom-[60px] left-0 right-0 h-9 bg-gradient-to-t from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-10 ${isSideChatOpen ? "hidden" : "hidden md:block"}`} />}
             {/* Mobile version usually has input fixed differently, but this helps fade content on scroll */}
-            <div
-              className="fixed left-0 right-0 h-14 bg-gradient-to-t from-pplx-primary to-transparent pointer-events-none z-10 md:hidden"
-              style={{
-                bottom: settings.enableMobileDock
-                  ? "calc(90px + env(safe-area-inset-bottom))"
-                  : "90px",
-              }}
-            />
-
-            {!isDashboardMode && (
+            {!isWidgetFullscreen && (
               <div
-                className={`w-full bg-pplx-primary pt-2 px-4 z-30 shrink-0 border-t border-transparent transition-all duration-150 ${settings.enableMobileDock ? "sm:pb-6" : "pb-0"} ${viewToRender === "chat" && !activeThreadId && !activeSpace ? "md:pb-[35vh]" : "md:pb-0"}`}
+                className={`fixed left-0 right-0 h-14 bg-gradient-to-t from-pplx-primary to-transparent pointer-events-none z-10 ${isSideChatOpen ? "hidden" : "md:hidden"}`}
+                style={{
+                  bottom: settings.enableMobileDock
+                    ? "calc(90px + env(safe-area-inset-bottom))"
+                    : "90px",
+                }}
+              />
+            )}
+
+            {!isDashboardMode && !isWidgetFullscreen && (
+              <div
+                className={`w-full pt-2 px-4 z-30 shrink-0 border-t border-transparent transition-all duration-150 ${
+                  isCompanionOpen ? "bg-[#f4f4f6] dark:bg-pplx-primary" : "bg-pplx-primary"
+                } ${settings.enableMobileDock ? "sm:pb-6" : "pb-0"} ${viewToRender === "chat" && !activeThreadId && !activeSpace ? "md:pb-[35vh]" : "md:pb-0"} ${isSideChatOpen ? "hidden" : ""}`}
               >
                 <div className="pointer-events-auto">
                   <InputArea
@@ -4066,23 +4778,39 @@ function App() {
                     spaces={spaces}
                     activeSpaceId={activeSpaceId}
                     onSelectSpace={handleSelectSpace}
-                    onNewSpace={() => setSpacesModalOpen(true)}
+                    onNewSpace={() => {
+                      setActiveView("spaces");
+                      setSpacesModalOpen(true);
+                    }}
                     proMode={inputProMode}
                     setProMode={setInputProMode}
                     isAgentMode={inputIsAgentMode}
                     setIsAgentMode={setInputIsAgentMode}
-                    isAgentProMode={inputIsAgentProMode}
-                    setIsAgentProMode={setInputIsAgentProMode}
                     isLongThinking={inputIsLongThinking}
                     setIsLongThinking={setInputIsLongThinking}
                     activeThread={activeThread}
                     onTTS={handleTTS}
                     isPlayingAudio={isPlayingAudio}
+                    isCompanionOpen={isCompanionOpen}
                   />
                 </div>
               </div>
             )}
-          </>
+            </div>
+
+            {/* RIGHT COLUMN: INLINE COMPANION PANEL (BROWSER VIEWPORT) */}
+            {isCompanionOpen && (
+              <CompanionPanel
+                isOpen={isCompanionOpen}
+                onClose={() => setIsCompanionOpen(false)}
+                onWidthChange={setCompanionWidth}
+                url={companionUrl}
+                title={companionTitle}
+                geminiApiKey={settings.geminiApiKey}
+                isInline={true}
+              />
+            )}
+          </div>
         )}
 
         <SettingsModal
@@ -4092,25 +4820,15 @@ function App() {
           onSave={setSettings}
           initialTab={settingsInitialTab}
         />
-        <SpacesModal
-          isOpen={spacesModalOpen}
-          onClose={() => {
-            setSpacesModalOpen(false);
-            setSpaceModalInitialId(null);
-            setSpaceModalInitialParentId(null);
-          }}
-          spaces={spaces}
-          onSaveSpace={handleSaveSpace}
-          onDeleteSpace={handleDeleteSpace}
-          initialSpaceId={spaceModalInitialId}
-          initialParentId={spaceModalInitialParentId}
-        />
       </main>
 
       {/* Side Chat Panel */}
       <SideChatPanel
         isOpen={isSideChatOpen}
-        onClose={() => setIsSideChatOpen(false)}
+        onClose={() => {
+          setIsSideChatOpen(false);
+          window.dispatchEvent(new CustomEvent('side-chat-closed'));
+        }}
         messages={
           threads.find((t) => t.id === sideChatThreadId)?.messages || []
         }
@@ -4122,7 +4840,6 @@ function App() {
             ProMode.STANDARD,
             atts,
             undefined,
-            false,
             false,
             sideChatThreadId!,
           )
@@ -4141,7 +4858,22 @@ function App() {
         onNewChat={handleClearSideChat}
         mode={chatMode}
         onModeChange={setChatMode}
+        hideWidgets={isWidgetFullscreen}
+        onWidthChange={setSideChatWidth}
       />
+
+      {/* Companion Panel (Only render at root if screen is mobile or not in chat view) */}
+      {(!isCompanionOpen || window.innerWidth < 768 || viewToRender !== "chat") && (
+        <CompanionPanel
+          isOpen={isCompanionOpen}
+          onClose={() => setIsCompanionOpen(false)}
+          onWidthChange={setCompanionWidth}
+          url={companionUrl}
+          title={companionTitle}
+          geminiApiKey={settings.geminiApiKey}
+          isInline={false}
+        />
+      )}
 
       {/* Floating Action Button for Side Chat (Only in Library Mode) */}
       {viewToRender === "library" && activeNoteId && !isSideChatOpen && (
@@ -4158,6 +4890,15 @@ function App() {
         >
           <MessageSquare size={20} />
         </button>
+      )}
+
+      {deleteConfirmState && (
+        <ConfirmDeleteModal
+          title={`Delete ${deleteConfirmState.type === 'note' ? 'Page' : deleteConfirmState.type === 'thread' ? 'Chat' : deleteConfirmState.type === 'space' ? 'Workspace' : 'Event'}`}
+          description={`Are you sure you want to delete this ${deleteConfirmState.type === 'note' ? 'page' : deleteConfirmState.type === 'thread' ? 'chat' : deleteConfirmState.type === 'space' ? 'workspace' : 'event'}? This action cannot be undone.`}
+          onCancel={() => setDeleteConfirmState(null)}
+          onConfirm={processDelete}
+        />
       )}
 
       <MobileDock

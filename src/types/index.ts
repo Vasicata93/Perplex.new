@@ -78,6 +78,14 @@ export interface Thread {
   };
 }
 
+export interface SubAgentConfig {
+  id: string;
+  name: string;
+  role: string;
+  profile: string; // System instructions for sub-agent
+  modelId: string;
+}
+
 export interface Space {
   id: string;
   title: string;
@@ -87,6 +95,12 @@ export interface Space {
   files: Attachment[]; // Knowledge base
   createdAt: number;
   parentId?: string;
+  
+  // Agent & Team Configuration
+  modelId?: string; // Orchestrator / Main Agent model
+  orchestratorRole?: string; // Role of the orchestrator agent
+  isTeamMode?: boolean; // If true, orchestrator delegates to subAgents
+  subAgents?: SubAgentConfig[];
 }
 
 // Updated Interface for Library/Notes (Notion Style)
@@ -116,16 +130,17 @@ export interface Note {
 
 // ENUM for Memory Categories
 export type MemoryCategory =
-  | "about_me"
-  | "preferences"
-  | "work"
-  | "coding_projects"
-  | "learning_goals"
-  | "relationships"
-  | "health_lifestyle"
-  | "hobbies_interests"
+  | "profile"
+  | "project"
+  | "preference"
+  | "decision"
+  | "rag_cache"
   | "finance"
-  | "other";
+  | "work"
+  | "coding"
+  | "health"
+  | "other"
+  | string;
 
 export type MemoryType = "fact" | "goal" | "skill" | "project" | "preference";
 
@@ -215,6 +230,15 @@ export interface AiProfile {
   language: string;
 }
 
+export interface AgentPermissions {
+  fileSystem: boolean;      // Read/Write files
+  terminal: boolean;        // Execute system commands
+  browser: boolean;         // Access the web browser
+  communications: boolean;  // Send messages/emails
+  visionAudio: boolean;     // Use vision, audio and TTS
+  tasks: boolean;           // Manage calendar and tasks
+}
+
 export interface AppSettings {
   // Model Configuration
   modelProvider: ModelProvider;
@@ -256,9 +280,19 @@ export interface AppSettings {
   searchRegion: "global" | "us" | "uk" | "eu" | "asia";
   interfaceLanguage: "en" | "ro"; // New setting for UI Language
 
+  // Permissions configuration
+  permissions: AgentPermissions;
+
   // Mobile Dock Settings
   enableMobileDock: boolean;
   dockShortcuts: string[]; // IDs of pages for the two custom slots
+
+  enableContextProvider?: boolean;
+  enableCoreTools?: boolean;
+  enableCustomSkills?: boolean;
+  enableConnectors?: boolean;
+  enableToolVerification?: boolean;
+  enableAgentTeams?: boolean;
 
   // Perplexity-style Profiles
   userProfile: UserProfile;
@@ -296,8 +330,22 @@ export const DEFAULT_SETTINGS: AppSettings = {
   textSize: "medium",
   searchRegion: "global",
   interfaceLanguage: "en",
+  permissions: {
+    fileSystem: true,
+    terminal: true,
+    browser: true,
+    communications: true,
+    visionAudio: true,
+    tasks: true
+  },
   enableMobileDock: false,
   dockShortcuts: [],
+  enableContextProvider: true,
+  enableCoreTools: true,
+  enableCustomSkills: true,
+  enableConnectors: true,
+  enableToolVerification: true,
+  enableAgentTeams: true,
   userProfile: {
     name: "User",
     bio: "",
@@ -311,13 +359,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 // --- New Type for Pending Actions ---
 export interface PendingAction {
-  type:
-    | "create_page"
-    | "update_page"
-    | "block_operation"
-    | "calendar_event"
-    | "complex_module_action"
-    | "sensitive_data_warning";
+  type: string;
   data: any;
   originalToolCallId?: string;
   resolvePromise?: (result: 'confirm' | 'cancel' | 'redact') => void;

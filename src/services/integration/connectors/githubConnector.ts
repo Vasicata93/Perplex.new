@@ -6,7 +6,7 @@ export const githubConnector: IConnector = {
   name: 'GitHub',
   description: 'Connect to GitHub to search repositories, read code, and manage issues.',
   icon: 'github', // Assuming we use lucide-react icons, we can map this later
-  authType: 'api_key', // For simplicity in PoC, we'll use Personal Access Tokens
+  authType: 'oauth2', // Changed to oauth2 for seamless flow
   status: 'disconnected',
   
   connect: async () => {

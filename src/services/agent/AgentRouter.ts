@@ -23,16 +23,19 @@ export class AgentRouter {
     perception: ExtendedPerception
   ): Promise<RoutingDecision> {
     const text = currentMessage.toLowerCase();
+    const normalizeString = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     
+    const normalizedText = normalizeString(currentMessage);
     const semanticIntent = perception.semanticCategory;
     let reasoning = `Routing applied (Semantic: ${semanticIntent || 'None'}).`;
     
     // HEURISTIC 1: COMPLEXITY (Blended Semantic & Heuristic)
     let complexity: ComplexityLevel = 'SIMPLU';
     const actionWords = ['cauta', 'search', 'find', 'write', 'creeaza', 'adauga', 'save', 'citeste', 'verifica', 'build', 'fa', 'rezolva', 'fix'];
-    const hasAction = actionWords.some(w => text.includes(w));
-    const isLong = text.split(' ').length > 20;
-    const hasMultipleClauses = text.includes(' si ') && text.includes(' apoi ');
+    const hasAction = actionWords.some(w => normalizedText.includes(w));
+    const isLong = normalizedText.split(' ').length > 20;
+    const hasMultipleClauses = normalizedText.includes(' si ') && normalizedText.includes(' apoi ');
 
     // Use semantic vector if available
     if (semanticIntent) {
@@ -40,7 +43,7 @@ export class AgentRouter {
          complexity = 'COMPLEX';
       } else if (semanticIntent === 'ACTION' || semanticIntent === 'RESEARCH' || semanticIntent === 'FINANCE') {
          complexity = 'MEDIU';
-      } else if (semanticIntent === 'AMBIGUOUS' || (text.length < 5 && text.includes('?'))) {
+      } else if (semanticIntent === 'AMBIGUOUS' || (normalizedText.length < 5 && normalizedText.includes('?'))) {
          complexity = 'AMBIGUU';
       } else {
          complexity = 'SIMPLU'; // CONVERSATION
@@ -51,9 +54,29 @@ export class AgentRouter {
          complexity = 'COMPLEX';
       } else if (hasAction) {
          complexity = 'MEDIU';
-      } else if (text.length < 5 && text.includes('?')) {
+      } else if (normalizedText.length < 5 && normalizedText.includes('?')) {
          complexity = 'AMBIGUU';
       }
+    }
+
+    // Force browser/youtube operations to be at least MEDIU so multi-turn native tool execution runs (e.g., search_youtube + open_browser_url)
+    const routerMediaKeywords = [
+      // English
+      "play", "song", "music", "video", "track", "clip", "youtube", "search", "find", "browser", "site", "navigate", "open", "watch", "listen",
+      // Romanian
+      "reda", "pune", "pun", "muzica", "piesa", "melod", "youtube", "videoclip", "clip", "browser", "site", "pagina", "navigheaza", "cauta", "caut", "ascul", "prives", "vezi",
+      // Spanish
+      "reproducir", "reproduce", "reproduci", "pon", "cancion", "musica", "video", "navegar", "buscar", "pagina", "escucha",
+      // French
+      "jouer", "joue", "mets", "chanson", "musique", "video", "naviguer", "rechercher", "page", "ecoute",
+      // Italian
+      "riproduci", "metti", "canzone", "musica", "video", "navigare", "cerca", "pagina", "ascolta",
+      // General companion keywords
+      "browser companion"
+    ];
+    
+    if (routerMediaKeywords.some(w => normalizedText.includes(w))) {
+      complexity = 'MEDIU';
     }
     
     if (perception.urgency === 'critical' && complexity === 'SIMPLU') {
@@ -76,9 +99,9 @@ export class AgentRouter {
        priority = 'URGENT_IMPORTANT';
     } else if (perception.urgency === 'high') {
        priority = 'IMPORTANT';
-    } else if (text.includes('urgent') || text.includes('acum') || text.includes('rapid')) {
+    } else if (normalizedText.includes('urgent') || normalizedText.includes('acum') || normalizedText.includes('rapid')) {
        priority = 'URGENT_IMPORTANT';
-    } else if (text.includes('important')) {
+    } else if (normalizedText.includes('important')) {
        priority = 'IMPORTANT';
     }
     
@@ -95,11 +118,11 @@ export class AgentRouter {
     if (semanticIntent === 'ANALYSIS') skills.push('data_analysis_skill');
     
     // Heuristic fallbacks for skills
-    if (['cod', 'programare', 'bug', 'react', 'typescript', 'eroare', 'fix', 'script'].some(w => text.includes(w)) && !skills.includes('coding_skill')) skills.push('coding_skill');
-    if (['cauta', 'cine', 'cand', 'istorie', 'informatii', 'cercetare'].some(w => text.includes(w)) && !skills.includes('research_skill')) skills.push('research_skill');
-    if (['bani', 'buget', 'finante', 'investitii', 'crypto', 'pret', 'cost'].some(w => text.includes(w)) && !skills.includes('finance_skill')) skills.push('finance_skill');
-    if (['scrie', 'articol', 'text', 'compune', 'email', 'mesaj'].some(w => text.includes(w)) && !skills.includes('writing_skill')) skills.push('writing_skill');
-    if (['analizeaza', 'date', 'statistica', 'grafic', 'tabel'].some(w => text.includes(w)) && !skills.includes('data_analysis_skill')) skills.push('data_analysis_skill');
+    if (['cod', 'programare', 'bug', 'react', 'typescript', 'eroare', 'fix', 'script'].some(w => normalizedText.includes(w)) && !skills.includes('coding_skill')) skills.push('coding_skill');
+    if (['cauta', 'cine', 'cand', 'istorie', 'informatii', 'cercetare'].some(w => normalizedText.includes(w)) && !skills.includes('research_skill')) skills.push('research_skill');
+    if (['bani', 'buget', 'finante', 'investitii', 'crypto', 'pret', 'cost'].some(w => normalizedText.includes(w)) && !skills.includes('finance_skill')) skills.push('finance_skill');
+    if (['scrie', 'articol', 'text', 'compune', 'email', 'mesaj'].some(w => normalizedText.includes(w)) && !skills.includes('writing_skill')) skills.push('writing_skill');
+    if (['analizeaza', 'date', 'statistica', 'grafic', 'tabel'].some(w => normalizedText.includes(w)) && !skills.includes('data_analysis_skill')) skills.push('data_analysis_skill');
 
     let toolState: ToolState = 'idle';
     if (semanticIntent === 'ACTION' || skills.includes('coding_skill') || skills.includes('writing_skill')) {

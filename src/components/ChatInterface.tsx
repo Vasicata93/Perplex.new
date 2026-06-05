@@ -36,6 +36,7 @@ interface ChatInterfaceProps {
   copiedId: string | null;
   isSidePanel?: boolean;
   activeNote?: Note;
+  hideWidgets?: boolean;
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -52,6 +53,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   copiedId,
   isSidePanel = false,
   activeNote,
+  hideWidgets = false,
 }) => {
   console.log("ChatInterface isSidePanel:", isSidePanel);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -88,7 +90,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     >
       {/* Top Gradient Fade */}
       <div
-        className={`absolute top-0 left-0 right-0 bg-gradient-to-b from-pplx-card to-transparent z-10 pointer-events-none ${isSidePanel ? "h-6 opacity-80" : "h-12"}`}
+        className={`absolute top-0 left-0 right-0 bg-gradient-to-b from-pplx-card to-transparent z-10 pointer-events-none ${isSidePanel ? "h-6 opacity-80" : "h-6"}`}
       />
 
       {/* Messages Area */}
@@ -106,6 +108,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           filteredMessages.map((msg) => (
             <div
               key={msg.id}
+              data-role={msg.role}
               className="flex flex-col space-y-3 animate-fadeIn"
             >
               <div
@@ -243,7 +246,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       {msg.role === Role.USER ? (
                         msg.content
                       ) : (
-                        <MessageRenderer content={msg.content} />
+                        <MessageRenderer content={msg.content} hideWidgets={hideWidgets} />
                       )}
                     </div>
                   )}
@@ -259,9 +262,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <a
                               key={idx}
                               href={cit.uri}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center gap-1.5 px-2 py-1.5 bg-pplx-card hover:bg-pplx-hover border border-pplx-border/50 rounded-md transition-all group overflow-hidden"
+                              onClick={(e) => {
+                                if (cit.uri && !e.metaKey && !e.ctrlKey) {
+                                  e.preventDefault();
+                                  window.dispatchEvent(
+                                    new CustomEvent("open-companion", {
+                                      detail: { url: cit.uri, title: cit.title || "Web Source" },
+                                    })
+                                  );
+                                }
+                              }}
+                              className="flex items-center gap-1.5 px-2 py-1.5 bg-pplx-card hover:bg-pplx-hover border border-pplx-border/50 rounded-md transition-all group overflow-hidden cursor-pointer"
                             >
                               <Globe
                                 size={8}

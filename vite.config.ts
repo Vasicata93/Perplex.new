@@ -48,6 +48,24 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       outDir: 'dist',
+      sourcemap: false,
+      minify: 'esbuild',
+      chunkSizeWarningLimit: 2000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('@react-three') || id.includes('three') || id.includes('@react-spring')) {
+                return 'three-bundle';
+              }
+              if (id.includes('@mlc-ai') || id.includes('@xenova') || id.includes('web-llm') || id.includes('transformers')) {
+                return 'ai-bundle';
+              }
+              return 'vendor';
+            }
+          }
+        }
+      }
     },
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY),

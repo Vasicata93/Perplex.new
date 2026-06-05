@@ -20,7 +20,6 @@ import {
   Wind,
   Navigation,
 } from "lucide-react";
-import { SidebarToggle } from "./SidebarToggle";
 import { CalendarEvent } from "../types";
 import { getHolidays, Holiday } from "../services/holidayService";
 
@@ -29,8 +28,6 @@ interface CalendarViewProps {
   onAddEvent: (event: Omit<CalendarEvent, "id">) => void;
   onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   onDeleteEvent: (id: string) => void;
-  onToggleSidebar?: () => void;
-  isSidebarOpen?: boolean;
 }
 
 type ViewMode = "year" | "month" | "week" | "day" | "agenda";
@@ -372,8 +369,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
-  onToggleSidebar,
-  isSidebarOpen,
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -1270,17 +1265,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
       {/* Header Bar - Translucent, sticky */}
       <div className="sticky top-0 z-20 flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 shrink-0 bg-pplx-primary/80 backdrop-blur-md px-4 py-2 md:py-2 border-b border-pplx-border">
-        {/* Top Row (Desktop: Sidebar Toggle, Icon, Title | Mobile: Weather & Date) */}
+        {/* Top Row (Desktop: Icon, Title | Mobile: Weather & Date) */}
         <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto justify-between md:justify-start">
           {/* Desktop: Weather Widget (Replacing Title) */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
-            {onToggleSidebar && !isSidebarOpen && (
-              <SidebarToggle
-                onClick={onToggleSidebar}
-                className="p-2"
-                size={20}
-              />
-            )}
             <div className="bg-pplx-card border border-pplx-border rounded-2xl px-3 py-1.5 shadow-sm">
               <WeatherWidget selectedDate={currentDate} />
             </div>

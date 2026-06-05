@@ -1,25 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Search,
   Library,
   Settings,
-  X,
   ChevronRight,
   ChevronDown,
   LayoutGrid,
   MessageSquareText,
   Plus,
+  SquarePen,
   Trash2,
   MoreHorizontal,
+  Bot,
   Copy,
   FolderInput,
   ChevronLeft,
-  CalendarDays,
   Star,
+  PanelLeftClose,
+  FileText,
+  Image,
+  Video,
+  File,
+  Folder,
 } from "lucide-react";
-import { PerplexityLogo, UI_STRINGS } from "../constants";
-import { Thread, Space, Note, UserProfile, CalendarEvent } from "../types";
-import { CompactSearchView } from "./CompactSearchView";
+import { UI_STRINGS } from "../constants";
+import { Tooltip } from "./Tooltip";
+import { Thread, Space, Note, UserProfile } from "../types";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -29,25 +34,41 @@ interface SidebarProps {
   threads: Thread[];
   spaces: Space[];
   notes: Note[];
-  events: CalendarEvent[];
   userProfile: UserProfile;
   activeThreadId: string | null;
   activeSpaceId: string | null;
   activeNoteId: string | null;
-  activeView: "chat" | "library" | "calendar" | "search" | "portfolio";
+  activeView:
+    | "chat"
+    | "library"
+    | "spaces"
+    | "calendar"
+    | "search"
+    | "dashboard"
+    | "tasks"
+    | "trash"
+    | "agent"
+    | "team_dashboard"
+    | "mix";
   onSelectThread: (id: string) => void;
   onSelectSpace: (id: string | null) => void; // null = home/default
   onSelectNote: (id: string) => void;
-  onSelectEvent: (id: string) => void;
   onChangeView: (
-    view: "chat" | "library" | "calendar" | "search" | "portfolio",
+    view:
+      | "chat"
+      | "library"
+      | "spaces"
+      | "calendar"
+      | "search"
+      | "dashboard"
+      | "tasks"
+      | "trash"
+      | "agent",
   ) => void;
   onNewThread: () => void;
   onNewNote: (parentId?: string) => void;
   onNewSpace: (parentId?: string) => void;
   onOpenSpaceFiles?: (id: string) => void;
-  onNewPortfolioTracker?: () => void;
-  onNewSafeDigital?: () => void;
   onManageSpaces: (id?: string) => void;
   onDuplicateSpace: (id: string) => void;
   onDeleteSpace: (id: string) => void;
@@ -71,7 +92,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   threads,
   spaces,
   notes,
-  events,
   userProfile,
   activeThreadId,
   activeSpaceId,
@@ -80,14 +100,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectThread,
   onSelectSpace,
   onSelectNote,
-  onSelectEvent,
   onChangeView,
   onNewThread,
   onNewNote,
   onNewSpace,
   onOpenSpaceFiles,
-  onNewPortfolioTracker,
-  onNewSafeDigital,
   onManageSpaces,
   onDuplicateSpace,
   onDeleteSpace,
@@ -104,6 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [lang, setLang] = useState<"en" | "ro">("en");
   const [isResizing, setIsResizing] = useState(false);
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   // State for Library Item Menu
@@ -111,8 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [activeMenuSpaceId, setActiveMenuSpaceId] = useState<string | null>(
     null,
   );
-  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  // const [searchQuery, setSearchQuery] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -182,6 +199,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isOpen]); // Update when sidebar opens/closes
 
   const t = UI_STRINGS[lang] || UI_STRINGS.en;
+
+  const categoriesList = [
+    { id: "all", label: lang === "ro" ? "Recente" : "Recents", icon: <Library size={13} className="text-gray-400" /> },
+    { id: "favorites", label: lang === "ro" ? "Favorite" : "Favorites", icon: <Star size={13} className="text-red-400 fill-red-400" /> },
+    { id: "notes", label: lang === "ro" ? "Notițe" : "Notes", icon: <FileText size={13} className="text-[#00ffff]" /> },
+    { id: "image", label: lang === "ro" ? "Imagini" : "Images", icon: <Image size={13} className="text-blue-400" /> },
+    { id: "video", label: lang === "ro" ? "Videoclipuri" : "Videos", icon: <Video size={13} className="text-purple-400" /> },
+    { id: "pdf", label: lang === "ro" ? "PDF-uri" : "PDFs", icon: <File size={13} className="text-red-400" /> },
+    { id: "docs", label: lang === "ro" ? "Documente" : "Docs", icon: <Folder size={13} className="text-amber-400" /> },
+  ];
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -256,9 +283,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const currentWidth = sidebarWidth;
 
   const sidebarClasses = `
-    fixed inset-y-0 left-0 z-[150] bg-pplx-sidebar border-r border-pplx-border shadow-2xl h-full
+    fixed inset-y-0 left-0 z-[150] bg-pplx-sidebar shadow-2xl h-full
     w-[280px] md:static md:shadow-none md:translate-x-0
-    ${isOpen ? "translate-x-0 md:w-[var(--sidebar-width)]" : "-translate-x-full md:w-0 md:border-r-0 md:overflow-hidden"}
+    md:my-3 md:ml-3 md:mr-1 md:h-[calc(100%-24px)] md:rounded-xl md:border md:border-pplx-border/50
+    ${isOpen ? "translate-x-0 md:w-[var(--sidebar-width)] border-r border-pplx-border" : "-translate-x-full md:w-0 md:border-transparent md:overflow-hidden md:ml-0 md:my-0 md:h-full md:border-l-0"}
     flex flex-col
     ${!isResizing ? "transition-all duration-150 cubic-bezier(0.4, 0, 0.2, 1)" : ""}
   `;
@@ -302,152 +330,99 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
 
         <div className="h-full flex flex-col overflow-hidden w-[280px] md:w-[var(--sidebar-width)]">
-          {/* Header - Fixed layout: Logo Left */}
-          <div
-            className={`flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-4"} py-3 mb-1 h-[64px] shrink-0`}
-          >
+          {/* Top Agent Section */}
+          <div className={`pt-2 pb-1 px-3 shrink-0`}>
             <div
-              className={`flex items-center cursor-pointer opacity-90 hover:opacity-100 transition-opacity ${isCollapsed ? "w-full justify-center" : ""}`}
-              onClick={() =>
-                handleNavClick(() => {
-                  onChangeView("chat");
-                  onNewThread();
-                })
-              }
+              className={`text-sm text-pplx-muted hover:text-pplx-text flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-0"} py-2 rounded-lg transition-colors group`}
             >
-              <PerplexityLogo className="w-8 h-8 text-pplx-text shrink-0" />
+              <div
+                onClick={() => {
+                  onChangeView("chat");
+                  onSelectSpace(null);
+                  onNewThread();
+                }}
+                className={`flex items-center p-1 rounded-md cursor-pointer ${isCollapsed ? "justify-center w-full" : "flex-1"}`}
+              >
+                {isCollapsed ? (
+                  <div className="w-[40px] h-[40px] shrink-0 mx-auto rounded-full overflow-hidden bg-pplx-secondary flex items-center justify-center border border-pplx-border">
+                    <Bot size={24} className="text-pplx-text opacity-80" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 truncate w-full relative -left-[4px]">
+                    <div className="w-[40px] h-[40px] rounded-[14px] overflow-hidden bg-pplx-secondary flex items-center justify-center shrink-0 border border-pplx-border">
+                      <Bot size={26} className="text-pplx-text opacity-80" />
+                    </div>
+                    <span className="font-serif font-light tracking-tight text-pplx-text group-hover:text-pplx-text text-[32px] leading-tight truncate">
+                      Hermes
+                    </span>
+                  </div>
+                )}
+              </div>
               {!isCollapsed && (
-                <span className="ml-2 text-lg font-medium tracking-tight text-pplx-text font-serif truncate">
-                  perplex
-                </span>
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      if (window.innerWidth < 768) {
+                        setSidebarOpen(false);
+                      } else {
+                        setSidebarWidth(0);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredTooltip("close-sidebar")}
+                    onMouseLeave={() => setHoveredTooltip(null)}
+                    className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-pplx-hover text-pplx-muted transition-colors active:scale-90 shrink-0 right-[2px] relative"
+                  >
+                    <PanelLeftClose size={18} />
+                  </button>
+                  {hoveredTooltip === "close-sidebar" && (
+                    <Tooltip text="Close Sidebar" position="right" />
+                  )}
+                </div>
               )}
             </div>
-
-            {/* Desktop Sidebar Toggle Button (Close) */}
-            {!isCollapsed && (
-              <button
-                onClick={() => setSidebarWidth(0)}
-                className="hidden md:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-pplx-hover text-pplx-text-muted transition-colors active:scale-90"
-                title="Close Sidebar"
-              >
-                <ChevronLeft size={18} />
-              </button>
-            )}
           </div>
 
           {/* Main Nav */}
           <nav
-            className={`flex-1 overflow-y-auto no-scrollbar py-2 ${isCollapsed ? "px-1" : "px-3"} space-y-1 overscroll-contain`}
+            className={`flex-1 overflow-y-auto no-scrollbar pt-0.5 pb-2 ${isCollapsed ? "px-1" : "px-3"} space-y-1 overscroll-contain`}
             style={{ WebkitOverflowScrolling: "touch" }}
           >
-            {/* Search */}
-            <div className="flex flex-col relative z-[60]">
-              <div
-                className={`w-full flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-2"} py-1 rounded-lg text-sm transition-colors group relative ${
-                  activeView === "search"
-                    ? "bg-pplx-hover"
-                    : "hover:bg-pplx-hover"
-                }`}
-              >
-                <div
-                  onClick={() => {
-                    if (isCollapsed)
-                      handleNavClick(() => {
-                        onChangeView("search");
-                      });
-                  }}
-                  className={`flex items-center ${isCollapsed ? "justify-center w-full cursor-pointer" : "space-x-2 px-1"} flex-1 text-left py-2`}
-                >
-                  <span
-                    className={`${activeView === "search" ? "text-pplx-accent" : "text-pplx-muted group-hover:text-pplx-text"} flex items-center justify-center w-8 shrink-0`}
-                  >
-                    <Search size={20} />
-                  </span>
-                  {!isCollapsed && (
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={searchQuery}
-                      onFocus={() => {
-                        if (activeView !== "search") onChangeView("search");
-                      }}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={t.home}
-                      className={`flex-1 text-sm bg-transparent border-none outline-none ${activeView === "search" ? "text-pplx-text font-medium" : "text-pplx-muted group-hover:text-pplx-text"} placeholder-pplx-muted/50 w-full`}
-                    />
-                  )}
-                </div>
-                {activeView === "search" && !isCollapsed && (
-                  <button
-                    onClick={() => {
-                      if (searchQuery) {
-                        setSearchQuery("");
-                      } else {
-                        onChangeView("chat"); // Go back to chat if empty and clicked X
-                      }
-                    }}
-                    className="text-pplx-muted transition-opacity p-2 hover:bg-pplx-secondary rounded-md"
-                  >
-                    <X size={18} />
-                  </button>
-                )}
-              </div>
-
-              {activeView === "search" &&
-                !isCollapsed &&
-                searchQuery.trim() !== "" && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-pplx-sidebar border border-pplx-border rounded-xl shadow-2xl z-[70] max-h-[70vh] overflow-y-auto no-scrollbar animate-fadeIn duration-150">
-                    <CompactSearchView
-                      threads={threads}
-                      notes={notes}
-                      events={events}
-                      spaces={spaces}
-                      onSelectThread={(id) => {
-                        onChangeView("chat");
-                        onSelectThread(id);
-                        if (window.innerWidth < 768) setSidebarOpen(false);
-                      }}
-                      onSelectNote={(id) => {
-                        onChangeView("library");
-                        onSelectNote(id);
-                        if (window.innerWidth < 768) setSidebarOpen(false);
-                      }}
-                      onSelectEvent={(id) => {
-                        onChangeView("calendar");
-                        onSelectEvent(id);
-                        if (window.innerWidth < 768) setSidebarOpen(false);
-                      }}
-                      onSelectSpace={(id) => {
-                        onChangeView("chat");
-                        onSelectSpace(id);
-                        if (window.innerWidth < 768) setSidebarOpen(false);
-                      }}
-                      isCollapsed={isCollapsed}
-                      externalQuery={searchQuery}
-                      onQueryChange={setSearchQuery}
-                      hideInput={true}
-                    />
-                  </div>
-                )}
-            </div>
-
             {/* Chat (History) */}
             <div className="flex flex-col">
-              <NavItem
-                icon={<MessageSquareText size={20} />}
-                label={t.chat}
-                onClick={() => {
-                  toggleSection("chat");
-                  onChangeView("chat");
-                }}
-                hasChevron={!isCollapsed}
-                isOpen={expandedSection === "chat"}
-                active={
-                  activeView === "chat" &&
-                  (!!activeThreadId || expandedSection === "chat")
-                }
-                isCollapsed={isCollapsed}
-              />
+              <div className="flex flex-col w-full group relative">
+                <NavItem
+                  icon={<MessageSquareText size={20} />}
+                  label={t.chat}
+                  onClick={() => {
+                    toggleSection("chat");
+                    onChangeView("chat");
+                  }}
+                  isOpen={expandedSection === "chat"}
+                  active={
+                    activeView === "chat" &&
+                    (!!activeThreadId || expandedSection === "chat")
+                  }
+                  isCollapsed={isCollapsed}
+                  actions={!isCollapsed && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChangeView("chat");
+                        onNewThread();
+                        if (expandedSection !== "chat") toggleSection("chat");
+                      }}
+                      onMouseEnter={() => setHoveredTooltip("new-chat")}
+                      onMouseLeave={() => setHoveredTooltip(null)}
+                      className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-md transition-colors active:scale-90"
+                    >
+                      <SquarePen size={16} />
+                      {hoveredTooltip === "new-chat" && (
+                        <Tooltip text="New Conversation" position="right" />
+                      )}
+                    </button>
+                  )}
+                />
+              </div>
 
               {expandedSection === "chat" && !isCollapsed && (
                 <div className="ml-4 pl-2.5 border-l border-pplx-border space-y-0.5 mt-0.5 animate-fadeIn duration-150">
@@ -497,7 +472,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
             </div>
-
+            
+            
+            {/* Workspace & Threads */}
+            <div className="h-px bg-pplx-border/50 my-2 mx-3" />
+            
             {/* Spaces Accordion (Moved above Library) */}
             <div
               className={`flex flex-col ${activeMenuSpaceId ? "z-[110] relative pointer-events-none" : ""}`}
@@ -506,26 +485,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <NavItem
                   icon={<LayoutGrid size={20} />}
                   label={t.spaces}
-                  onClick={() => toggleSection("spaces")}
+                  onClick={() => {
+                    if (expandedSection !== "spaces") toggleSection("spaces");
+                    onChangeView("spaces");
+                  }}
+                  onChevronClick={() => toggleSection("spaces")}
                   hasChevron={!isCollapsed}
                   isOpen={expandedSection === "spaces"}
-                  active={!!activeSpaceId}
+                  active={activeView === "spaces"}
                   isCollapsed={isCollapsed}
+                  actions={!isCollapsed && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNewSpace();
+                        if (expandedSection !== "spaces") toggleSection("spaces");
+                      }}
+                      onMouseEnter={() => setHoveredTooltip("new-space")}
+                      onMouseLeave={() => setHoveredTooltip(null)}
+                      className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-md transition-colors opacity-0 group-hover:opacity-100 active:scale-90"
+                    >
+                      <Plus size={16} />
+                      {hoveredTooltip === "new-space" && (
+                        <Tooltip text="New Space" position="right" />
+                      )}
+                    </button>
+                  )}
                 />
-                {/* Inline Plus Button for New Space */}
-                {!isCollapsed && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNewSpace();
-                      if (expandedSection !== "spaces") toggleSection("spaces");
-                    }}
-                    className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-md transition-colors opacity-0 group-hover:opacity-100 absolute right-7 active:scale-90"
-                    title="New Space"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
               </div>
 
               {expandedSection === "spaces" && !isCollapsed && (
@@ -570,7 +556,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       setIsMobileLibraryOpen(true);
                       setMobileLibraryFilter("all");
                     } else {
-                      toggleSection("library");
+                      if (expandedSection !== "library") toggleSection("library");
+                      onSelectNote(""); // Reset active note to view library root
+                      onChangeView("library");
                     }
                   }}
                   onChevronClick={() => toggleSection("library")}
@@ -578,37 +566,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   isOpen={expandedSection === "library"}
                   active={activeView === "library"}
                   isCollapsed={isCollapsed}
+                  actions={!isCollapsed && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNewNote();
+                        if (expandedSection !== "library") toggleSection("library");
+                      }}
+                      onMouseEnter={() => setHoveredTooltip("new-page")}
+                      onMouseLeave={() => setHoveredTooltip(null)}
+                      className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-md transition-colors opacity-0 group-hover:opacity-100 active:scale-90"
+                    >
+                      <Plus size={16} />
+                      {hoveredTooltip === "new-page" && (
+                        <Tooltip text="New Page" position="right" />
+                      )}
+                    </button>
+                  )}
                 />
-                {/* Inline Plus Button for New Page */}
-                {!isCollapsed && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNewNote();
-                      toggleSection("library");
-                    }}
-                    className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-md transition-colors opacity-0 group-hover:opacity-100 absolute right-7 active:scale-90"
-                    title="New Page"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
               </div>
 
               {expandedSection === "library" && !isCollapsed && (
                 <div className="ml-2 space-y-0.5 mt-1 animate-fadeIn duration-150 relative">
+                  
                   {/* Favorites Section */}
-                  {notes.some((n) => n.isFavorite) && (
+                  {notes.some((n) => n.isFavorite && (n.category === "notes" || n.category === "docs" || !n.category || n.category === "none") && n.emoji !== "📁") && (
                     <div className="mb-3 mt-1">
                       <div className="px-3 py-1 text-[10px] font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5 opacity-70">
                         <Star
                           size={10}
                           className="text-yellow-400 fill-yellow-400"
                         />{" "}
-                        Favorites
+                        {lang === "ro" ? "FAVORITE" : "FAVORITES"}
                       </div>
                       {notes
-                        .filter((n) => n.isFavorite)
+                        .filter((n) => n.isFavorite && (n.category === "notes" || n.category === "docs" || !n.category || n.category === "none") && n.emoji !== "📁")
                         .map((note) => (
                           <NoteItem
                             key={`fav-${note.id}`}
@@ -631,13 +623,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                   )}
 
-                  {notes.filter((n) => !n.parentId).length === 0 && (
+                  {/* Pages Header */}
+                  <div className="px-3 py-1 text-[10px] font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5 opacity-70">
+                    📄 {lang === "ro" ? "PAGINI" : "PAGES"}
+                  </div>
+
+                  {notes.filter((n) => !n.parentId && (n.category === "notes" || n.category === "docs" || !n.category || n.category === "none") && n.emoji !== "📁").length === 0 && (
                     <div className="px-3 py-2 text-xs text-pplx-muted italic">
                       {t.noPages}
                     </div>
                   )}
                   {notes
-                    .filter((n) => !n.parentId)
+                    .filter((n) => !n.parentId && (n.category === "notes" || n.category === "docs" || !n.category || n.category === "none") && n.emoji !== "📁")
                     .map((note) => (
                       <NoteItem
                         key={note.id}
@@ -656,120 +653,73 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         menuRef={menuRef}
                       />
                     ))}
-                  {onNewPortfolioTracker && (
-                    <div className="mt-4 mb-2 px-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsTemplatesOpen(!isTemplatesOpen);
-                        }}
-                        className="w-full flex items-center justify-between px-2 py-1.5 text-[10px] font-bold text-pplx-muted uppercase tracking-wider hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left group/templates"
-                      >
-                        <div className="flex items-center gap-2">
-                          <LayoutGrid size={12} className="text-pplx-accent" />
-                          <span>Templates</span>
-                        </div>
-                        {isTemplatesOpen ? (
-                          <ChevronDown size={12} />
-                        ) : (
-                          <ChevronRight size={12} />
-                        )}
-                      </button>
-
-                      {isTemplatesOpen && (
-                        <div className="mt-1 ml-1 space-y-0.5 animate-fadeIn duration-150">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onNewPortfolioTracker && onNewPortfolioTracker();
-                              setExpandedSection("library");
-                            }}
-                            className="w-full flex items-center gap-2 px-2 py-2 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
-                          >
-                            <LayoutGrid
-                              size={14}
-                              className="text-pplx-accent"
-                            />{" "}
-                            Portfolio
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onNewSafeDigital && onNewSafeDigital();
-                              setExpandedSection("library");
-                            }}
-                            className="w-full flex items-center gap-2 px-2 py-2 text-xs text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-lg transition-colors text-left"
-                          >
-                            <LayoutGrid
-                              size={14}
-                              className="text-pplx-accent"
-                            />{" "}
-                            Safe Digital
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
           </nav>
 
-          {/* Calendar Button - Positioned above user */}
+          {/* Bottom Area (Recycle Bin, Profile/Settings) */}
           <div
-            className={`pb-1 ${isCollapsed ? "flex justify-center px-0" : "px-3"}`}
+            className={`pb-4 ${isCollapsed ? "flex flex-col items-center px-1" : "px-3"} shrink-0 bg-pplx-sidebar pt-2`}
           >
-            <NavItem
-              icon={<CalendarDays size={20} />}
-              label="Calendar"
-              active={activeView === "calendar"}
-              onClick={() => {
-                onChangeView("calendar");
-                if (window.innerWidth < 768) setSidebarOpen(false);
-              }}
-              isCollapsed={isCollapsed}
-            />
-          </div>
+            <div className={`flex ${isCollapsed ? "flex-col items-center gap-2" : "flex-row items-center justify-between px-2"} w-full mb-1`}>
+              <div className="relative">
+                <button
+                  onClick={() => handleNavClick(() => onChangeView("trash"))}
+                  onMouseEnter={() => setHoveredTooltip("trash")}
+                  onMouseLeave={() => setHoveredTooltip(null)}
+                  className={`flex items-center gap-2 px-2 py-2 rounded-lg transition-colors active:scale-95 ${activeView === "trash" ? "text-pplx-accent bg-pplx-hover" : "text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover"}`}
+                >
+                  <Trash2 size={isCollapsed ? 23 : 20} />
+                  {!isCollapsed && <span className="text-sm font-medium">Trash</span>}
+                </button>
+                {hoveredTooltip === "trash" && (
+                  <Tooltip text="Trash" position="right" />
+                )}
+              </div>
+            </div>
 
-          {/* Footer User Section - Hidden on Mobile */}
-          <div
-            className={`hidden md:block py-1.5 mt-auto bg-pplx-sidebar ${isCollapsed ? "flex justify-center px-0" : "px-2"} h-[56px] shrink-0`}
-          >
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                openSettings("profile");
-              }}
-              className={`text-xs text-pplx-muted hover:text-pplx-text flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-2"} py-2 cursor-pointer rounded-lg hover:bg-pplx-hover transition-colors group active:scale-95`}
-            >
+            {/* Profile / Settings Button */}
+            <div className={`w-full`}>
               <div
-                className={`flex items-center ${isCollapsed ? "justify-center w-full" : "space-x-2.5"}`}
+                className={`text-sm text-pplx-muted hover:text-pplx-text flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-2"} py-2 rounded-lg transition-colors group cursor-pointer hover:bg-pplx-hover`}
               >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-[9px] font-bold border border-white/10 overflow-hidden shrink-0">
-                  {userProfile.avatar ? (
-                    <img
-                      src={userProfile.avatar}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    getUserInitials(userProfile.name)
+                <div 
+                  onClick={() => openSettings("profile")}
+                  className={`flex items-center gap-2 ${isCollapsed ? "justify-center w-full" : "flex-1"} truncate`}
+                >
+                  <div className="w-[40px] h-[40px] rounded-full overflow-hidden bg-pplx-primary flex items-center justify-center text-pplx-text text-[17px] font-bold shrink-0 border border-pplx-border">
+                    {userProfile.avatar ? (
+                      <img src={userProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      getUserInitials(userProfile.name)
+                    )}
+                  </div>
+                  {!isCollapsed && (
+                    <span className="font-medium truncate text-[19px]">
+                      {userProfile.name || "User"}
+                    </span>
                   )}
                 </div>
                 {!isCollapsed && (
-                  <div className="flex flex-col truncate">
-                    <span className="font-medium text-pplx-text group-hover:text-pplx-text leading-none text-sm truncate max-w-[110px]">
-                      {userProfile.name || "User"}
-                    </span>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openSettings();
+                      }}
+                      onMouseEnter={() => setHoveredTooltip("settings")}
+                      onMouseLeave={() => setHoveredTooltip(null)}
+                      className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary rounded-md transition-colors active:scale-90 shrink-0"
+                    >
+                      <Settings size={21} />
+                    </button>
+                    {hoveredTooltip === "settings" && (
+                      <Tooltip text="Settings" position="right" />
+                    )}
                   </div>
                 )}
               </div>
-              {!isCollapsed && (
-                <Settings
-                  size={18}
-                  className="text-pplx-muted hover:text-pplx-text transition-colors shrink-0"
-                />
-              )}
             </div>
           </div>
         </div>
@@ -807,6 +757,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </h3>
                 <div className="flex space-x-3 overflow-x-auto pb-2 -mx-4 pl-8 pr-4 no-scrollbar snap-x">
                   {[...notes]
+                    .filter((n) => n.category !== "folder" && n.emoji !== "📁")
                     .sort((a, b) => b.updatedAt - a.updatedAt)
                     .slice(0, 5)
                     .map((note) => (
@@ -844,14 +795,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
 
             {/* Favorites Section Mobile */}
-            {notes.some((n) => n.isFavorite) ? (
+            {notes.some((n) => n.isFavorite && n.category !== "folder" && n.emoji !== "📁") ? (
               <div className="px-2 mb-4">
                 <div className="px-3 py-2 text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5 opacity-70">
                   <Star size={12} className="text-yellow-400 fill-yellow-400" />{" "}
                   Favorites
                 </div>
                 {notes
-                  .filter((n) => n.isFavorite)
+                  .filter((n) => n.isFavorite && n.category !== "folder" && n.emoji !== "📁")
                   .map((note) => (
                     <NoteItem
                       key={`fav-mobile-${note.id}`}
@@ -893,13 +844,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* All Pages Section */}
             {mobileLibraryFilter === "all" && (
               <div className="px-2">
-                {notes.filter((n) => !n.parentId).length === 0 && (
+                {notes.filter((n) => !n.parentId && n.category !== "folder" && n.emoji !== "📁").length === 0 && (
                   <div className="px-3 py-4 text-sm text-pplx-muted italic text-center">
                     No pages yet. Create one to get started!
                   </div>
                 )}
                 {notes
-                  .filter((n) => !n.parentId)
+                  .filter((n) => !n.parentId && n.category !== "folder" && n.emoji !== "📁")
                   .map((note) => (
                     <NoteItem
                       key={note.id}
@@ -923,49 +874,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       isMobile={true}
                     />
                   ))}
-                {onNewPortfolioTracker && (
-                  <div className="mt-6 mb-4 px-3">
-                    <button
-                      onClick={() => setIsTemplatesOpen(!isTemplatesOpen)}
-                      className="w-full flex items-center justify-between px-3 py-3 text-xs font-bold text-pplx-muted uppercase tracking-wider mb-2 hover:bg-pplx-hover rounded-xl transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <LayoutGrid size={14} className="text-pplx-accent" />
-                        <span>Templates</span>
-                      </div>
-                      {isTemplatesOpen ? (
-                        <ChevronDown size={14} />
-                      ) : (
-                        <ChevronRight size={14} />
-                      )}
-                    </button>
-
-                    {isTemplatesOpen && (
-                      <div className="space-y-2 animate-fadeIn duration-150">
-                        <button
-                          onClick={() => {
-                            onNewPortfolioTracker && onNewPortfolioTracker();
-                            setSidebarOpen(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-3 text-sm text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-xl transition-colors text-left border border-pplx-border/50"
-                        >
-                          <LayoutGrid size={16} className="text-pplx-accent" />{" "}
-                          Portfolio
-                        </button>
-                        <button
-                          onClick={() => {
-                            onNewSafeDigital && onNewSafeDigital();
-                            setSidebarOpen(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-3 text-sm text-pplx-muted hover:text-pplx-text hover:bg-pplx-hover rounded-xl transition-colors text-left border border-pplx-border/50"
-                        >
-                          <LayoutGrid size={16} className="text-pplx-accent" />{" "}
-                          Safe Digital
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -993,6 +901,7 @@ const NavItem = ({
   hasChevron = false,
   isOpen = false,
   isCollapsed = false,
+  actions,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -1002,9 +911,10 @@ const NavItem = ({
   hasChevron?: boolean;
   isOpen?: boolean;
   isCollapsed?: boolean;
+  actions?: React.ReactNode;
 }) => (
   <div
-    className={`w-full flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-1.5"} py-0.5 rounded-lg text-sm transition-colors group relative ${
+    className={`w-full flex items-center ${isCollapsed ? "justify-center px-0" : "px-1.5"} py-0.5 rounded-lg text-sm transition-colors group relative ${
       active ? "bg-pplx-hover" : "hover:bg-pplx-hover"
     }`}
   >
@@ -1025,6 +935,11 @@ const NavItem = ({
         </span>
       )}
     </button>
+    {!isCollapsed && actions && (
+      <div className="flex items-center mr-1">
+        {actions}
+      </div>
+    )}
     {hasChevron && !isCollapsed && (
       <button
         onClick={(e) => {

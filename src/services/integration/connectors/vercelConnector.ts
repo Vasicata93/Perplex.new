@@ -6,7 +6,7 @@ export const vercelConnector: IConnector = {
   name: 'Vercel',
   description: 'Connect to Vercel to manage deployments, projects, and domains.',
   icon: 'vercel',
-  authType: 'api_key', // Vercel uses Personal Access Tokens
+  authType: 'oauth2', // Changed to oauth2 for seamless flow
   status: 'disconnected',
   
   connect: async () => {

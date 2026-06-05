@@ -27,6 +27,9 @@ interface SearchViewProps {
   onSelectNote: (id: string) => void;
   onSelectEvent: (id: string) => void;
   onSelectSpace: (id: string) => void;
+  onClose?: () => void;
+  searchQuery: string;
+  setSearchQuery: (val: string) => void;
 }
 
 type ResultType = "chat" | "note" | "event" | "space";
@@ -51,8 +54,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
   onSelectNote,
   onSelectEvent,
   onSelectSpace,
+  onClose,
+  searchQuery,
+  setSearchQuery,
 }) => {
-  const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<ResultType | "all">("all");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,9 +68,9 @@ export const SearchView: React.FC<SearchViewProps> = ({
   }, []);
 
   const results = useMemo(() => {
-    if (!query.trim()) return [];
+    if (!searchQuery.trim()) return [];
 
-    const q = query.toLowerCase();
+    const q = searchQuery.toLowerCase();
     const allResults: SearchResult[] = [];
 
     // Search Threads
@@ -145,7 +150,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
     return allResults
       .filter((r) => activeFilter === "all" || r.type === activeFilter)
       .sort((a, b) => (b.date || 0) - (a.date || 0));
-  }, [query, threads, notes, events, spaces, activeFilter]);
+  }, [searchQuery, threads, notes, events, spaces, activeFilter]);
 
   const handleSelect = (result: SearchResult) => {
     switch (result.type) {
@@ -205,8 +210,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
           <input
             ref={inputRef}
             type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search through everything..."
             className="w-full bg-pplx-secondary/50 border border-pplx-border rounded-[32px] pl-16 pr-6 py-6 text-2xl font-serif text-pplx-text placeholder-pplx-muted/40 outline-none focus:border-pplx-accent/50 focus:ring-4 focus:ring-pplx-accent/5 transition-all shadow-2xl"
           />
@@ -214,9 +219,18 @@ export const SearchView: React.FC<SearchViewProps> = ({
             <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-pplx-hover/50 border border-pplx-border rounded-lg text-[10px] font-black text-pplx-muted uppercase tracking-widest">
               <Command size={10} /> K
             </div>
-            {query && (
+            {onClose && (
               <button
-                onClick={() => setQuery("")}
+                onClick={onClose}
+                className="p-2 hover:bg-pplx-hover rounded-full text-pplx-muted transition-colors"
+                title="Close search"
+              >
+                <X size={20} />
+              </button>
+            )}
+            {searchQuery && !onClose && (
+              <button
+                onClick={() => setSearchQuery("")}
                 className="p-2 hover:bg-pplx-hover rounded-full text-pplx-muted transition-colors"
               >
                 <X size={20} />
@@ -254,7 +268,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
       {/* Results Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-20">
         <div className="max-w-4xl mx-auto w-full">
-          {!query.trim() ? (
+          {!searchQuery.trim() ? (
             <div className="flex flex-col items-center justify-center py-20 text-center animate-fadeIn">
               <div className="w-20 h-20 bg-pplx-secondary/50 rounded-full flex items-center justify-center mb-6 border border-pplx-border shadow-inner">
                 <History size={32} className="text-pplx-muted/40" />
@@ -343,7 +357,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 No results found
               </h3>
               <p className="text-pplx-muted max-w-xs mx-auto text-sm leading-relaxed">
-                We couldn't find anything matching "{query}". Try a different
+                We couldn't find anything matching "{searchQuery}". Try a different
                 keyword.
               </p>
             </div>

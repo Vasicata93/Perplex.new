@@ -29,7 +29,7 @@ interface AgentStore extends AgentState {
   setConfidence: (score: ConfidenceScore) => void;
   setSimplifyResponse: (simplify: boolean) => void;
   
-  // Reset
+  // ... other actions
   resetSession: () => void;
 }
 

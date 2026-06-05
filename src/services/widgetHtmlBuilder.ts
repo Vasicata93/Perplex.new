@@ -12,22 +12,31 @@ export function buildWidgetHtml(
             let lastHeight = 0;
             function sendHeight() {
                 const container = document.getElementById('widget-container');
-                let height;
+                let height = 0;
                 
                 if (container) {
-                    // Measure the exact content height, avoiding viewport stretching
-                    height = container.getBoundingClientRect().height;
+                    // Use scrollHeight for actual content size, bypassing any overflow truncations
+                    height = Math.max(container.scrollHeight, container.offsetHeight);
                     
                     // Add body padding to ensure nothing is cut off
                     const style = window.getComputedStyle(document.body);
                     const paddingTop = parseFloat(style.paddingTop) || 0;
                     const paddingBottom = parseFloat(style.paddingBottom) || 0;
                     height += paddingTop + paddingBottom;
+                    
+                    // Check for horizontal scrollbars which reduce available vertical space
+                    const hasHorizontalScroll = document.documentElement.scrollWidth > document.documentElement.clientWidth;
+                    if (hasHorizontalScroll) {
+                        height += 24; // Extra space for horizontal scrollbar
+                    }
                 } else {
                     // Fallback
-                    height = document.documentElement.offsetHeight || document.body.offsetHeight;
+                    height = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
                 }
                 
+                // Add a small buffer to strictly prevent scrollbars
+                height += 20;
+
                 // Only send if height changed significantly to avoid infinite 1px jitter loops
                 if (height && Math.abs(height - lastHeight) > 2) {
                     lastHeight = height;
@@ -47,6 +56,83 @@ export function buildWidgetHtml(
             setTimeout(sendHeight, 500);
             setTimeout(sendHeight, 1500);
             setTimeout(sendHeight, 3000);
+
+            // Element selection logic
+            let selectMode = false;
+            let hoveredElement = null;
+            let originalOutline = '';
+
+            window.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'TOGGLE_SELECT_MODE') {
+                    selectMode = event.data.enabled;
+                    if (!selectMode && hoveredElement) {
+                        hoveredElement.style.outline = originalOutline;
+                        hoveredElement = null;
+                    }
+                }
+            });
+
+            document.addEventListener('mouseover', (e) => {
+                if (!selectMode) return;
+                e.stopPropagation();
+                if (hoveredElement) {
+                    hoveredElement.style.outline = originalOutline;
+                }
+                hoveredElement = e.target;
+                originalOutline = hoveredElement.style.outline || '';
+                hoveredElement.style.outline = '2px solid #20B8CD';
+                hoveredElement.style.outlineOffset = '-2px';
+            });
+
+            document.addEventListener('mouseout', (e) => {
+                if (!selectMode) return;
+                if (hoveredElement) {
+                    hoveredElement.style.outline = originalOutline;
+                    hoveredElement = null;
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!selectMode) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (hoveredElement) {
+                    hoveredElement.style.outline = originalOutline;
+                    
+                    // Simple CSS selector path
+                    const path = [];
+                    let el = hoveredElement;
+                    while (el && el.nodeType === Node.ELEMENT_NODE) {
+                        let selector = el.nodeName.toLowerCase();
+                        if (el.id) {
+                            selector += '#' + el.id;
+                            path.unshift(selector);
+                            break;
+                        } else {
+                            let sib = el, nth = 1;
+                            while (sib = sib.previousElementSibling) {
+                                if (sib.nodeName.toLowerCase() == selector) nth++;
+                            }
+                            if (nth != 1) selector += ":nth-of-type("+nth+")";
+                        }
+                        path.unshift(selector);
+                        el = el.parentNode;
+                    }
+                    
+                    const selectorStr = path.join(' > ');
+                    let outer = hoveredElement.cloneNode(false).outerHTML;
+                    
+                    window.parent.postMessage({
+                        type: 'WIDGET_SELECTED_ELEMENT',
+                        selector: selectorStr,
+                        html: outer
+                    }, '*');
+                    
+                    // disable after one selection automatically
+                    selectMode = false;
+                    window.parent.postMessage({type: 'WIDGET_SELECT_DISABLED'}, '*');
+                }
+            }, true);
         </script>
     `;
 
@@ -379,11 +465,11 @@ export function buildWidgetHtml(
             align-items: center;
             background-color: transparent;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden;
+            overflow-y: hidden; /* allow iframe to expand naturally */
+            overflow-x: auto;
         }
         #widget-container {
             width: 100%;
-            height: 380px; /* Fixed height to prevent resize loops while giving plenty of space */
             position: relative;
             animation: fadeIn 0.8s ease-out;
         }
@@ -480,7 +566,6 @@ export function buildWidgetHtml(
 
             if (config.options) {
                 config.options.responsive = true;
-                config.options.maintainAspectRatio = false;
                 config.options.interaction = {
                     mode: 'index',
                     intersect: false,
@@ -540,7 +625,6 @@ export function buildWidgetHtml(
             } else {
                 config.options = {
                     responsive: true,
-                    maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
@@ -604,7 +688,8 @@ export function buildWidgetHtml(
             background-color: transparent;
             color: ${textColor};
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; /* Prevent scrollbars */
+            overflow-y: hidden; /* Prevent internal vertical scroll, allow iframe to expand */
+            overflow-x: auto;
         }
         #widget-container {
             padding: 16px;
@@ -613,6 +698,7 @@ export function buildWidgetHtml(
             justify-content: center;
             width: 100%;
             box-sizing: border-box;
+            display: flow-root;
         }
         .mermaid {
             background-color: transparent;
@@ -629,9 +715,8 @@ export function buildWidgetHtml(
         /* Premium Diagram Styling */
         .mermaid svg {
             filter: drop-shadow(0 15px 25px rgba(0,0,0,0.1));
-            max-width: 100% !important;
-            max-height: 500px !important; /* Constrain height to prevent massive diagrams */
-            height: auto !important; /* Ensure proportional scaling */
+            /* Remove max-width so large diagrams are fully readable and scroll horizontally */
+            height: auto !important; 
         }
         .mermaid .node rect, .mermaid .node circle, .mermaid .node ellipse, .mermaid .node polygon, .mermaid .node path {
             stroke-width: 1.5px !important;
@@ -701,14 +786,14 @@ ${mermaidCode}
             },
             themeVariables: {
                 darkMode: ${isDark},
-                background: '${isDark ? "#191919" : "#ffffff"}',
+                background: 'transparent',
                 primaryColor: '#20B8CD',
                 primaryTextColor: '${textColor}',
                 primaryBorderColor: '${isDark ? "#3f3f46" : "#e5e7eb"}',
                 lineColor: '${isDark ? "#52525b" : "#d1d5db"}',
-                secondaryColor: '${isDark ? "#27272a" : "#f9fafb"}',
-                tertiaryColor: '${isDark ? "#18181b" : "#f3f4f6"}',
-                mainBkg: '${isDark ? "#27272a" : "#ffffff"}',
+                secondaryColor: '${isDark ? "#121212" : "#f9fafb"}',
+                tertiaryColor: '${isDark ? "#121212" : "#f3f4f6"}',
+                mainBkg: '${isDark ? "#121212" : "#ffffff"}',
                 nodeBorder: '${isDark ? "#3f3f46" : "#e5e7eb"}',
                 clusterBkg: '${isDark ? "#18181b" : "#f9fafb"}',
                 clusterBorder: '${isDark ? "#3f3f46" : "#e5e7eb"}',
@@ -717,6 +802,98 @@ ${mermaidCode}
                 edgeLabelBackground: '${isDark ? "#27272a" : "#ffffff"}',
                 nodeRadius: '8px'
             }
+        });
+    </script>
+    ${resizeScript}
+</body>
+</html>`;
+  }
+
+  if (widgetType === "html" || widgetType === "web" || widgetType === "react") {
+    const htmlCode = typeof config === "string" ? config : (config.html || config.code || "");
+    
+    // If the LLM generated a full HTML document, just inject the resize script and return it
+    if (htmlCode.trim().toLowerCase().startsWith("<!doctype html") || htmlCode.toLowerCase().includes("<html")) {
+        // Try to inject 'dark' class into the html tag if isDark is true
+        let finalHtml = htmlCode;
+        if (isDark) {
+            if (finalHtml.includes('class="')) {
+                finalHtml = finalHtml.replace(/<html[^>]*class="/i, '$&dark ');
+            } else if (finalHtml.includes("<html")) {
+                finalHtml = finalHtml.replace(/<html/i, '<html class="dark"');
+            }
+        }
+        return finalHtml + resizeScript;
+    }
+
+    return `
+<!DOCTYPE html>
+<html lang="en" class="${isDark ? "dark" : ""}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.321.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        pplx: {
+                            primary: '${isDark ? "#191919" : "#FFFFFF"}',
+                            secondary: '${isDark ? "#202020" : "#F9F9F9"}',
+                            accent: '#20B8CD',
+                            border: '${isDark ? "#333333" : "#E5E7EB"}',
+                            text: '${isDark ? "#EBEBEB" : "#111111"}',
+                            muted: '${isDark ? "#9B9B9B" : "#6B7280"}'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 16px;
+            background-color: transparent;
+            font-family: 'Inter', system-ui, sans-serif;
+            color: ${textColor};
+            overflow-x: auto;
+        }
+        #widget-container {
+            display: flow-root;
+        }
+        /* Custom scrollbar for better appearance */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: ${gridColor}; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: ${isDark ? "#555" : "#aaa"}; }
+    </style>
+</head>
+<body>
+    <div id="widget-container">
+        ${htmlCode}
+    </div>
+    <script>
+        try {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        } catch (e) { console.error('Error initializing lucide:', e); }
+
+        // Execute any script tags that were injected via htmlCode
+        document.querySelectorAll('#widget-container script').forEach(script => {
+            const newScript = document.createElement('script');
+            Array.from(script.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+            newScript.text = script.text;
+            script.parentNode.replaceChild(newScript, script);
         });
     </script>
     ${resizeScript}
@@ -733,7 +910,7 @@ ${mermaidCode}
             font-family: sans-serif; 
             padding: 20px; 
             color: ${textColor}; 
-            background-color: ${isDark ? "#191919" : "transparent"};
+            background-color: transparent;
         }
     </style>
 </head>

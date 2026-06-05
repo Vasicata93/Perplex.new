@@ -27,6 +27,10 @@ import { getHolidays } from "./holidayService";
 import { skillManager } from "./integration/SkillManager";
 import { portfolioService } from "./portfolioService";
 import { safeDigitalService } from "./safeDigitalService";
+import { ContextCompressor } from "./agent/ContextCompressor";
+import { ToolRegistry } from "./agent/tools/ToolRegistry";
+import { useLocalBackendStore } from "../store/useLocalBackendStore";
+import { localExecutionService } from "./localExecutionService";
 
 // --- Tool Definitions ---
 
@@ -238,6 +242,37 @@ const safeDigitalToolGemini: FunctionDeclaration = {
     required: ["action"],
   },
 };
+
+const localExecutionToolGemini: FunctionDeclaration = {
+  name: "local_execution_tool",
+  description: "Execute actions on the user's local machine (read/write files, terminal commands, mouse, keyboard). ONLY use this if the user has explicitly authorized local system access.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: [
+          'execute_command',
+          'read_file',
+          'write_file',
+          'list_directory',
+          'mouse_move',
+          'mouse_click',
+          'keyboard_type',
+          'capture_screen'
+        ],
+        description: "The specific action to perform."
+      },
+      payload: {
+        type: Type.STRING,
+        description: "A minified JSON string representing the arguments. e.g. for `execute_command`, provide `{\"command\":\"...\"}`. For `write_file`, provide `{\"path\":\"...\",\"content\":\"...\"}`. For `read_file`, `{\"path\":\"...\"}`.",
+      }
+    },
+    required: ["action", "payload"]
+  }
+};
+
+// Removing runCommand tools
 
 const portfolioToolGeneric = {
   type: "function",
@@ -454,6 +489,11 @@ export class LLMService {
   }
 
   private workspaceFiles: Attachment[] = [];
+  public activeSpaceId: string | null = null;
+  
+  public setActiveSpaceId(id: string | null) {
+      this.activeSpaceId = id;
+  }
 
   // Models that support internal reasoning via OpenRouter
   private static readonly OPENROUTER_REASONING_MODELS = [
@@ -493,6 +533,45 @@ export class LLMService {
         console.error("Failed to initialize GoogleGenAI client:", e);
       }
     }
+    
+     ToolRegistry.register({
+         name: "manage_agent_team",
+         description: "Creează sau modifică echipa de sub-agenți pentru workspace-ul curent. Oferă o listă completă de agenți cu profilele lor, pe care îi vrei în echipă.",
+         parameters: {
+             type: "object",
+             properties: {
+                 subAgents: {
+                     type: "array",
+                     items: {
+                         type: "object",
+                         properties: {
+                             id: { type: "string", description: "ID unic agent (eg. rnd-id-1)" },
+                             name: { type: "string", description: "Numele agentului" },
+                             role: { type: "string", description: "Rol scurt (ex: Cercetător)" },
+                             profile: { type: "string", description: "Instrucțiuni detaliate de sistem" },
+                             modelId: { type: "string", description: "Default: gemini-3.1-pro-preview" }
+                         },
+                         required: ["id", "name", "role", "profile", "modelId"]
+                     }
+                 }
+             },
+             required: ["subAgents"]
+         }
+     }, async (args, context) => {
+         if (!context?.llmService?.activeSpaceId) {
+             return { success: false, summary: "No active space found to manage team.", error: "No active space." };
+         }
+         
+         window.dispatchEvent(new CustomEvent('update-agent-team', { 
+             detail: { spaceId: context.llmService.activeSpaceId, subAgents: args.subAgents } 
+         }));
+         
+         return {
+             success: true,
+             summary: `Echipa de agenți a fost actualizată!`,
+             data: { message: "Agent team updated successfully." }
+         };
+     });
   }
 
   // --- Observer for UI ---
@@ -565,6 +644,12 @@ export class LLMService {
         return this.extractJson(jsonText || "{}");
       } catch (error) {
         clearTimeout(timeoutId);
+        const errStr = typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error);
+        if (errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED")) {
+          const quotaErr = new Error("Platform API Quota exceeded. Please go to Settings and add your own Gemini API Key to continue, or try again later.");
+          console.error("Error generating JSON with Gemini (Quota):", quotaErr);
+          throw quotaErr;
+        }
         console.error("Error generating JSON with Gemini:", error);
         throw error;
       }
@@ -587,8 +672,16 @@ export class LLMService {
       }
 
       const headers: any = { "Content-Type": "application/json" };
-      if (apiKey !== "not-needed")
-        headers["Authorization"] = `Bearer ${apiKey}`;
+      if (apiKey !== "not-needed") {
+        if (!apiKey) {
+           throw new Error(`Missing API Key for ${provider}. Please configure it in Settings.`);
+        }
+        const safeApiKey = apiKey.replace(/[^\x20-\x7E]/g, '').trim();
+        if (!safeApiKey) {
+           throw new Error(`Invalid API Key for ${provider}.`);
+        }
+        headers["Authorization"] = `Bearer ${safeApiKey}`;
+      }
 
       // Map history for Generic
       const messages: any[] = [{ role: "system", content: systemInstruction }];
@@ -722,6 +815,12 @@ export class LLMService {
         return response.text || "";
       } catch (error) {
         clearTimeout(timeoutId);
+        const errStr = typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error);
+        if (errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED")) {
+          const quotaErr = new Error("Platform API Quota exceeded. Please go to Settings and add your own Gemini API Key to continue, or try again later.");
+          console.error("Error generating simple text with Gemini (Quota):", quotaErr);
+          throw quotaErr;
+        }
         console.error("Error generating simple text with Gemini:", error);
         throw error;
       }
@@ -745,7 +844,14 @@ export class LLMService {
 
       const headers: any = { "Content-Type": "application/json" };
       if (apiKey !== "not-needed") {
-        headers["Authorization"] = `Bearer ${apiKey}`;
+        if (!apiKey) {
+           throw new Error(`Missing API Key for ${provider}. Please configure it in Settings.`);
+        }
+        const safeApiKey = apiKey.replace(/[^\x20-\x7E]/g, '').trim();
+        if (!safeApiKey) {
+           throw new Error(`Invalid API Key for ${provider}.`);
+        }
+        headers["Authorization"] = `Bearer ${safeApiKey}`;
       }
 
       const body: any = {
@@ -833,6 +939,7 @@ export class LLMService {
     braveApiKey?: string,
     onChunk?: (text: string, reasoning?: string) => void,
     useAgenticResearch: boolean = false,
+    subAgents?: any[]
   ): Promise<{
     text: string;
     citations: Citation[];
@@ -852,6 +959,23 @@ export class LLMService {
       if (reasoning) accumulatedReasoning += reasoning;
       if (onChunk) onChunk(text, reasoning);
     };
+
+    if (subAgents && subAgents.length > 0) {
+      return await this.runTeamOrchestration(
+        history,
+        prompt,
+        attachments,
+        subAgents,
+        provider,
+        openRouterKey,
+        openRouterModel,
+        openAiKey,
+        openAiModel,
+        activeLocalModel,
+        geminiApiKey,
+        customOnChunk
+      );
+    }
 
     // If Agentic Research is disabled, bypass the planner and execute directly
     if (!useAgenticResearch) {
@@ -920,12 +1044,12 @@ export class LLMService {
       - "simple" -> Greeting, simple fact, quick answer, no external tool needed.
       - "medium" -> Requires 1-2 tool calls (web search, reading a file, checking calendar) but no complex multi-step planning.
       - "complex" -> Requires deep research, multi-step execution, coding, drafting large documents, comparing multiple sources.
-      - "ambiguous" -> Critical information is missing to formulate a response.
+      - "ambiguous" -> Critical information is missing to formulate a response (USE SPARINGLY. Try to infer intent first and provide value).
 
       Return ONLY JSON format:
       {
         "route": "simple" | "medium" | "complex" | "ambiguous",
-        "clarify_question": "If ambiguous, write ONE concise follow-up question. Otherwise leave empty.",
+        "clarify_question": "If ambiguous, write a helpful question to clarify. Otherwise leave empty.",
         "steps": ["If complex, provide an array of descriptive major steps to take..."]
       }`;
 
@@ -1219,6 +1343,93 @@ export class LLMService {
     return finalResult;
   }
 
+  private async runTeamOrchestration(
+    history: Message[],
+    prompt: string,
+    attachments: Attachment[],
+    subAgents: any[],
+    provider: ModelProvider,
+    openRouterKey: string,
+    openRouterModel: string,
+    openAiKey: string,
+    openAiModel: string,
+    activeLocalModel: LocalModelConfig | undefined,
+    geminiApiKey?: string,
+    onChunk?: (text: string, reasoning?: string) => void
+  ): Promise<any> {
+    if (onChunk) onChunk("", "\n👔 [Manager] Analyzing task & delegating strictly to real independent Sub-Agents...\n");
+
+    const agentsListStr = subAgents.map((a, i) => `${i+1}. ${a.name} (Role: ${a.role}) - Profile: ${a.profile}`).join("\n");
+    
+    // 1. Manager decomposes task
+    const managerPrompt = `You are a strict team manager. You have received the following task:\n"${prompt}"\n\nYou MUST delegate this task to your available agents. DO NOT SOLVE IT YOURSELF. Break it into parallel subtasks and output a JSON array of objects, where each object has: { "agentName": "Name of agent", "subtask": "Detailed instructions for them based on original prompt" }. If you don't need all agents, only use the relevant ones.\n\nAvailable Agents:\n${agentsListStr}\n\nRespond ONLY with the JSON array.`;
+
+    const decompositionJsonStr = await this.generateSimpleText(managerPrompt, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey);
+    
+    let plan: any[] = [];
+    try {
+       const jsonMatch = decompositionJsonStr.match(/\[[\s\S]*\]/);
+       if (jsonMatch) plan = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+       console.error("Failed to parse manager plan", e);
+    }
+    
+    if (!plan || plan.length === 0) {
+       plan = [{ agentName: subAgents[0].name, subtask: prompt }];
+    }
+
+    if (onChunk) onChunk("", `\n📋 [Manager] Plan creat cu ${plan.length} subtask-uri. Se execută apeluri reale LLM în paralel...\n`);
+
+    // 2. Parallel LLM execution for each subagent!
+    const promises = plan.map(async (task: any) => {
+        const agent = subAgents.find(a => a.name === task.agentName) || subAgents[0];
+        if (onChunk) onChunk("", `\n🚀 [${agent.name}] LLM apelat pentru: ${task.subtask.substring(0, 40)}...\n`);
+        
+        const agentPrompt = `[System: You are ${agent.name}, ${agent.role}. Profile: ${agent.profile}]\n\nYour manager has assigned you the following independent subtask:\n${task.subtask}\n\nExecute the task to the best of your ability. Reply directly with your work.`;
+        
+        try {
+            const res = await this.generateSimpleText(agentPrompt, provider, openRouterKey, openRouterModel, openAiKey, openAiModel, activeLocalModel, geminiApiKey);
+            if (onChunk) onChunk("", `\n✅ [${agent.name}] A returnat rezultatul!\n`);
+            return `--- Raport de la ${agent.name} ---\nSarcina: ${task.subtask}\nRezultat:\n${res}\n`;
+        } catch (e) {
+            return `--- Raport de la ${agent.name} ---\nSarcina: ${task.subtask}\nRezultat: FAILED (${String(e)})\n`;
+        }
+    });
+
+    const agentResults = await Promise.all(promises);
+
+    if (onChunk) onChunk("", `\n👔 [Manager] Colectare rezultate & Generare Răspuns Final...\n\n`);
+
+    // 3. Synthesis using standard streaming
+    const synthesisPrompt = `You are the manager. The user asked: "${prompt}"\n\nYour independent team of autonomous LLM sub-agents have completed their execution in parallel. Here are their raw reports:\n\n${agentResults.join("\n")}\n\nStrictly synthesize these results into a single cohesive, high-quality, and final response without mentioning the internal delegation process too much, just deliver the combined value. Use clear formatting.`;
+
+    const finalResult = await this.runCoreGeneration(
+        history.slice(-5),
+        synthesisPrompt,
+        attachments,
+        provider,
+        openRouterKey,
+        openRouterModel,
+        openAiKey,
+        openAiModel,
+        activeLocalModel,
+        false, // useSearch
+        ProMode.STANDARD,
+        false, // enableMemory
+        { name: "User", bio: "", location: "" }, // mock user profile
+        { systemInstructions: "", language: "English" }, // mock AI profile
+        undefined, // space system inst
+        undefined, // tavily
+        geminiApiKey,
+        "tavily",
+        undefined, // brave
+        onChunk,
+        undefined
+    );
+
+    return finalResult;
+  }
+
   /**
    * Internal generation function that routes to the correct provider
    */
@@ -1244,6 +1455,7 @@ export class LLMService {
     braveApiKey?: string,
     onChunk?: (text: string, reasoning?: string) => void,
     systemInstructionOverride?: string,
+    useAgenticResearch: boolean = false,
   ): Promise<{
     text: string;
     citations: Citation[];
@@ -1401,6 +1613,7 @@ export class LLMService {
         geminiApiKey,
         onChunk,
         virtualFiles.length > 0, // Enable readFiles tool
+        useAgenticResearch,
       );
     } else {
       // Generic Providers (OpenAI, OpenRouter)
@@ -1437,6 +1650,7 @@ export class LLMService {
         onChunk,
         virtualFiles.length > 0, // Enable readFiles tool
         proMode,
+        useAgenticResearch,
       );
     }
 
@@ -1610,6 +1824,7 @@ export class LLMService {
     customApiKey?: string,
     onChunk?: (text: string, reasoning?: string) => void,
     useReadFiles: boolean = false,
+    useAgenticResearch: boolean = false,
   ): Promise<{
     text: string;
     citations: Citation[];
@@ -1652,6 +1867,48 @@ export class LLMService {
     
     const dynamicSkills = skillManager.getAvailableSkills().map(skill => skillManager.getGeminiTool(skill));
     
+    // Convert ToolRegistry schema to Gemini schema
+    const convertSchemaToGemini = (schema: any): any => {
+      if (!schema) return undefined;
+      const typeStr = typeof schema.type === 'string' ? schema.type.toLowerCase() : '';
+      if (typeStr === "object") {
+        const props: any = {};
+        for (const key in schema.properties) {
+          props[key] = convertSchemaToGemini(schema.properties[key]);
+        }
+        return {
+          type: Type.OBJECT,
+          properties: props,
+          required: schema.required,
+          description: schema.description
+        };
+      } else if (typeStr === "array") {
+        return {
+          type: Type.ARRAY,
+          items: convertSchemaToGemini(schema.items),
+          description: schema.description
+        };
+      } else if (typeStr === "string") {
+        return { type: Type.STRING, description: schema.description, enum: schema.enum };
+      } else if (typeStr === "number" || typeStr === "integer") {
+        return { type: Type.NUMBER, description: schema.description };
+      } else if (typeStr === "boolean") {
+        return { type: Type.BOOLEAN, description: schema.description };
+      }
+      return { type: Type.STRING, description: schema.description || "" };
+    };
+
+    const hardcodedToolNames = ["library_tool", "calendar_tool", "get_current_time", "get_calendar_holidays", "portfolio_tool", "safe_digital_tool", "run_command", "workspace_tool", "readFiles"];
+    const allRegisteredTools = ToolRegistry.getAllDefinitions();
+    
+    const registryFunctionDeclarations = allRegisteredTools
+      .filter(t => !hardcodedToolNames.includes(t.name))
+      .map(t => ({
+        name: t.name,
+        description: t.description,
+        parameters: convertSchemaToGemini(t.parameters)
+      }));
+
     const allFunctionDeclarations = [
       libraryToolGemini,
       calendarToolGemini,
@@ -1659,11 +1916,16 @@ export class LLMService {
       getCalendarHolidaysToolGemini,
       portfolioToolGemini,
       safeDigitalToolGemini,
-      ...dynamicSkills
+      ...dynamicSkills,
+      ...registryFunctionDeclarations
     ];
 
     if (useReadFiles) {
       allFunctionDeclarations.push(workspaceToolGemini);
+    }
+
+    if (useLocalBackendStore.getState().isExecutionEngineConnected) {
+      allFunctionDeclarations.push(localExecutionToolGemini);
     }
 
     tools.push({
@@ -1739,7 +2001,7 @@ export class LLMService {
       let pendingAction: PendingAction | undefined = undefined;
       let reasoning = "";
       let turns = 0;
-      const maxTurns = 3;
+      const maxTurns = useAgenticResearch ? 30 : 5; // Chat mode needs at least 5 for native tool calling!
       let currentMessage: any = currentParts;
 
       while (turns < maxTurns) {
@@ -2325,12 +2587,85 @@ export class LLMService {
                   response: { content: responseContent },
                 },
               });
+            } else if (fc.name === "local_execution_tool") {
+              const action = fc.args.action as string;
+              
+              let payloadStr = fc.args.payload;
+              if (typeof payloadStr === 'object') {
+                  payloadStr = JSON.stringify(payloadStr);
+              }
+
+              let parsedPayload = {};
+              try {
+                  parsedPayload = typeof payloadStr === 'string' ? JSON.parse(payloadStr) : payloadStr;
+              } catch(e) {
+                  // Ignore
+              }
+              
+              // Map Gemini tool call directly to localExecutionService
+              const execResult = await localExecutionService.executeTool({
+                 tool: action as any,
+                 params: parsedPayload as any
+              });
+
+              if (onChunk) {
+                if (execResult.success) {
+                   onChunk("", `\n💻 Executat local: ${action}\n`);
+                } else {
+                   onChunk("", `\n❌ Eroare execuție locală: ${action}\n`);
+                }
+              }
+
+              toolResponses.push({
+                functionResponse: {
+                  name: fc.name,
+                  response: { 
+                     content: execResult.success ? JSON.stringify(execResult.output || execResult.data || "Success") : `Error: ${execResult.error}` 
+                  },
+                },
+              });
             } else {
-              // Check if it's a dynamic skill
+              // Priority 1: Check if it's a ToolRegistry tool
+              const registryTool = ToolRegistry.getAllDefinitions().find(t => t.name === fc.name);
+              // Priority 2: Check dynamic skills
               const availableSkills = skillManager.getAvailableSkills();
               const skill = availableSkills.find(s => s.name === fc.name);
               
-              if (skill) {
+              if (registryTool) {
+                try {
+                  const entry = (ToolRegistry as any).tools.get(fc.name); // Using any to access protected tools map for execution flag
+                  if (entry && entry.isWrite) {
+                    // It's a write tool, yield pendingAction
+                    pendingAction = {
+                      type: fc.name,
+                      data: fc.args,
+                      originalToolCallId: "gemini-fc",
+                    };
+                    toolResponses.push({
+                      functionResponse: {
+                        name: fc.name,
+                        response: { content: "Action pending user confirmation." },
+                      },
+                    });
+                  } else {
+                    if (onChunk) onChunk("", `\n⚙️ Executing tool: ${fc.name}...\n`);
+                    const result = await ToolRegistry.executeTool(fc.name, fc.args, { llmService: this });
+                    toolResponses.push({
+                      functionResponse: {
+                        name: fc.name,
+                        response: { content: JSON.stringify(result) },
+                      },
+                    });
+                  }
+                } catch (error: any) {
+                  toolResponses.push({
+                    functionResponse: {
+                      name: fc.name,
+                      response: { content: `Error executing tool: ${error.message}` },
+                    },
+                  });
+                }
+              } else if (skill) {
                 try {
                   if (onChunk) onChunk("", `\n⚙️ Executing skill: ${skill.name}...\n`);
                   const result = await skillManager.executeSkill(skill.id, fc.args);
@@ -2362,6 +2697,23 @@ export class LLMService {
 
           if (pendingAction) {
             break;
+          }
+
+          // Compress if needed to prevent token exhaustion
+          for (let i = 0; i < toolResponses.length; i++) {
+            const respContent = toolResponses[i]?.functionResponse?.response?.content;
+            if (respContent && typeof respContent === "string" && ContextCompressor.needsCompression(respContent)) {
+              if (onChunk) onChunk("", `\n🗜️ Comprim rezultatul returnat de tool-ul ${toolResponses[i].functionResponse.name} (${Math.round(respContent.length/1024)} KB)...\n`);
+              const compressedResult = await ContextCompressor.compress(
+                respContent,
+                prompt,
+                toolResponses[i].functionResponse.name,
+                this,
+                ModelProvider.GEMINI,
+                { geminiApiKey: customApiKey }
+              );
+              toolResponses[i].functionResponse.response.content = compressedResult.compressed;
+            }
           }
 
           currentMessage = toolResponses;
@@ -2401,8 +2753,16 @@ export class LLMService {
       };
     } catch (error: any) {
       console.error("Gemini API Error:", error);
+      
+      let errorMsg = error.message || "Request Failed";
+      const errStr = typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error);
+      
+      if (errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED")) {
+        errorMsg = "Platform API Quota exceeded. Please go to Settings and add your own Gemini API Key to continue, or try again later.";
+      }
+      
       return {
-        text: `Error: ${(error as any).message || "Request Failed"}`,
+        text: `⚠️ **Eroare:**\n\n${errorMsg}`,
         citations: [],
         relatedQuestions: [],
       };
@@ -2425,6 +2785,7 @@ export class LLMService {
     onChunk?: (text: string, reasoning?: string) => void,
     useReadFiles: boolean = false,
     _proMode: ProMode = ProMode.STANDARD,
+    useAgenticResearch: boolean = false,
   ): Promise<{
     text: string;
     citations: Citation[];
@@ -2481,6 +2842,21 @@ export class LLMService {
     
     const dynamicSkillsGeneric = skillManager.getAvailableSkills().map(skill => skillManager.getGenericTool(skill));
     
+    const hardcodedToolNamesGeneric = ["library_tool", "calendar_tool", "get_current_time", "get_calendar_holidays", "portfolio_tool", "safe_digital_tool", "workspace_tool", "readFiles"];
+    const allRegisteredToolsGeneric = ToolRegistry.getAllDefinitions();
+    
+    const registryFunctionDeclarationsGeneric = allRegisteredToolsGeneric
+      .filter(t => !hardcodedToolNamesGeneric.includes(t.name))
+      .map(t => ({
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+          strict: true
+        }
+      }));
+
     tools.push(
       libraryToolGeneric,
       calendarToolGeneric,
@@ -2488,7 +2864,8 @@ export class LLMService {
       getCalendarHolidaysToolGeneric,
       portfolioToolGeneric,
       safeDigitalToolGeneric,
-      ...dynamicSkillsGeneric
+      ...dynamicSkillsGeneric,
+      ...registryFunctionDeclarationsGeneric
     );
     if (useReadFiles)
       tools.push(
@@ -2498,18 +2875,26 @@ export class LLMService {
     let finalContent = "";
     let finalReasoning = "";
     let turns = 0;
-    const maxTurns = 5; // Allow up to 5 tool-use hops
+    const maxTurns = useAgenticResearch ? 30 : 5; // Agent loops vs Chat mode
     const collectedCitations: Citation[] = [];
     let collectedImages: string[] = [];
     let pendingAction: PendingAction | undefined = undefined;
+
+    if (!apiKey && endpoint !== "http://localhost:11434/v1/chat/completions") {
+       throw new Error("Missing API Key. Please provide an API key for the selected provider in Settings.");
+    }
+    const safeApiKey = typeof apiKey === 'string' ? apiKey.replace(/[^\x20-\x7E]/g, '').trim() : '';
+    if (!safeApiKey && endpoint !== "http://localhost:11434/v1/chat/completions") {
+       throw new Error("Invalid API Key. Please provide a valid API key in Settings.");
+    }
 
     // --- MAIN AGENT LOOP ---
     while (turns < maxTurns) {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-      if (apiKey && apiKey !== "not-needed") {
-        headers["Authorization"] = `Bearer ${apiKey}`;
+      if (safeApiKey && safeApiKey !== "not-needed") {
+        headers["Authorization"] = `Bearer ${safeApiKey}`;
         if (endpoint.includes("openrouter")) {
           headers["HTTP-Referer"] = window.location.origin;
           headers["X-Title"] = "Perplex Clone";
@@ -3141,11 +3526,49 @@ export class LLMService {
                   onChunk("", `\n🧠 Căutare semantică: "${query}"...\n`);
               }
             } else {
-              toolResultContent = "Unknown tool.";
+              const registryTool = ToolRegistry.getAllDefinitions().find(t => t.name === toolCall.function.name);
+              const availableSkills = skillManager.getAvailableSkills();
+              const skill = availableSkills.find(s => s.name === toolCall.function.name);
+              
+              if (registryTool) {
+                const entry = (ToolRegistry as any).tools.get(toolCall.function.name);
+                if (entry && entry.isWrite) {
+                  pendingAction = {
+                    type: toolCall.function.name,
+                    data: args,
+                    originalToolCallId: toolCall.id,
+                  };
+                  toolResultContent = "Action pending user confirmation.";
+                } else {
+                  if (onChunk) onChunk("", `\n⚙️ Executing tool: ${toolCall.function.name}...\n`);
+                  const result = await ToolRegistry.executeTool(toolCall.function.name, args, { llmService: this });
+                  toolResultContent = JSON.stringify(result);
+                }
+              } else if (skill) {
+                if (onChunk) onChunk("", `\n⚙️ Executing skill: ${skill.name}...\n`);
+                const result = await skillManager.executeSkill(skill.id, args);
+                toolResultContent = JSON.stringify(result);
+              } else {
+                toolResultContent = "Unknown tool.";
+              }
             }
           } catch (err: any) {
             toolResultContent = `Error executing tool: ${err.message}`;
             console.error(`[Generic] Tool Execution Error:`, err);
+          }
+
+          // Compress if needed to prevent token exhaustion
+          if (typeof toolResultContent === "string" && ContextCompressor.needsCompression(toolResultContent)) {
+            if (onChunk) onChunk("", `\n🗜️ Comprim rezultatul returnat de tool-ul ${toolCall.function.name} (${Math.round(toolResultContent.length/1024)} KB)...\n`);
+            const compressedResult = await ContextCompressor.compress(
+              toolResultContent,
+              prompt,
+              toolCall.function.name,
+              this,
+              ModelProvider.GEMINI,
+              {}
+            );
+            toolResultContent = compressedResult.compressed;
           }
 
           // Add Tool Result to History
@@ -3423,11 +3846,23 @@ export class LLMService {
 4. **TOOL USAGE:** If the file content is truncated or summarized (indicated by a system message), you **MUST** use the \`workspace_tool\` with action \`read_files\` to retrieve the full content before answering specific questions about it.
 5. **ANALYSIS:** When asked about a source, first analyze its structure, key points, and details *before* formulating your response.`);
 
+    parts.push(`\n**YOUTUBE & DIRECT MEDIA/URL SYNCHRONIZATION PROTOCOL (CRITICAL):**
+Când utilizatorul cere să asculte o melodie, să vadă un videoclip sau să caute ceva pe YouTube (de exemplu, un clip cu Chris Brown):
+1. Apelează întotdeauna mai întâi unealta \`search_youtube\` cu termenul de căutare potrivit.
+2. Din rezultatele primite de la \`search_youtube\`, identifică link-ul potrivit (de obicei primul rezultat).
+3. Apelează IMEDIAT și OBLIGATORIU unealta \`open_browser_url\` transmițând URL-ul identificat în parametrul \`url\` și titlul corespunzător în parametrul \`title\`. Această acțiune va deschide automat Browser Companion-ul de pe partea dreaptă pentru utilizator cu melodia selectată!
+4. Sincronizează perfect textul răspunsului tău cu videoclipul pe care îl deschizi. De exemplu, scrie: "Desigur! Am deschis automat videoclipul [Nume Video] pe partea dreaptă în Browser Companion pentru tine."
+
+**LIVE BROWSING COMPANION EXECUTION LOOP (FALLBACK):**
+Pentru navigare generală pe site-uri de știri sau alte site-uri care nu sunt YouTube, folosește în ordine următorul flux de unelte:
+1. \`browser_navigate\` ca să încarci URL-ul dorit (de ex. 'https://www.google.com' sau o căutare Google).
+2. \`browser_get_content\` ca să citești structura paginii curente, să vezi ce text este vizibil și să afli selectorii elementelor interactive (butoane, linkuri, text clickable).`);
+
     if (aiProfile.systemInstructions) {
       parts.push(aiProfile.systemInstructions);
     } else {
       parts.push(
-        "You are a helpful AI assistant. Answer concisely and accurately. Use Markdown formatting.",
+        "You are a helpful AI assistant. Answer directly and comprehensively. Use Markdown formatting.",
       );
     }
 
@@ -3446,10 +3881,11 @@ export class LLMService {
       parts.push(`\n**CRITICAL INSTRUCTION: REAL-TIME SEARCH & KNOWLEDGE BASE & TOOLS**
 1. **Real-Time Search:** You have access to search the web. If the user asks about current events, news, weather, or ANY information that might have changed since your training cutoff, you **MUST** use it.
 2. **Workspace Knowledge Base:** You have access to workspace files via \`workspace_tool\`. If the user asks for specific data (ID numbers, tax codes, names, dates) that might be in these files, you **MUST** find it using actions like \`read_files\`, \`search_files\`, \`get_map\`, or \`semantic_search\`.
-3. **Calendar Management:** You have full access to the user's calendar via \`calendar_tool\`. You can list, add, update, and delete events. ALWAYS check the current time using \`get_current_time\` before making any date-relative assumptions. Check for conflicts using \`read_events\` before adding new events.
+3. **Calendar Management:** You have full access to the user's calendar via \`calendar_tool\`.
 4. **Library Management:** You have access to the user's library via \`library_tool\`. You can read page structures and modify pages.
 5. **Portfolio & Safe Digital:** You have access to the user's portfolio (\`portfolio_tool\`) and safe digital documents (\`safe_digital_tool\`).
-6. **Accuracy:** Never hallucinate or guess personal data. If you cannot find it after searching/reading, state that clearly.`);
+6. **Agent Team Management:** You have access to manage your own sub-agents via \`manage_agent_team\`. If the user asks you to build a team, assign agents, create new roles, or give instructions to internal agents, you MUST use this tool to define the subAgents list. ALWAYS assign "gemini-3.1-pro-preview" as the modelId unless specified otherwise.
+7. **Accuracy:** Never hallucinate or guess personal data. If you cannot find it after searching/reading, state that clearly.`);
     }
 
     // GLOBAL PROCESS INSTRUCTION (Enforces the Plan -> Execute -> Analyze -> Answer loop)
@@ -3483,10 +3919,12 @@ export class LLMService {
 
     // Add chart generation instructions
     parts.push(`\n**CHART GENERATION PROTOCOL:**
-You have the ability to render interactive charts directly in the chat using Chart.js.
+You have the ability to render interactive charts and widgets directly in the chat.
 When the user asks for a chart, graph, or visualization, DO NOT try to draw it with text/ascii.
-Instead, use a standard markdown code block with the language set to \`chart\` to generate a chart:
+Instead, use a standard markdown code block with the language set to \`chart\` or \`widget\` to generate it.
+IMPORTANT: When the user asks you to MODIFY or UPDATE an existing chart, diagram, or widget, you MUST output the COMPLETE updated configuration inside the code block. Do not just say "I have updated the colors." You must actually output the new \`\`\`chart or \`\`\`widget code block so the UI can render your changes.
 
+Example:
 \`\`\`chart
 {
   "type": "bar",
@@ -3542,10 +3980,10 @@ To display a professional portfolio dashboard widget, use:
       "\n\nCAPABILITIES: You can save information to the user's library. CRITICAL RULE: ONLY use `library_tool` with action `save_page` if the user EXPLICITLY and DIRECTLY commands you to 'save this', 'create a page', or 'remember this'. DO NOT call this tool automatically at the end of a research task or conversation. If the user just asks a question or asks for research, DO NOT save it.",
     );
 
-    // Instruction to generate related questions
-    parts.push(
-      '\n\nIMPORTANT: After your main response (and after </thinking> if applicable), generate 3 relevant follow-up questions. Format them as a simple list at the very end, starting with "Întrebări sugerate:". Example:\nÎntrebări sugerate:\n- Question 1?\n- Question 2?\n- Question 3?',
-    );
+    // Instruction to generate related questions disabled to make agent more direct
+    // parts.push(
+    //   '\n\nIMPORTANT: After your main response (and after </thinking> if applicable), generate 3 relevant follow-up questions. Format them as a simple list at the very end, starting with "Întrebări sugerate:". Example:\nÎntrebări sugerate:\n- Question 1?\n- Question 2?\n- Question 3?',
+    // );
 
     return parts.join("\n");
   }

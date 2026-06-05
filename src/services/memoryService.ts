@@ -14,29 +14,29 @@ const PROJECTS_KEY = "active_projects";
 // --- INTENT CLASSIFIER CONFIGURATION ---
 // Maps keywords to specific memory categories
 const INTENT_MAP: Record<string, MemoryCategory[]> = {
-  coding: ["coding_projects", "learning_goals"],
-  code: ["coding_projects"],
-  react: ["coding_projects"],
-  typescript: ["coding_projects"],
-  bug: ["coding_projects"],
-  error: ["coding_projects"],
-  health: ["health_lifestyle", "hobbies_interests"],
-  workout: ["health_lifestyle"],
-  diet: ["health_lifestyle"],
-  finance: ["finance", "learning_goals", "work"],
-  money: ["finance"],
-  invest: ["finance"],
-  job: ["work", "learning_goals"],
-  work: ["work", "coding_projects"],
-  travel: ["hobbies_interests", "preferences"],
-  trip: ["hobbies_interests"],
-  book: ["hobbies_interests", "learning_goals"],
-  movie: ["hobbies_interests"],
-  learn: ["learning_goals", "coding_projects"],
-  plan: ["learning_goals", "coding_projects"],
-  relationship: ["relationships", "about_me"],
-  family: ["relationships"],
-  friend: ["relationships"],
+  coding: ["project", "preference"],
+  code: ["project"],
+  react: ["project", "preference"],
+  typescript: ["project"],
+  bug: ["project", "decision"],
+  error: ["project", "decision"],
+  health: ["profile", "preference"],
+  workout: ["profile"],
+  diet: ["profile"],
+  finance: ["profile", "project", "decision"],
+  money: ["profile", "decision"],
+  invest: ["decision", "project"],
+  job: ["profile", "project"],
+  work: ["project", "profile"],
+  travel: ["preference", "profile"],
+  trip: ["preference"],
+  book: ["preference", "profile"],
+  movie: ["preference"],
+  learn: ["project", "preference"],
+  plan: ["project", "decision"],
+  relationship: ["profile", "preference"],
+  family: ["profile"],
+  friend: ["profile"],
 };
 
 export class MemoryService {
@@ -133,7 +133,7 @@ export class MemoryService {
 
     // 1. CLASSIFY INTENT
     const targetCategories = this.classifyIntent(prompt);
-    const isGeneralIntent = targetCategories.includes("other");
+    const isGeneralIntent = targetCategories.includes("rag_cache");
     const intentLabel = isGeneralIntent
       ? "General"
       : targetCategories[0].toUpperCase();
@@ -141,7 +141,7 @@ export class MemoryService {
     // 2. LAYER A: CORE MEMORY (Always present, high priority)
     // Contains Identity, Style, Preferences.
     const coreMemories = allMemories.filter((m) =>
-      m && m.category && ["about_me", "preferences"].includes(m.category),
+      m && m.category && ["profile", "preference"].includes(m.category),
     );
 
     // 3. LAYER B: WORKING MEMORY (Session Context)
@@ -154,7 +154,7 @@ export class MemoryService {
       if (!p || !p.title) return;
       // If intent is coding, include tech stack details
       if (
-        targetCategories.includes("coding_projects")
+        targetCategories.includes("project")
       ) {
         workingMemory.push(
           `Project "${p.title}": ${p.progress || "Started"} (Next: ${p.nextStep || "Planning"})`,
@@ -168,7 +168,7 @@ export class MemoryService {
     // 4. LAYER C: RELEVANT FACTS (Scored Retrieval)
     // Filter the rest of the memories based on Intent + Keywords
     const otherMemories = allMemories.filter(
-      (m) => m && m.category && !["about_me", "preferences"].includes(m.category),
+      (m) => m && m.category && !["profile", "preference"].includes(m.category),
     );
 
     const keywords = this.extractKeywords(prompt);
@@ -229,9 +229,9 @@ export class MemoryService {
 
     // Default fallbacks
     if (detectedCategories.size === 0) {
-      detectedCategories.add("other");
-      // If query is short/chatty, maybe add 'about_me' to know who user is
-      if (prompt.length < 50) detectedCategories.add("about_me");
+      detectedCategories.add("rag_cache");
+      // If query is short/chatty, maybe add 'profile' to know who user is
+      if (prompt.length < 50) detectedCategories.add("profile");
     }
 
     return Array.from(detectedCategories);
@@ -249,7 +249,7 @@ export class MemoryService {
         currentMemories.push({
           id: Math.random().toString(36).substr(2, 9),
           content: fact.content,
-          category: fact.category || "other",
+          category: fact.category || "rag_cache",
           type: fact.type || "fact",
           confidence: 1,
           tags: [],
@@ -303,13 +303,13 @@ export class MemoryService {
         if (typeof skill !== 'string') return;
         if (
            !uniqueMemories.find(
-             (m) => m && m.category === "learning_goals" && m.content && m.content.includes(skill),
+             (m) => m && m.category === "profile" && m.content && m.content.includes(skill),
            )
         ) {
           uniqueMemories.push({
             id: Math.random().toString(36).substr(2, 9),
             content: skill,
-            category: "learning_goals",
+            category: "profile",
             type: "skill",
             confidence: 1,
             tags: [],
@@ -330,13 +330,13 @@ export class MemoryService {
 
   static async addMemory(
     content: string,
-    category: string = "other",
+    category: MemoryCategory = "profile",
   ): Promise<MemoryItem> {
     const mems = await this.getMemories();
     const newItem: MemoryItem = {
       id: Math.random().toString(36).substr(2, 9),
       content,
-      category: category as MemoryCategory,
+      category: category,
       type: "fact",
       confidence: 1,
       tags: [],
