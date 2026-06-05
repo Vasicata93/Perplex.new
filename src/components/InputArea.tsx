@@ -583,7 +583,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   // Box Styles
   const boxClass = isCompanionOpen
-    ? "bg-white dark:bg-pplx-card border border-zinc-200 dark:border-zinc-800 shadow-md rounded-[20px] flex flex-col transition-all duration-150"
+    ? "bg-pplx-card border border-pplx-border shadow-md rounded-[20px] flex flex-col transition-all duration-150"
     : isMobile
       ? "bg-pplx-card dark:bg-gradient-to-t dark:from-[#1a1a1a] dark:from-20% dark:via-[#222222] dark:to-[#2a2a2a] border border-pplx-border dark:border-white/30 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.08)] rounded-[32px] flex flex-col transition-all duration-150"
       : centered
@@ -660,11 +660,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
                       : "Ask anything..."
                     : "Ask follow-up...")
             }
-            className={`w-full bg-transparent leading-relaxed resize-none outline-none overflow-y-auto max-h-[160px] ${
-              isCompanionOpen 
-                ? "text-zinc-900 dark:text-pplx-text placeholder-zinc-450 dark:placeholder-zinc-500" 
-                : "text-pplx-text placeholder-gray-500/90"
-            } ${
+            className={`w-full bg-transparent leading-relaxed resize-none outline-none overflow-y-auto max-h-[160px] text-pplx-text placeholder-gray-500/90 ${
               // Standardized font size logic to keep it compact but readable on mobile home
               centered ? "text-[18px] md:text-lg py-2" : "text-[16px] py-2"
             } ${mobileSidePanel ? "!text-[13px] !py-0.5 !leading-tight min-h-[32px]" : ""}`}
