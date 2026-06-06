@@ -224,6 +224,39 @@ function App() {
     string | null
   >(null);
 
+  // Mobile Sliding Chat panel height states
+  const [chatMobileHeight, setChatMobileHeight] = useState(37.5);
+  const [isResizingChatMobile, setIsResizingChatMobile] = useState(false);
+
+  // Monitor resize for the mobile chat drawer in browser/split mode
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+      if (!isResizingChatMobile) return;
+      const clientY = "touches" in e ? e.touches[0]?.clientY : (e as MouseEvent).clientY;
+      if (!clientY) return;
+      const newHeight = ((window.innerHeight - clientY) / window.innerHeight) * 100;
+      if (newHeight > 15 && newHeight < 98) {
+        setChatMobileHeight(newHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingChatMobile(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove as any);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchmove", handleMouseMove as any, { passive: true });
+    window.addEventListener("touchend", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove as any);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleMouseMove as any);
+      window.removeEventListener("touchend", handleMouseUp);
+    };
+  }, [isResizingChatMobile]);
+
   // Data State
   const [threads, setThreads] = useState<Thread[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -3387,33 +3420,14 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
           />
         )}
 
-        <div className="fixed top-2 md:top-4 right-4 z-50 flex items-center gap-2 md:hidden">
-          {isLearning && (
-            <div className="flex items-center gap-2 bg-pplx-card border border-pplx-accent/30 rounded-full px-3 py-1.5 shadow-lg animate-pulse">
-              <Brain size={14} className="text-pplx-accent" />
-              <span className="text-xs font-medium text-pplx-accent">
-                Learning...
-              </span>
-            </div>
-          )}
-          <button
-            onClick={() => {
-              setIsCompanionOpen(!isCompanionOpen);
-              if (!isCompanionOpen && !companionUrl) {
-                setCompanionUrl("https://www.youtube.com");
-                setCompanionTitle("Companion Space");
-              }
-            }}
-            className={`flex items-center justify-center w-9 h-9 rounded-full border shadow-lg transition-all duration-150 cursor-pointer pointer-events-auto select-none ${
-              isCompanionOpen
-                ? "bg-pplx-accent border-pplx-accent text-white"
-                : "bg-pplx-card hover:bg-pplx-hover border-pplx-border/50 text-pplx-text"
-            }`}
-            title="Toggle Companion Panel"
-          >
-            <Globe size={16} className={isCompanionOpen ? "animate-spin-[12s]" : ""} />
-          </button>
-        </div>
+        {isLearning && (
+          <div className="fixed top-2 md:top-4 right-4 z-50 flex items-center gap-2 bg-pplx-card border border-pplx-accent/30 rounded-full px-3 py-1.5 shadow-lg animate-pulse md:hidden pointer-events-none">
+            <Brain size={14} className="text-pplx-accent" />
+            <span className="text-xs font-medium text-pplx-accent">
+              Learning...
+            </span>
+          </div>
+        )}
 
         {/* --- PENDING ACTION CONFIRMATION MODAL --- */}
         {pendingAction && (
@@ -3734,7 +3748,7 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
         {/* Home Header */}
         {!activeThreadId && viewToRender === "chat" && !activeSpaceId && (
           <>
-            <div className="absolute top-0 left-0 right-0 z-20 p-6 pt-12 md:p-2 md:pt-4 flex flex-col items-start gap-6 md:gap-4 pointer-events-none">
+            <div className={`absolute top-0 left-0 right-0 ${isCompanionOpen ? "z-0 opacity-0 pointer-events-none" : "z-20"} p-6 pt-12 md:p-2 md:pt-4 flex flex-col items-start gap-6 md:gap-4 pointer-events-none`}>
               <div className="w-full flex items-start justify-between">
                 {/* Profile Section (Click to Open Settings) */}
                 <div
@@ -3797,6 +3811,14 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
                       pushToHistory();
                       setActiveView(view as any);
                     }}
+                    isCompanionOpen={isCompanionOpen}
+                    onToggleCompanion={() => {
+                      setIsCompanionOpen(!isCompanionOpen);
+                      if (!isCompanionOpen && !companionUrl) {
+                        setCompanionUrl("https://www.youtube.com");
+                        setCompanionTitle("Companion Space");
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -3808,7 +3830,7 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
 
         {/* Space Header Toggle */}
         {!activeThreadId && viewToRender === "chat" && activeSpaceId && (
-          <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
+          <div className={`absolute top-0 left-0 right-0 ${isCompanionOpen ? "z-0 opacity-0 pointer-events-none" : "z-20"} p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden`}>
             {!sidebarOpen && (
               <SidebarToggle
                 onClick={handleOpenSidebar}
@@ -3822,9 +3844,9 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
         {activeThreadId && viewToRender === "chat" && !isDashboardMode && (
           <>
             {/* TOP GRADIENT MASK */}
-            <div className="fixed top-0 left-0 right-0 h-16 bg-gradient-to-b from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-30" />
+            {!isCompanionOpen && <div className="fixed top-0 left-0 right-0 h-16 bg-gradient-to-b from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-30" />}
 
-            <div className="absolute top-0 left-0 right-0 z-40 pointer-events-none [&>div]:!bg-transparent [&>div]:!backdrop-blur-none [&>div]:pointer-events-auto">
+            <div className={`absolute top-0 left-0 right-0 ${isCompanionOpen ? "z-0 opacity-0 pointer-events-none" : "z-40"} pointer-events-none [&>div]:!bg-transparent [&>div]:!backdrop-blur-none [&>div]:pointer-events-auto`}>
               <ChatHeader
                 title={activeThread?.title}
                 onBack={handleBackToNewThread}
@@ -4052,18 +4074,35 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
              <AgentControlView />
           </div>
         ) : (
-          <div className="flex-1 flex flex-row overflow-hidden w-full relative">
+          <div className={`flex-1 flex ${isCompanionOpen ? "flex-col md:flex-row" : "flex-row"} overflow-hidden w-full relative`}>
             {/* LEFT COLUMN: CHAT PANEL */}
-            <div className={`flex-1 flex flex-col overflow-hidden relative h-full transition-all duration-150 ${
-              isCompanionOpen 
-                ? "bg-[#f4f4f6] dark:bg-pplx-primary text-zinc-900 dark:text-pplx-text border-r border-zinc-200/85 dark:border-white/5" 
-                : "border-r border-white/5 bg-pplx-primary text-pplx-text"
-            }`}>
+            <div 
+              style={isCompanionOpen && window.innerWidth < 768 ? { height: `${chatMobileHeight}vh` } : undefined}
+              className={`flex-1 flex flex-col overflow-hidden relative transition-all duration-150 ${
+                isCompanionOpen 
+                  ? "h-[37.5vh] md:h-[calc(100%-24px)] bg-white dark:bg-pplx-card md:my-3 md:ml-3 md:mr-1.5 text-pplx-text border-none md:border border-zinc-200 dark:border-white/5 order-2 md:order-1 rounded-t-[32px] md:rounded-2xl shadow-xl shrink-0" 
+                  : `h-full border-r border-white/5 ${(!activeThreadId && !activeSpace) ? "bg-transparent" : "bg-pplx-primary"} text-pplx-text`
+              }`}
+            >
+              {isCompanionOpen && (
+                <div
+                  className="w-full flex flex-col items-center pt-2.5 pb-2 cursor-row-resize touch-none z-[45] shrink-0 md:hidden bg-white dark:bg-pplx-card rounded-t-[32px] border-none"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    setIsResizingChatMobile(true);
+                  }}
+                  onTouchStart={(event) => {
+                    setIsResizingChatMobile(true);
+                  }}
+                >
+                  <div className="w-12 h-1 bg-[#d4d4d8] dark:bg-white/20 rounded-full transition-colors" />
+                </div>
+              )}
               {/* Top action headers shown in sidebar-hidden or companion-open conditions */}
               <div
                 ref={chatContainerRef}
                 onScroll={handleScroll}
-                className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-2 md:p-0 scroll-smooth pt-24 md:pt-10 pb-28 ${viewToRender === "chat" && !activeThreadId ? "md:pb-0" : "md:pb-64"} ${isWidgetFullscreen ? "!overflow-hidden flex flex-col" : ""}`} // Reduced padding-bottom on mobile
+                className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-2 md:p-0 scroll-smooth ${isCompanionOpen ? "pt-12 pb-16" : "pt-24 pb-28"} ${viewToRender === "chat" && !activeThreadId ? "md:pb-0" : "md:pb-64"} ${isWidgetFullscreen ? "!overflow-hidden flex flex-col" : ""}`} // Reduced padding-bottom on mobile
               >
               {!activeThreadId || !activeThread ? (
                 <div className="flex flex-col min-h-full relative z-10">
@@ -4746,11 +4785,11 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
             </div>
 
             {/* BOTTOM GRADIENT MASK */}
-            {!isWidgetFullscreen && <div className={`fixed bottom-[60px] left-0 right-0 h-9 bg-gradient-to-t from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-10 ${isSideChatOpen ? "hidden" : "hidden md:block"}`} />}
+            {!isWidgetFullscreen && <div className={`fixed bottom-[60px] left-0 right-0 h-9 bg-gradient-to-t from-pplx-primary via-pplx-primary/80 to-transparent pointer-events-none z-10 ${isSideChatOpen || (!activeThreadId && !activeSpace) ? "hidden" : "hidden md:block"}`} />}
             {/* Mobile version usually has input fixed differently, but this helps fade content on scroll */}
             {!isWidgetFullscreen && (
               <div
-                className={`fixed left-0 right-0 h-14 bg-gradient-to-t from-pplx-primary to-transparent pointer-events-none z-10 ${isSideChatOpen ? "hidden" : "md:hidden"}`}
+                className={`fixed left-0 right-0 h-14 bg-gradient-to-t from-pplx-primary to-transparent pointer-events-none z-10 ${isSideChatOpen || (!activeThreadId && !activeSpace) ? "hidden" : "md:hidden"}`}
                 style={{
                   bottom: settings.enableMobileDock
                     ? "calc(90px + env(safe-area-inset-bottom))"
@@ -4762,7 +4801,7 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
             {!isDashboardMode && !isWidgetFullscreen && (
               <div
                 className={`w-full pt-2 px-4 z-30 shrink-0 border-t border-transparent transition-all duration-150 ${
-                  isCompanionOpen ? "bg-[#f4f4f6] dark:bg-pplx-primary" : "bg-pplx-primary"
+                  isCompanionOpen || (!activeThreadId && !activeSpace) ? "bg-transparent" : "bg-pplx-primary"
                 } ${settings.enableMobileDock ? "sm:pb-6" : "pb-0"} ${viewToRender === "chat" && !activeThreadId && !activeSpace ? "md:pb-[35vh]" : "md:pb-0"} ${isSideChatOpen ? "hidden" : ""}`}
               >
                 <div className="pointer-events-auto">
@@ -4808,6 +4847,7 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
                 title={companionTitle}
                 geminiApiKey={settings.geminiApiKey}
                 isInline={true}
+                chatMobileHeight={chatMobileHeight}
               />
             )}
           </div>
@@ -4862,8 +4902,8 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
         onWidthChange={setSideChatWidth}
       />
 
-      {/* Companion Panel (Only render at root if screen is mobile or not in chat view) */}
-      {(!isCompanionOpen || window.innerWidth < 768 || viewToRender !== "chat") && (
+      {/* Companion Panel (Only render at root if NOT in chat view) */}
+      {viewToRender !== "chat" && (
         <CompanionPanel
           isOpen={isCompanionOpen}
           onClose={() => setIsCompanionOpen(false)}

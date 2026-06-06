@@ -1,16 +1,20 @@
 import React, { useState } from "react";
-import { Search, CalendarDays, Bell, LayoutDashboard, CheckCircle } from "lucide-react";
+import { Search, CalendarDays, Bell, LayoutDashboard, CheckCircle, Globe } from "lucide-react";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { useNotificationsStore } from "../store/useNotificationsStore";
 
 interface MobileHomeActionsProps {
   activeView: string;
   setActiveView: (view: string) => void;
+  isCompanionOpen?: boolean;
+  onToggleCompanion?: () => void;
 }
 
 export const MobileHomeActions: React.FC<MobileHomeActionsProps> = ({
   activeView,
   setActiveView,
+  isCompanionOpen = false,
+  onToggleCompanion,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const { notifications } = useNotificationsStore();
@@ -63,6 +67,17 @@ export const MobileHomeActions: React.FC<MobileHomeActionsProps> = ({
         </button>
         <NotificationsPanel isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
       </div>
+
+      {/* Live Browser (Companion) */}
+      {onToggleCompanion && (
+        <button
+          className={`w-9 h-9 flex items-center justify-center rounded-2xl transition-all ${isCompanionOpen ? "bg-pplx-accent text-white shadow-md shadow-pplx-accent/20" : "text-pplx-text hover:bg-white/10"}`}
+          onClick={onToggleCompanion}
+          title="Live Browser"
+        >
+          <Globe size={16} className={isCompanionOpen ? "animate-spin-[12s]" : ""} />
+        </button>
+      )}
     </div>
   );
 };

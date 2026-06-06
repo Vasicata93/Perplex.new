@@ -32,6 +32,9 @@ import {
   Upload,
   Lock,
   ArrowUpLeft,
+  Maximize2,
+  Minimize2,
+  SlidersHorizontal,
 } from "lucide-react";
 
 interface CompanionPanelProps {
@@ -42,6 +45,7 @@ interface CompanionPanelProps {
   title?: string;
   geminiApiKey?: string;
   isInline?: boolean;
+  chatMobileHeight?: number;
 }
 
 export const CompanionPanel: React.FC<CompanionPanelProps> = ({
@@ -52,11 +56,14 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
   title,
   geminiApiKey,
   isInline = false,
+  chatMobileHeight = 50,
 }) => {
   // We default width to 750px for a clean browser-only look next to the main chat!
   const [width, setWidth] = useState(750);
   const [showOperator, setShowOperator] = useState<boolean>(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const lastMouseMoveRef = useRef<number>(0);
 
   useEffect(() => {
     const handleResize = () => {
@@ -77,6 +84,38 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
   const [isBypassing, setIsBypassing] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(true);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState<boolean>(false);
+  const [tabs, setTabs] = useState<Array<{ id: string; url: string; title: string }>>([
+    { id: "tab-1", url: "https://www.google.com", title: "Google" },
+    { id: "tab-2", url: "https://www.hipcamp.com", title: "Hipcamp | Tent Camping, RV Spots, Cabins & Glamping" },
+    { id: "tab-3", url: "https://www.emag.ro", title: "eMAG.ro - Căutările nu se opresc niciodată" }
+  ]);
+  const [activeTabId, setActiveTabId] = useState<string>("tab-1");
+  const [showTabsList, setShowTabsList] = useState<boolean>(false);
+
+  const handleSelectTab = (tabId: string, url: string) => {
+    setActiveTabId(tabId);
+    setInputUrl(url);
+    setCurrentUrl(url);
+    wsRef.current?.send(JSON.stringify({ type: "navigate", url }));
+    setShowTabsList(false);
+  };
+
+  const handleCloseTab = (tabId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (tabs.length <= 1) return;
+    const index = tabs.findIndex((t) => t.id === tabId);
+    const newTabs = tabs.filter((t) => t.id !== tabId);
+    setTabs(newTabs);
+    
+    if (activeTabId === tabId) {
+      const nextActiveTab = newTabs[Math.max(0, index - 1)];
+      setActiveTabId(nextActiveTab.id);
+      setInputUrl(nextActiveTab.url);
+      setCurrentUrl(nextActiveTab.url);
+      wsRef.current?.send(JSON.stringify({ type: "navigate", url: nextActiveTab.url }));
+    }
+  };
 
   // Operator Agent States
   const [operatorInput, setOperatorInput] = useState("");
@@ -98,6 +137,12 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
   const [activeTab, setActiveTab] = useState<"operator" | "browser">("browser");
 
   const wsRef = useRef<WebSocket | null>(null);
+  const activeTabIdRef = useRef<string>("tab-1");
+  
+  useEffect(() => {
+    activeTabIdRef.current = activeTabId;
+  }, [activeTabId]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const screenRef = useRef<HTMLImageElement>(null);
   const isResizing = useRef(false);
@@ -190,9 +235,15 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
           case "url":
             setCurrentUrl(msg.url);
             setInputUrl(msg.url);
+            setTabs((prev) =>
+              prev.map((t) => (t.id === activeTabIdRef.current ? { ...t, url: msg.url } : t))
+            );
             break;
           case "title":
             setCurrentTitle(msg.title || "Live Browser");
+            setTabs((prev) =>
+              prev.map((t) => (t.id === activeTabIdRef.current ? { ...t, title: msg.title || "Live Browser" } : t))
+            );
             break;
           case "status":
             setStatusMessage(msg.text);
@@ -252,6 +303,54 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
       setInputUrl(url);
     }
   }, [url, isOpen]);
+
+  // Handle global physical keyboard events for seamless browser control
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+      const target = e.target as HTMLElement | null;
+      const isTyping = 
+        target?.tagName === "INPUT" || 
+        target?.tagName === "TEXTAREA" || 
+        target?.getAttribute("contenteditable") === "true" ||
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA" ||
+        document.activeElement?.id === "companion_url_address_input" ||
+        document.activeElement?.id === "typing_helper_input" ||
+        document.activeElement?.id === "operator_chat_textarea";
+
+      if (isTyping) {
+        return;
+      }
+
+      // Handle typical action keys for game elements, links and forms
+      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "Backspace", "Enter"].includes(e.key)) {
+        e.preventDefault();
+      }
+
+      wsRef.current.send(JSON.stringify({ type: "key", key: e.key }));
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, [isOpen]);
+
+  const handleScreenMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    
+    const now = Date.now();
+    if (now - lastMouseMoveRef.current < 75) return; // limit to ~13 events per second
+    lastMouseMoveRef.current = now;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+
+    wsRef.current.send(JSON.stringify({ type: "hover", x, y }));
+  };
 
   // Sidebar resize dragging handler
   useEffect(() => {
@@ -513,46 +612,34 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
       tabIndex={0}
       onKeyDown={handleHardwareKeyDown}
       className={`${
-        isInline
-          ? "relative border-l border-zinc-200/80 dark:border-white/5"
-          : "fixed inset-y-0 right-0 z-[75] border-l border-zinc-200/80 dark:border-white/5 shadow-2xl"
-      } flex flex-col bg-[#f4f4f6] dark:bg-pplx-primary text-zinc-800 dark:text-pplx-text h-full transition-[width] duration-150 focus:outline-none max-w-full`}
-      style={{ width: isDesktop ? `${width}px` : "100%" }}
+        isFullscreen
+          ? "fixed inset-0 z-[75] shadow-2xl h-full w-full"
+          : isInline
+            ? isDesktop
+              ? "relative bg-white dark:bg-pplx-card md:my-3 md:mr-3 md:ml-1.5 md:rounded-2xl md:border md:border-zinc-200 dark:md:border-white/5 shadow-xl shrink-0 order-1 md:order-2 animate-in slide-in-from-top-4 duration-200 overflow-hidden"
+              : "relative w-full h-full flex-1 shrink-0 order-1 animate-in slide-in-from-top-4 duration-200"
+            : "fixed inset-y-0 right-0 z-[75] border-l border-zinc-200/80 dark:border-white/5 shadow-2xl h-full"
+      } flex flex-col bg-[#f4f4f6] dark:bg-pplx-primary text-zinc-800 dark:text-pplx-text transition-all duration-150 focus:outline-none max-w-full`}
+      style={{ 
+        width: isFullscreen ? "100%" : isInline && !isDesktop ? "100%" : isDesktop ? `${width}px` : "100%",
+        height: isFullscreen ? "100%" : isInline ? (isDesktop ? "calc(100% - 24px)" : "100%") : "100%"
+      }}
     >
       {/* Resize handle bar */}
-      <div
-        id="resize_handle_horizontal"
-        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[#2563eb]/30 transition-colors z-50"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          isResizing.current = true;
-          document.body.style.cursor = "col-resize";
-        }}
-      />
-
-      {/* Primary Top Header Frame - Styled EXACTLY like screenshot, lowered on desktop */}
-      <div className="flex items-center justify-between px-6 pt-4 pb-4 md:pt-14 md:pb-4 select-none shrink-0 bg-transparent">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <ArrowUpLeft 
-            size={16} 
-            className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer shrink-0" 
-          />
-          <span className="text-[13px] font-semibold text-zinc-900 dark:text-white tracking-tight truncate">
-            {currentTitle || "Campsite search request"}
-          </span>
+      {!isFullscreen && isDesktop && (
+        <div
+          id="resize_handle_horizontal"
+          className="absolute -left-1.5 top-0 bottom-0 w-3 cursor-col-resize hover:bg-[#2563eb]/20 group transition-all z-50 flex items-center justify-center"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            isResizing.current = true;
+            document.body.style.cursor = "col-resize";
+          }}
+        >
+          {/* Subtle drag line handler indicator */}
+          <div className="w-[2px] h-10 rounded-full bg-zinc-400 dark:bg-zinc-650 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            id="close_companion_button"
-            onClick={onClose}
-            className="p-1.5 hover:text-red-500 text-zinc-500 dark:text-zinc-400 dark:hover:text-red-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 rounded-md transition-colors ml-1"
-            title="Close Panel"
-          >
-            <X size={15} />
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Main Dual-Column Split view or single Tab view */}
       <div className="flex-1 flex overflow-hidden">
@@ -706,76 +793,244 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
         {/* COL 2: RIGHT SIDE - BROWSER VIEWPORT & ADDR */}
         {/* ========================================== */}
         {shouldShowBrowser && (
-          <div className="flex-grow flex flex-col px-6 pb-6 overflow-hidden h-full z-10 bg-[#f4f4f6] dark:bg-pplx-primary">
+          <div className={`flex-grow flex flex-col ${isInline ? isDesktop ? "px-1.5 pb-1.5 md:px-6 md:pb-6" : "p-0" : "px-6 pb-6"} overflow-hidden h-full z-10 bg-[#f4f4f6] dark:bg-pplx-primary`}>
             
             {/* INSET FLOATING CARD DESIGN FOR MOCK BROWSER */}
-            <div className="flex-1 flex flex-col bg-white dark:bg-pplx-secondary rounded-2xl border border-zinc-200/85 dark:border-white/5 shadow-md overflow-hidden min-h-0">
+            <div className={`flex-1 flex flex-col bg-white dark:bg-pplx-secondary ${isDesktop ? "rounded-2xl border border-zinc-200/85 dark:border-white/5 shadow-md" : "border-b border-zinc-200 dark:border-white/5"} overflow-hidden min-h-0`}>
               
-              {/* Google Chrome Tab bar */}
-              <div className="flex items-center bg-[#eaecef] dark:bg-pplx-primary border-b border-zinc-200/60 dark:border-white/5 px-3 h-9 select-none shrink-0 gap-1.5 pt-1.5">
-                <div className="flex items-center gap-1 bg-white dark:bg-pplx-secondary border-t border-x border-zinc-250/20 dark:border-white/5 px-3 py-1.5 rounded-t-lg text-zinc-800 dark:text-pplx-text text-[11px] font-medium shadow-2xs max-w-[280px] truncate">
-                  <Globe size={11} className="text-[#2563eb] shrink-0" />
-                  <span className="truncate">{currentTitle || "Hipcamp | Tent Camping, RV Spots, Cabins & Glamping"}</span>
-                  <button className="ml-2 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-full p-0.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 transition-colors">
-                    <X size={10} />
-                  </button>
-                </div>
-                <button className="p-1 rounded-md hover:bg-zinc-250 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors font-semibold" title="New Tab">
-                  <span className="text-xs">+</span>
-                </button>
-              </div>
+              {isDesktop ? (
+                <>
+                  {/* Google Chrome Tab bar */}
+                  <div className="flex items-center justify-between bg-[#eaecef] dark:bg-pplx-primary border-b border-zinc-200/60 dark:border-white/5 px-3 h-9 select-none shrink-0 gap-1.5 pt-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1 bg-white dark:bg-pplx-secondary border-t border-x border-zinc-250/20 dark:border-white/5 px-3 py-1.5 rounded-t-lg text-zinc-800 dark:text-pplx-text text-[11px] font-medium shadow-2xs max-w-[280px] truncate">
+                        <Globe size={11} className="text-[#2563eb] shrink-0" />
+                        <span className="truncate">{currentTitle || "Hipcamp | Tent Camping, RV Spots, Cabins & Glamping"}</span>
+                        <button className="ml-2 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-full p-0.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 transition-colors">
+                          <X size={10} />
+                        </button>
+                      </div>
+                      <button className="p-1 rounded-md hover:bg-zinc-250 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors font-semibold shadow-3xs hover:text-zinc-950 dark:hover:text-white" title="New Tab">
+                        <span className="text-xs">+</span>
+                      </button>
+                    </div>
 
-              {/* Address bar search navigation */}
-              <div className="px-4 py-2.5 bg-white dark:bg-pplx-secondary border-b border-zinc-200/80 dark:border-white/5 shrink-0 flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    id="browser_back_btn"
-                    type="button"
-                    onClick={handleBack}
-                    className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
-                    title="Go Back"
-                  >
-                    <ChevronLeft size={15} className="stroke-[2.2]" />
-                  </button>
-                  <button
-                    id="browser_fwd_btn"
-                    type="button"
-                    onClick={handleForward}
-                    className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
-                    title="Go Forward"
-                  >
-                    <ChevronRight size={15} className="stroke-[2.2]" />
-                  </button>
-                  <button
-                    id="browser_refresh_btn"
-                    type="button"
-                    onClick={handleRefresh}
-                    className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
-                    title="Reload"
-                  >
-                    <RefreshCw size={13} className="stroke-[2.2]" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleUrlSubmit} className="flex-1 relative flex flex-row items-center">
-                  <div className="w-full flex items-center bg-[#f1f3f4] dark:bg-pplx-primary border border-transparent rounded-lg py-1 px-3 gap-2 focus-within:bg-white dark:focus-within:bg-pplx-secondary focus-within:border-[#2563eb]/40 dark:focus-within:border-pplx-accent/40 shadow-3xs transition-all">
-                    <Lock size={12} className="text-zinc-400 dark:text-zinc-500 shrink-0" />
-                    {currentUrl ? (
-                      <span className="text-[9px] text-[#2563eb] bg-[#2563eb]/5 border border-[#2563eb]/10 dark:border-white/5 px-1.5 py-0.5 rounded font-mono select-none font-semibold shrink-0">
-                        {getDomain(currentUrl)}
-                      </span>
-                    ) : null}
-                    <input
-                      id="companion_url_address_input"
-                      type="text"
-                      value={inputUrl}
-                      onChange={(e) => setInputUrl(e.target.value)}
-                      className="flex-1 text-xs bg-transparent outline-none text-zinc-800 dark:text-pplx-text font-mono py-0.5"
-                      placeholder="Search or enter URL to browse..."
-                    />
+                    {/* Desktop inline window control buttons (Fullscreen & Close) */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        className="p-1 hover:text-[#2563eb] text-zinc-500 dark:text-zinc-400 dark:hover:text-blue-400 hover:bg-zinc-250 dark:hover:bg-zinc-850 rounded-md transition-colors"
+                        title={isFullscreen ? "Ieși din Mod Complet" : "Mod Complet"}
+                      >
+                        {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                      </button>
+                      
+                      <button
+                        id="close_companion_button"
+                        onClick={onClose}
+                        className="p-1 hover:text-red-500 text-zinc-500 dark:text-zinc-400 dark:hover:text-red-400 hover:bg-zinc-250 dark:hover:bg-zinc-850 rounded-md transition-colors"
+                        title="Close Panel"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
                   </div>
-                </form>
-              </div>
+
+                  {/* Address bar search navigation */}
+                  <div className="px-4 py-2.5 bg-white dark:bg-pplx-secondary border-b border-zinc-200/80 dark:border-white/5 shrink-0 flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        id="browser_back_btn"
+                        type="button"
+                        onClick={handleBack}
+                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
+                        title="Go Back"
+                      >
+                        <ChevronLeft size={15} className="stroke-[2.2]" />
+                      </button>
+                      <button
+                        id="browser_fwd_btn"
+                        type="button"
+                        onClick={handleForward}
+                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
+                        title="Go Forward"
+                      >
+                        <ChevronRight size={15} className="stroke-[2.2]" />
+                      </button>
+                      <button
+                        id="browser_refresh_btn"
+                        type="button"
+                        onClick={handleRefresh}
+                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
+                        title="Reload"
+                      >
+                        <RefreshCw size={13} className="stroke-[2.2]" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleUrlSubmit} className="flex-1 relative flex flex-row items-center">
+                      <div className="w-full flex items-center bg-[#f1f3f4] dark:bg-pplx-primary border border-transparent rounded-lg py-1 px-3 gap-2 focus-within:bg-white dark:focus-within:bg-pplx-secondary focus-within:border-[#2563eb]/40 dark:focus-within:border-pplx-accent/40 shadow-3xs transition-all">
+                        <Lock size={12} className="text-zinc-400 dark:text-zinc-500 shrink-0" />
+                        {currentUrl ? (
+                          <span className="text-[9px] text-[#2563eb] bg-[#2563eb]/5 border border-[#2563eb]/10 dark:border-white/5 px-1.5 py-0.5 rounded font-mono select-none font-semibold shrink-0">
+                            {getDomain(currentUrl)}
+                          </span>
+                        ) : null}
+                        <input
+                          id="companion_url_address_input"
+                          type="text"
+                          value={inputUrl}
+                          onChange={(e) => setInputUrl(e.target.value)}
+                          className="flex-1 text-xs bg-transparent outline-none text-zinc-800 dark:text-pplx-text font-mono py-0.5"
+                          placeholder="Search or enter URL to browse..."
+                        />
+                      </div>
+                    </form>
+                  </div>
+                </>
+              ) : (
+                /* Chrome-style Mobile Browser Header - All Elements nested on a Single Row */
+                <div className="relative flex flex-col w-full shrink-0 select-none z-[60]">
+                  <div className="flex items-center gap-1.5 px-2 py-2 bg-[#eaecef] dark:bg-pplx-primary border-b border-zinc-200 dark:border-white/5 select-none shrink-0">
+                    {/* Home button (Casă) */}
+                    <button
+                      onClick={() => {
+                        setInputUrl("https://www.google.com");
+                        wsRef.current?.send(JSON.stringify({ type: "navigate", url: "https://www.google.com" }));
+                      }}
+                      className="h-8 px-2 bg-white dark:bg-pplx-secondary rounded-lg text-zinc-700 dark:text-pplx-text border border-zinc-200 dark:border-zinc-800 shadow-2xs hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-95 transition-all flex items-center justify-center font-medium shrink-0"
+                      title="Acasă"
+                    >
+                      <span className="text-sm">🏠</span>
+                    </button>
+
+                    {/* URL Address Input Bar */}
+                    <form onSubmit={handleUrlSubmit} className="flex-1 relative flex flex-row items-center min-w-0">
+                      <div className="w-full flex items-center bg-white dark:bg-pplx-secondary border border-zinc-250 dark:border-zinc-800 rounded-lg py-1 px-2.5 gap-1.5 shadow-3xs">
+                        <Lock size={10} className="text-zinc-400 dark:text-zinc-500 shrink-0" />
+                        <input
+                          id="companion_url_address_input_mobile"
+                          type="text"
+                          value={inputUrl}
+                          onChange={(e) => setInputUrl(e.target.value)}
+                          className="flex-1 text-[11px] bg-transparent outline-none text-zinc-800 dark:text-pplx-text font-mono min-w-0 py-0.5"
+                          placeholder="Caută sau adresa..."
+                        />
+                      </div>
+                    </form>
+
+                    {/* Plus Button for New Page/Tab */}
+                    <button
+                      onClick={() => {
+                        const newId = `tab-${Date.now()}`;
+                        const newTab = { id: newId, url: "https://www.google.com", title: "New Tab" };
+                        setTabs((prev) => [...prev, newTab]);
+                        setActiveTabId(newId);
+                        setInputUrl("https://www.google.com");
+                        setCurrentUrl("https://www.google.com");
+                        wsRef.current?.send(JSON.stringify({ type: "navigate", url: "https://www.google.com" }));
+                      }}
+                      className="h-8 w-8 bg-white dark:bg-pplx-secondary border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-pplx-text hover:bg-zinc-55 flex items-center justify-center shrink-0 shadow-3xs active:scale-95 transition-all text-sm font-semibold"
+                      title="Pagină nouă (+)"
+                    >
+                      +
+                    </button>
+
+                    {/* Chrome Mobile Style Tab Count Box */}
+                    <button
+                      onClick={() => {
+                        setShowTabsList(!showTabsList);
+                      }}
+                      className={`h-8 w-8 border rounded-lg flex items-center justify-center shrink-0 shadow-3xs active:scale-95 transition-all ${
+                        showTabsList 
+                          ? "bg-[#2563eb]/10 border-[#2563eb]/35 text-[#2563eb]" 
+                          : "bg-white dark:bg-pplx-secondary border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-pplx-text"
+                      }`}
+                      title="Taburi deschise"
+                    >
+                      <span className="border-[1.8px] border-current rounded-[5px] h-4.5 w-4.5 flex items-center justify-center text-[9px] font-bold">
+                        {tabs.length}
+                      </span>
+                    </button>
+
+                    {/* Close Browser Button right next to Tabs */}
+                    <button
+                      onClick={onClose}
+                      className="h-8 w-8 bg-white dark:bg-pplx-secondary border border-red-200 dark:border-red-950/20 rounded-lg text-red-500 hover:text-red-650 flex items-center justify-center shrink-0 shadow-3xs active:scale-95 transition-all"
+                      title="Închide browser"
+                    >
+                      <X size={15} className="stroke-[2.5]" />
+                    </button>
+                  </div>
+
+                  {/* Tabs List Dropdown Overlay (Absolute directly underneath mobile header) */}
+                  {showTabsList && (
+                    <div className="absolute top-11 inset-x-0 bg-white dark:bg-pplx-secondary border-b border-zinc-200 dark:border-white/5 shadow-xl flex flex-col max-h-[70vh] overflow-hidden z-[70] animate-in slide-in-from-top duration-200">
+                      <div className="flex items-center justify-between border-b border-zinc-200/50 dark:border-white/5 px-4 py-2.5 bg-[#f8f9fa] dark:bg-pplx-primary">
+                        <span className="text-[10px] font-bold text-zinc-500 dark:text-pplx-muted uppercase tracking-wider">Taburi deschise ({tabs.length})</span>
+                        <button 
+                          onClick={() => setShowTabsList(false)}
+                          className="text-zinc-400 hover:text-zinc-600 dark:hover:text-white p-0.5 rounded-full"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                      <div className="overflow-y-auto p-2 space-y-1.5 custom-scrollbar max-h-[40vh]">
+                        {tabs.map((t) => (
+                          <div
+                            key={t.id}
+                            onClick={() => handleSelectTab(t.id, t.url)}
+                            className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                              activeTabId === t.id
+                                ? "bg-[#2563eb]/5 border-[#2563eb]/25 dark:border-[#2563eb]/30"
+                                : "bg-transparent border-zinc-150/60 dark:border-zinc-800/80 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <Globe size={12} className={activeTabId === t.id ? "text-[#2563eb]" : "text-zinc-400"} />
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-[11px] font-semibold truncate leading-tight ${activeTabId === t.id ? "text-[#2563eb]" : "text-zinc-700 dark:text-zinc-200"}`}>
+                                  {t.title || "Pagină nouă"}
+                                </p>
+                                <p className="text-[9px] font-mono text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
+                                  {t.url}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {tabs.length > 1 && (
+                              <button
+                                onClick={(e) => handleCloseTab(t.id, e)}
+                                className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors shrink-0 ml-1.5"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="p-2 border-t border-zinc-200/50 dark:border-white/5 bg-[#f8f9fa] dark:bg-pplx-primary flex justify-center shrink-0">
+                        <button
+                          onClick={() => {
+                            const newId = `tab-${Date.now()}`;
+                            const newTab = { id: newId, url: "https://www.google.com", title: "New Tab" };
+                            setTabs((prev) => [...prev, newTab]);
+                            setActiveTabId(newId);
+                            setInputUrl("https://www.google.com");
+                            setCurrentUrl("https://www.google.com");
+                            wsRef.current?.send(JSON.stringify({ type: "navigate", url: "https://www.google.com" }));
+                            setShowTabsList(false);
+                          }}
+                          className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white py-1.5 px-3 rounded-lg text-[11px] font-semibold shadow-2xs transition-all text-center flex items-center justify-center gap-1"
+                        >
+                          + Deschide Tab Nou
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Main Interactive Screencast iframe screenshot area */}
               <div
@@ -790,6 +1045,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                       src={frame}
                       alt="Live Browser Screencast"
                       onClick={handleScreenClick}
+                      onMouseMove={handleScreenMouseMove}
                       className="max-w-full max-h-full object-contain cursor-crosshair rounded-xl border border-zinc-200/80 dark:border-white/5 shadow-lg"
                       draggable={false}
                     />
@@ -841,141 +1097,291 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
 
               {/* Direct Interactions in mock-browser canvas footer */}
               {isConnected && frame && (
-                <div className="flex flex-col border-t border-zinc-200 dark:border-zinc-850 bg-[#fbfbfb] dark:bg-[#070707] shrink-0 select-none">
-                  
-                  {/* Single beautiful compact bar with all buttons and controls inline */}
-                  <div className="px-3 py-2 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
-                    
-                    {/* Live indicator and main manual typist field */}
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className="flex items-center gap-1 shrink-0 bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-1 rounded-full border border-emerald-500/20">
-                        <span className="relative flex items-center justify-center">
-                          <span className="absolute inline-flex h-2 w-2 rounded-full bg-emerald-500/80 animate-ping" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                        </span>
-                        <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 tracking-wider uppercase">Live</span>
-                      </div>
+                <>
+                  {/* Floating Toggle Button for Mobile Controls */}
+                  {!isDesktop && !mobileControlsOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setMobileControlsOpen(true)}
+                      className="absolute bottom-4 right-4 z-[45] h-11 w-11 rounded-full shadow-xl bg-zinc-800 dark:bg-zinc-700 hover:bg-zinc-700 dark:hover:bg-zinc-650 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                      title="Control la distanță"
+                    >
+                      <SlidersHorizontal size={20} />
+                    </button>
+                  )}
 
-                      {/* Inline typing field form for mechanical input */}
-                      <form onSubmit={handleSendText} className="flex-1 flex items-center gap-1">
-                        <div className="relative flex-1 flex items-center">
-                          <input
-                            id="typing_helper_input"
-                            type="text"
-                            value={typingText}
-                            onChange={(e) => setTypingText(e.target.value)}
-                            className="w-full text-xs h-8 bg-white dark:bg-[#0c0c0c] border border-zinc-200 dark:border-zinc-800 rounded-lg pl-3 pr-8 outline-none focus:ring-1 focus:ring-pplx-accent/50 focus:border-pplx-accent text-zinc-800 dark:text-zinc-100 font-sans tracking-wide transition-all placeholder-zinc-400 dark:placeholder-zinc-650"
-                            placeholder="Scrie text sau apasă taste..."
-                          />
+                  <div className="flex flex-col border-t border-zinc-200 dark:border-zinc-850 bg-[#fbfbfb] dark:bg-pplx-primary shrink-0 select-none">
+                    {isDesktop ? (
+                      /* Desktop Standard Bar */
+                      <div className={`flex flex-col lg:flex-row items-stretch lg:items-center justify-between ${isInline ? "px-3 py-2 md:px-4 md:py-3 gap-2 md:gap-3" : "px-4 py-3 gap-3"}`}>
+                        {/* Col 1: Live indicators & Instant keyboard input */}
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className="flex items-center gap-1 shrink-0 bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl border border-emerald-500/20 shadow-3xs">
+                            <span className="relative flex items-center justify-center">
+                              <span className="absolute inline-flex h-2 w-2 rounded-full bg-emerald-500/80 animate-ping" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                            </span>
+                            <span className="text-[9px] md:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 tracking-wider">LIVE</span>
+                          </div>
+
+                          {/* Inline typing field form for mechanical input */}
+                          <form onSubmit={handleSendText} className="flex-1 flex items-center relative gap-1 min-w-[150px] md:min-w-[180px]">
+                            <input
+                              id="typing_helper_input"
+                              type="text"
+                              value={typingText}
+                              onChange={(e) => setTypingText(e.target.value)}
+                              className={`w-full text-xs ${isInline ? "h-8 md:h-9" : "h-9"} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-3 pr-9 outline-none focus:ring-1 focus:ring-pplx-accent/50 focus:border-pplx-accent text-zinc-800 dark:text-zinc-100 font-sans tracking-wide transition-all placeholder-zinc-450 dark:placeholder-zinc-500`}
+                              placeholder="Tostează ceva pe pagină..."
+                            />
+                            <button
+                              type="submit"
+                              disabled={!typingText}
+                              className={`absolute right-1 leading-none ${isInline ? "p-1 md:p-1.5" : "p-1.5"} bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-30 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white rounded-lg shrink-0 transition-opacity cursor-pointer flex items-center justify-center shadow-3xs`}
+                              title="Tastați pe pagină (Send)"
+                            >
+                              <Send size={11} className={!typingText ? "text-zinc-500 dark:text-zinc-400" : ""} />
+                            </button>
+                          </form>
+                        </div>
+
+                        {/* Col 2: Action buttons with extremely clean visual groupings & Romanian labels */}
+                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 shrink-0 justify-between sm:justify-start">
+                          <div className="flex items-center gap-1" title="Taste Speciale">
+                            <button
+                              type="button"
+                              onClick={() => handleQuickKey("Tab")}
+                              className={`text-[11px] ${isInline ? "h-8 md:h-9 px-2.5" : "h-9 px-2.5"} rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white font-sans font-medium transition-all shadow-3xs active:scale-95 flex items-center gap-1`}
+                              title="Sari la următorul element (Tab)"
+                            >
+                              <CornerDownLeft size={10} className="rotate-180 text-zinc-400 dark:text-zinc-500" />
+                              <span>Tab</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickKey("Backspace")}
+                              className={`text-[11px] ${isInline ? "h-8 md:h-9 px-2.5" : "h-9 px-2.5"} rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white font-sans font-medium transition-all shadow-3xs active:scale-95 flex items-center gap-1`}
+                              title="Șterge ultimul caracter scris (Backspace)"
+                            >
+                              <span>Șterge</span>
+                            </button>
+                          </div>
+
                           <button
-                            type="submit"
-                            disabled={!typingText}
-                            className="absolute right-1 leading-none p-1 bg-pplx-accent hover:opacity-90 disabled:opacity-30 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white dark:text-black rounded-md shrink-0 transition-opacity cursor-pointer flex items-center justify-center"
-                            title="Submit Text"
+                            type="button"
+                            onClick={handleBypassConsent}
+                            disabled={isBypassing}
+                            className={`flex items-center justify-center ${isInline ? "h-8 md:h-9 px-2 md:px-3 text-[11px] md:text-xs" : "h-9 px-3 text-xs"} rounded-xl border cursor-pointer transition-all shadow-3xs active:scale-95 font-medium ${
+                              isBypassing 
+                                ? "bg-amber-500/10 border-amber-500/30 text-amber-500" 
+                                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-amber-600 dark:text-amber-500 hover:bg-amber-500/5 hover:border-amber-500/20 hover:text-amber-700 dark:hover:text-amber-400"
+                            }`}
+                            title="Ascunde module cookie blocate"
                           >
-                            <Send size={11} className={!typingText ? "text-zinc-500" : ""} />
+                            {isBypassing ? (
+                              <Loader2 size={12} className="animate-spin text-amber-500 mr-1.5" />
+                            ) : (
+                              <Cookie size={12} className="mr-1.5 text-amber-500" />
+                            )}
+                            <span>Sari Cookies</span>
+                          </button>
+
+                          <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 p-0.5 shadow-3xs" title="Navigare Scroll">
+                            <button
+                              type="button"
+                              onClick={() => handleScrollManual("up")}
+                              className={`${isInline ? "h-7 md:h-8" : "h-8"} px-2 flex items-center justify-center gap-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90 text-[10px] font-medium`}
+                              title="Scurtătură Scroll în Sus"
+                            >
+                              <ChevronUp size={13} />
+                              <span className="hidden sm:inline">Sus</span>
+                            </button>
+                            <div className="w-[1px] h-3.5 bg-zinc-200 dark:bg-zinc-800 self-center mx-0.5" />
+                            <button
+                              type="button"
+                              onClick={() => handleScrollManual("down")}
+                              className={`${isInline ? "h-7 md:h-8" : "h-8"} px-2 flex items-center justify-center gap-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90 text-[10px] font-medium`}
+                              title="Scurtătură Scroll în Jos"
+                            >
+                              <ChevronDown size={13} />
+                              <span className="hidden sm:inline">Jos</span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 p-0.5 shadow-3xs" title="Control Media">
+                            <button
+                              type="button"
+                              onClick={handleTogglePlay}
+                              className={`${isInline ? "h-7 w-7 md:h-8 md:w-8" : "h-8 w-8"} flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90`}
+                              title={isPlaying ? "Pune pauză" : "Redă clip"}
+                            >
+                              {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+                            </button>
+                            <div className="w-[1px] h-3.5 bg-zinc-200 dark:bg-zinc-800 self-center mx-0.5" />
+                            <button
+                              type="button"
+                              onClick={handleToggleMute}
+                              className={`${isInline ? "h-7 w-7 md:h-8 md:w-8" : "h-8 w-8"} flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90`}
+                              title={isMuted ? "Pornește sunet" : "Oprește sunet (Mute)"}
+                            >
+                              {isMuted ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleSkipAd}
+                            className={`flex items-center justify-center gap-1.5 ${isInline ? "px-2 md:px-3 h-8 md:h-9 text-[10px] md:text-[11px]" : "px-3 h-9 text-[11px]"} rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 font-bold cursor-pointer transition-all shadow-3xs active:scale-95`}
+                            title="Sari peste reclama YouTube curentă"
+                          >
+                            <SkipForward size={11} className="text-red-500" />
+                            <span className="font-semibold">Sari Reclamă</span>
                           </button>
                         </div>
-                      </form>
-                    </div>
-
-                    {/* Action controls button area (flexible wrapping) */}
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      
-                      {/* Inline helper keys - Tab, Bksp */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleQuickKey("Tab")}
-                          className="text-[10px] h-8 px-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0c] text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200 font-sans font-medium transition-all shadow-sm active:scale-95"
-                          title="Tasta Tab"
-                        >
-                          Tab
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickKey("Backspace")}
-                          className="text-[10px] h-8 px-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0c] text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200 font-sans font-medium transition-all shadow-sm active:scale-95 flex items-center gap-1"
-                          title="Tasta Backspace"
-                        >
-                          <span>Bksp</span>
-                        </button>
                       </div>
+                    ) : (
+                      /* Mobile Two-Row Control Layout */
+                      mobileControlsOpen && (
+                        <div className="flex flex-col bg-zinc-50 dark:bg-pplx-primary p-2 md:p-3 gap-2 border-t border-zinc-250 dark:border-white/5 shadow-inner">
+                          {/* ROW 1: LIVE Badge + Typing Form + Tab + Șterge */}
+                          <div className="flex items-center gap-1.5 w-full">
+                            <div className="flex items-center gap-1 shrink-0 bg-emerald-500/10 dark:bg-emerald-500/5 px-1.5 py-1 rounded-lg border border-emerald-500/20 shadow-3xs">
+                              <span className="relative flex items-center justify-center">
+                                <span className="absolute inline-flex h-1 w-1 rounded-full bg-emerald-500/80 animate-ping" />
+                                <span className="relative inline-flex rounded-full h-1 w-1 bg-emerald-500" />
+                              </span>
+                              <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">LIVE</span>
+                            </div>
 
-                      {/* Cookie Auto bypass overlay button */}
-                      <button
-                        type="button"
-                        onClick={handleBypassConsent}
-                        disabled={isBypassing}
-                        className={`flex items-center justify-center h-8 px-2.5 rounded-lg border text-xs cursor-pointer transition-all shadow-sm active:scale-95 ${
-                          isBypassing 
-                            ? "bg-amber-500/10 border-amber-500/30 text-amber-500" 
-                            : "bg-white dark:bg-[#0c0c0c] border-zinc-200 dark:border-zinc-800 text-amber-600 dark:text-amber-500 hover:bg-amber-500/5 hover:border-amber-500/20 hover:text-amber-700 dark:hover:text-amber-400"
-                        }`}
-                        title="Auto-Accept Cookie Walls"
-                      >
-                        {isBypassing ? (
-                          <Loader2 size={12} className="animate-spin text-amber-500 mr-1" />
-                        ) : (
-                          <Cookie size={12} className="mr-1" />
-                        )}
-                        <span className="text-[10px] font-medium hidden xs:inline">Bypass Cookie</span>
-                      </button>
+                            <form onSubmit={handleSendText} className="flex-1 flex items-center relative gap-0.5 min-w-0">
+                              <input
+                                id="typing_helper_input_mobile"
+                                type="text"
+                                value={typingText}
+                                onChange={(e) => setTypingText(e.target.value)}
+                                className="w-full text-[11px] h-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-2 pr-7 outline-none focus:ring-1 focus:ring-pplx-accent/50 focus:border-pplx-accent text-zinc-800 dark:text-zinc-100 font-sans transition-all placeholder-zinc-400 dark:placeholder-zinc-500"
+                                placeholder="Postează pe pagină..."
+                              />
+                              <button
+                                type="submit"
+                                disabled={!typingText}
+                                className="absolute right-0.5 leading-none p-1 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-30 disabled:bg-zinc-300 dark:disabled:bg-zinc-850 text-white rounded-md shrink-0 transition-opacity cursor-pointer flex items-center justify-center"
+                                title="Trimite"
+                              >
+                                <Send size={9} className={!typingText ? "text-zinc-500" : "text-white"} />
+                              </button>
+                            </form>
 
-                      {/* Web manual scroll triggers */}
-                      <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-[#0c0c0c] p-0.5 shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() => handleScrollManual("up")}
-                          className="h-7 w-7 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-850 dark:text-zinc-450 dark:hover:text-zinc-200 transition-all active:scale-90"
-                          title="Scroll Sus"
-                        >
-                          <ChevronUp size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleScrollManual("down")}
-                          className="h-7 w-7 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-zinc-850 dark:text-zinc-450 dark:hover:text-zinc-200 transition-all active:scale-90"
-                          title="Scroll Jos"
-                        >
-                          <ChevronDown size={13} />
-                        </button>
-                      </div>
+                            {/* Tab Button (Tap) */}
+                            <button
+                              type="button"
+                              onClick={() => handleQuickKey("Tab")}
+                              className="text-[10px] h-8 px-2 shrink-0 rounded-lg border border-zinc-250 dark:border-zinc-805 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 font-medium active:scale-95 transition-all shadow-3xs"
+                              title="Tab"
+                            >
+                              Tab
+                            </button>
 
-                      {/* Video Media controls */}
-                      <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-[#0c0c0c] p-0.5 shadow-sm">
-                        <button
-                          type="button"
-                          onClick={handleTogglePlay}
-                          className="h-7 w-7 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-md text-zinc-650 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all active:scale-90"
-                          title={isPlaying ? "Pauză" : "Redă"}
-                        >
-                          {isPlaying ? <Pause size={11} /> : <Play size={11} />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleToggleMute}
-                          className="h-7 w-7 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-md text-zinc-650 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100 transition-all active:scale-90"
-                          title={isMuted ? "Sunet Pornit" : "Sunet Oprit"}
-                        >
-                          {isMuted ? <Volume2 size={11} /> : <VolumeX size={11} />}
-                        </button>
-                      </div>
+                            {/* Backspace Button (Șterge) */}
+                            <button
+                              type="button"
+                              onClick={() => handleQuickKey("Backspace")}
+                              className="text-[10px] h-8 px-2 shrink-0 rounded-lg border border-zinc-250 dark:border-zinc-805 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 font-medium active:scale-95 transition-all shadow-3xs"
+                              title="Șterge"
+                            >
+                              Șterge
+                            </button>
+                          </div>
 
-                      {/* YouTube Skip Ad trigger */}
-                      <button
-                        type="button"
-                        onClick={handleSkipAd}
-                        className="flex items-center justify-center gap-1 px-2.5 h-8 rounded-lg bg-red-650/10 hover:bg-red-600/20 text-red-600 dark:text-red-450 border border-red-500/20 text-[10px] font-bold cursor-pointer transition-all shadow-sm active:scale-95"
-                        title="Skip Ads YouTube"
-                      >
-                        <SkipForward size={11} />
-                        <span className="hidden sm:inline font-medium">Skip Ad</span>
-                      </button>
-                    </div>
+                          {/* ROW 2: Media, scroll controls, cookies, skip ad, and the Hide/Close button */}
+                          <div className="flex items-center justify-between gap-1 w-full text-[10px]">
+                            
+                            {/* Page scroll: Sus / Jos */}
+                            <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 p-0.5 shadow-3xs shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleScrollManual("up")}
+                                className="h-6 px-1.5 flex items-center justify-center gap-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-600 dark:text-zinc-300 font-medium"
+                                title="Scroll Sus"
+                              >
+                                <ChevronUp size={11} />
+                                <span>Sus</span>
+                              </button>
+                              <div className="w-[1px] h-2.5 bg-zinc-250 dark:bg-zinc-800 self-center mx-0.5" />
+                              <button
+                                type="button"
+                                onClick={() => handleScrollManual("down")}
+                                className="h-6 px-1.5 flex items-center justify-center gap-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-600 dark:text-zinc-300 font-medium"
+                                title="Scroll Jos"
+                              >
+                                <ChevronDown size={11} />
+                                <span>Jos</span>
+                              </button>
+                            </div>
+
+                            {/* Play & Media toggles */}
+                            <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 p-0.5 shadow-3xs shrink-0">
+                              <button
+                                type="button"
+                                onClick={handleTogglePlay}
+                                className="h-6 w-6 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-650 dark:text-zinc-300"
+                                title="Play/Pauză"
+                              >
+                                {isPlaying ? <Pause size={10} /> : <Play size={10} />}
+                              </button>
+                              <div className="w-[1px] h-2.5 bg-zinc-250 dark:bg-zinc-800 self-center mx-0.5" />
+                              <button
+                                type="button"
+                                onClick={handleToggleMute}
+                                className="h-6 w-6 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-650 dark:text-zinc-300"
+                                title="Mute"
+                              >
+                                {isMuted ? <Volume2 size={10} /> : <VolumeX size={10} />}
+                              </button>
+                            </div>
+
+                            {/* Cookies */}
+                            <button
+                              type="button"
+                              onClick={handleBypassConsent}
+                              disabled={isBypassing}
+                              className={`flex items-center justify-center h-7 px-1.5 text-[9px] shrink-0 rounded-lg border cursor-pointer font-medium shadow-3xs active:scale-95 ${
+                                isBypassing 
+                                  ? "bg-amber-500/10 border-amber-500/30 text-amber-550" 
+                                  : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-amber-600 dark:text-amber-505"
+                              }`}
+                              title="Sari Cookies"
+                            >
+                              <Cookie size={10} className="mr-0.5 text-amber-500" />
+                              <span>Cookies</span>
+                            </button>
+
+                            {/* Sari YouTube Ad */}
+                            <button
+                              type="button"
+                              onClick={handleSkipAd}
+                              className="flex items-center justify-center gap-0.5 px-1.5 h-7 text-[9px] shrink-0 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-650 dark:text-red-400 border border-red-500/20 font-bold active:scale-95 text-nowrap"
+                              title="Sari Reclame"
+                            >
+                              <SkipForward size={9} className="text-red-500" />
+                              <span>Sari Reclamă</span>
+                            </button>
+
+                            {/* Close/Hide Bottom bar button in the bottom right corner context */}
+                            <button
+                              type="button"
+                              onClick={() => setMobileControlsOpen(false)}
+                              className="h-7 w-7 bg-red-105 dark:bg-zinc-800 hover:bg-red-200 dark:text-red-400 text-red-650 rounded-lg flex items-center justify-center shrink-0 shadow-3xs active:scale-95 transition-all ml-auto"
+                              title="Ascunde control"
+                            >
+                              <X size={11} className="stroke-[2.5]" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    )}
                   </div>
-
-                </div>
+                </>
               )}
 
             </div>

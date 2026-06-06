@@ -62,6 +62,7 @@ import { checkLocalModelSupport } from "../services/localLlmService";
 import { useIntegrationStore } from "../store/integrationStore";
 import { connectorManager } from "../services/integration/ConnectorManager";
 import { SkillRegistry } from "../services/agent/SkillRegistry";
+import { getPlatformName, isElectron, isCapacitor, isPWA } from "../utils/platform";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -2976,6 +2977,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <div className="flex flex-col">
                               <span className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mb-1">DESKTOP</span>
                               <span className="text-sm font-medium">v0.4.3</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mb-1">PLATFORM</span>
+                              <span className="text-sm font-semibold text-emerald-400 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                {getPlatformName()}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mb-1">PYTHON</span>

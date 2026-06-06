@@ -93,10 +93,16 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
   }, [width, isOpen, mode, onWidthChange]);
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+      // Resolve coordinates of both mouse and touch events
+      const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as MouseEvent).clientY;
+
+      if (!clientX || !clientY) return;
+
       // Sidebar Resize
       if (isResizing.current) {
-        const newWidth = window.innerWidth - e.clientX;
+        const newWidth = window.innerWidth - clientX;
         if (newWidth > 320 && newWidth < 800) {
           setWidth(newWidth);
         }
@@ -104,22 +110,22 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
       // Mobile Resize
       if (isResizingMobile.current) {
         const newHeight =
-          ((window.innerHeight - e.clientY) / window.innerHeight) * 100;
-        if (newHeight > 30 && newHeight < 95) {
+          ((window.innerHeight - clientY) / window.innerHeight) * 100;
+        if (newHeight > 15 && newHeight < 98) {
           setMobileHeight(newHeight);
         }
       }
       // Floating Drag
       if (isDragging.current) {
-        const dx = e.clientX - dragStart.current.x;
-        const dy = e.clientY - dragStart.current.y;
+        const dx = clientX - dragStart.current.x;
+        const dy = clientY - dragStart.current.y;
         setFloatPos((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
-        dragStart.current = { x: e.clientX, y: e.clientY };
+        dragStart.current = { x: clientX, y: clientY };
       }
       // Floating Resize
       if (isResizingFloat.current) {
-        const dx = e.clientX - resizeStart.current.x;
-        const dy = e.clientY - resizeStart.current.y;
+        const dx = clientX - resizeStart.current.x;
+        const dy = clientY - resizeStart.current.y;
         setFloatSize({
           width: Math.max(350, resizeStart.current.w + dx),
           height: Math.max(400, resizeStart.current.h + dy),
@@ -128,8 +134,8 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
 
       // Floating Resize (Top-Left)
       if (isResizingFloatTL.current) {
-        const dx = e.clientX - resizeStart.current.x;
-        const dy = e.clientY - resizeStart.current.y;
+        const dx = clientX - resizeStart.current.x;
+        const dy = clientY - resizeStart.current.y;
 
         const newWidth = Math.max(350, resizeStart.current.w - dx);
         const newHeight = Math.max(400, resizeStart.current.h - dy);
@@ -151,13 +157,13 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
       document.body.style.cursor = "default";
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove as any);
     window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("touchmove", handleMouseMove as any); // Type assertion for simplicity
+    window.addEventListener("touchmove", handleMouseMove as any);
     window.addEventListener("touchend", handleMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mousemove", handleMouseMove as any);
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("touchmove", handleMouseMove as any);
       window.removeEventListener("touchend", handleMouseUp);
@@ -341,7 +347,7 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
 
       {/* Mobile Drawer - Optimized Height & Design */}
       <div
-        className={`lg:hidden fixed left-0 right-0 bg-pplx-card/95 backdrop-blur-2xl border-t border-white/10 shadow-2xl z-[80] flex flex-col transition-transform duration-150 ease-out rounded-t-[32px] ${isOpen ? "translate-y-0" : "translate-y-full"}`}
+        className={`lg:hidden fixed left-0 right-0 bg-pplx-card border-t border-white/10 shadow-2xl z-[80] flex flex-col transition-transform duration-150 ease-out rounded-t-[32px] ${isOpen ? "translate-y-0" : "translate-y-full"}`}
         style={{
           height: `${mobileHeight}vh`,
           bottom: document.body.classList.contains("dock-active")
@@ -349,18 +355,18 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
             : "0px",
         }}
       >
-        {/* Handle / Resize Trigger - Hidden/Overlay to maximize space */}
+        {/* Handle / Resize Trigger - Always elegant and visible */}
         <div
-          className="w-full flex flex-col items-center py-1 cursor-row-resize touch-none relative opacity-0 hover:opacity-100 transition-opacity absolute top-0 z-40"
+          className="w-full flex flex-col items-center pt-2.5 pb-2 cursor-row-resize touch-none z-40 shrink-0"
           onMouseDown={(event) => {
             event.preventDefault();
             isResizingMobile.current = true;
           }}
-          onTouchStart={() => {
+          onTouchStart={(event) => {
             isResizingMobile.current = true;
           }}
         >
-          <div className="w-12 h-1 bg-white/20 rounded-full hover:bg-white/40 transition-colors" />
+          <div className="w-12 h-1 bg-[#d4d4d8] dark:bg-white/20 rounded-full transition-colors" />
         </div>
 
         {/* Mobile Back Button (Overlay) - Moved Higher */}
@@ -368,10 +374,10 @@ export const SideChatPanel: React.FC<SideChatPanelProps> = ({
           onClick={onClose}
           className="absolute top-2 left-2 p-2 text-pplx-muted hover:text-pplx-text bg-pplx-secondary/80 backdrop-blur-md rounded-full z-50"
         >
-          <ChevronDown size={20} className="rotate-90" />
+          <ChevronDown size={18} className="rotate-90" />
         </button>
 
-        <div className="flex-1 min-h-0 pt-2">{chatContent}</div>
+        <div className="flex-1 min-h-0 pt-4 px-2">{chatContent}</div>
       </div>
     </>
   );
