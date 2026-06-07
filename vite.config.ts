@@ -47,6 +47,9 @@ export default defineConfig(({ mode }) => {
         }
       })
     ],
+    resolve: {
+      dedupe: ['react', 'react-dom']
+    },
     build: {
       outDir: 'dist',
       sourcemap: false,
@@ -56,12 +59,12 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('@react-three') || id.includes('three') || id.includes('@react-spring')) {
-                return 'three-bundle';
-              }
+              // Keep large isolated Web-LLM and transformers libraries in a separate AI bundle
               if (id.includes('@mlc-ai') || id.includes('@xenova') || id.includes('web-llm') || id.includes('transformers')) {
                 return 'ai-bundle';
               }
+              // Group coupling-heavy libraries (like three, @react-three, @react-spring) in the main vendor chunk
+              // to prevent cyclic dependency cycles between chunks that can lead to uninitialized React/hooks bindings
               return 'vendor';
             }
           }
