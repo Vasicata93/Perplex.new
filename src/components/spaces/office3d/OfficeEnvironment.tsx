@@ -5,7 +5,7 @@ export const AgentDesk: React.FC<{ position: [number, number, number], rotation?
   <group position={position} rotation={rotation} scale={[0.92, 0.92, 0.92]}>
      {/* Walnut wood desk top */}
      <Box args={[1.7, 0.06, 0.85]} position={[0, 0.75, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color="#8b5a2b" roughness={0.35} metalness={0.15} />
+        <meshPhysicalMaterial color="#4a2c13" roughness={0.15} metalness={0.2} clearcoat={1.0} clearcoatRoughness={0.15} />
      </Box>
      
      {/* Leg assemblies - elegant matte black iron frames */}
@@ -70,7 +70,7 @@ export const AgentDesk: React.FC<{ position: [number, number, number], rotation?
           <meshStandardMaterial color="#1f2937" roughness={0.3} />
        </Box>
        <Box args={[0.59, 0.35, 0.005]} position={[0, 0.28, 0.016]}>
-          <meshStandardMaterial color="#020617" emissive="#0ea5e9" emissiveIntensity={0.8} roughness={0.2} />
+          <meshPhysicalMaterial color="#020617" emissive="#0ea5e9" emissiveIntensity={1.4} roughness={0.02} clearcoat={1.0} clearcoatRoughness={0.0} />
        </Box>
        <Box args={[0.4, 0.01, 0.006]} position={[0, 0.2, 0.017]}>
           <meshStandardMaterial color="#38bdf8" emissive="#38bdf8" emissiveIntensity={1.3} />
@@ -85,7 +85,7 @@ export const AgentDesk: React.FC<{ position: [number, number, number], rotation?
           <meshStandardMaterial color="#1f2937" roughness={0.3} />
        </Box>
        <Box args={[0.59, 0.35, 0.005]} position={[0, 0.28, 0.016]}>
-          <meshStandardMaterial color="#020617" emissive="#10b981" emissiveIntensity={0.7} roughness={0.2} />
+          <meshPhysicalMaterial color="#020617" emissive="#10b981" emissiveIntensity={1.3} roughness={0.02} clearcoat={1.0} clearcoatRoughness={0.0} />
        </Box>
        <Box args={[0.2, 0.15, 0.006]} position={[0.1, 0.3, 0.017]}>
           <meshStandardMaterial color="#34d399" emissive="#34d399" emissiveIntensity={1.1} />
@@ -123,7 +123,7 @@ export const OfficeEnvironment: React.FC = () => {
     <group>
       {/* Wooden Floor - premium rich dark wood */}
       <Plane args={[45, 35]} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <meshStandardMaterial color="#5a3d28" roughness={0.3} metalness={0.15} />
+        <meshPhysicalMaterial color="#301e11" roughness={0.16} metalness={0.25} clearcoat={1.0} clearcoatRoughness={0.08} />
       </Plane>
       {/* Dark Floor for left wing */}
       <Plane args={[13, 35]} rotation={[-Math.PI / 2, 0, 0]} position={[-29, 0.01, 0]} receiveShadow>
@@ -132,15 +132,15 @@ export const OfficeEnvironment: React.FC = () => {
 
       {/* Main Back Wall */}
       <Box args={[45, 8, 1]} position={[0, 4, -17.5]} castShadow receiveShadow>
-        <meshStandardMaterial color="#1e293b" roughness={0.8} />
+        <meshStandardMaterial color="#0e131b" roughness={0.6} metalness={0.45} />
       </Box>
       {/* Left Outer Wall */}
       <Box args={[1, 8, 35]} position={[-22.5, 4, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color="#1e293b" roughness={0.8} />
+        <meshStandardMaterial color="#0e131b" roughness={0.6} metalness={0.45} />
       </Box>
       {/* Right Outer Wall */}
       <Box args={[1, 8, 35]} position={[22.5, 4, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color="#1e293b" roughness={0.8} />
+        <meshStandardMaterial color="#0e131b" roughness={0.6} metalness={0.45} />
       </Box>
 
       {/* Left Wing Walls (Server Room & Kitchen structure) */}
@@ -153,10 +153,10 @@ export const OfficeEnvironment: React.FC = () => {
       
       {/* Glass Walls for Server Room */}
       <Box args={[11, 3.5, 0.1]} position={[-17, 2.25, -10]} castShadow receiveShadow>
-        <meshPhysicalMaterial color="#818cf8" transmission={0.9} opacity={0.3} roughness={0.1} />
+         <meshPhysicalMaterial color="#c7d2fe" transmission={0.95} opacity={0.15} thickness={1.2} roughness={0.05} ior={1.5} clearcoat={1.0} />
       </Box>
       <Box args={[0.1, 3.5, 7.5]} position={[-11.5, 2.25, -13.75]} castShadow receiveShadow>
-        <meshPhysicalMaterial color="#818cf8" transmission={0.9} opacity={0.3} roughness={0.1} />
+         <meshPhysicalMaterial color="#c7d2fe" transmission={0.95} opacity={0.15} thickness={1.2} roughness={0.05} ior={1.5} clearcoat={1.0} />
       </Box>
 
       {/* Brown Door */}
@@ -252,14 +252,14 @@ export const OfficeEnvironment: React.FC = () => {
       <group position={[6, 4.2, -16.9]}>
         {/* Heavy sleek metal bracket */}
         <Box args={[32, 5.5, 0.25]} castShadow>
-          <meshStandardMaterial color="#090d16" roughness={0.2} metalness={0.8} />
+          <meshStandardMaterial color="#030712" roughness={0.15} metalness={0.95} />
         </Box>
         {/* Emissive border bezel */}
         <Box args={[32.1, 5.6, 0.02]} position={[0, 0, -0.01]}>
-          <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={1.0} />
+          <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={2.5} />
         </Box>
         <Box args={[31.5, 5, 0.02]} position={[0, 0, 0.14]}>
-          <meshStandardMaterial color="#020617" />
+          <meshPhysicalMaterial color="#010409" roughness={0.01} metalness={0.9} clearcoat={1.0} clearcoatRoughness={0.0} />
         </Box>
         
         {/* Dynamic Glowing Sci-Fi Content Sections on Wall Screen */}

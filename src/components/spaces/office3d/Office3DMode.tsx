@@ -104,18 +104,18 @@ export const Office3DMode: React.FC<Office3DModeProps> = ({ space, onBack }) => 
       {/* --- REFINED & CLEANED UP UI OVERLAY --- */}
       
       {/* Top Left Menu: Clean Informational Panel */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 w-64">
+      <div className="absolute top-20 left-4 hidden md:flex flex-col gap-2 pointer-events-none z-10 w-64">
         <div className="bg-[#111111]/90 backdrop-blur-md border border-white/10 rounded-2xl p-4 pointer-events-auto mt-2 shadow-2xl">
           <div className="text-[10px] tracking-widest text-[#00ffff] mb-1 font-mono uppercase font-bold">🏢 ACTIVE SPACE</div>
           <div className="text-[16px] font-sans font-medium tracking-wide text-white/95">{space.title || "OpenClaw Floor"}</div>
-          <div className="text-[9px] tracking-widest text-white/50 font-mono mt-1">
+          <div className="text-[9px] tracking-widest text-[#00ffff] font-mono mt-1">
             AGENTS ACTIVE: <span className="text-[#00ffff] font-bold">{agents.length + 1}</span>
           </div>
         </div>
       </div>
 
       {/* Top Center: Clean Minimalist Title Tracker */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 hidden md:flex flex-col items-center gap-1 pointer-events-none z-10">
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 hidden md:flex flex-col items-center gap-1 pointer-events-none z-10">
         <div className="flex items-center gap-3 bg-black/75 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md">
           <span className="text-xs tracking-[0.2em] font-sans font-semibold text-white/80">3D HEADQUARTERS</span>
           <div className="bg-[#00ffff]/10 border border-[#00ffff]/30 text-[#00ffff] px-2 py-0.5 rounded text-[8px] font-bold tracking-widest">
@@ -124,21 +124,20 @@ export const Office3DMode: React.FC<Office3DModeProps> = ({ space, onBack }) => 
         </div>
       </div>
 
-      {/* Bottom Right BACK TO CHART / EXIT Button: fully functional close trigger */}
+      {/* Bottom Center EXIT Button on Mobile - matching Chat capsule feel perfectly */}
       {onBack && (
-        <div className="absolute bottom-4 right-4 pointer-events-auto z-10 w-44">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto z-10 w-[90%] max-w-xs md:hidden">
            <button 
              onClick={onBack}
-             className="w-full px-5 py-4 border border-blue-500/20 rounded-2xl bg-[#010409]/95 hover:bg-[#00ffff]/10 hover:border-[#00ffff]/40 backdrop-blur-md text-[10px] tracking-widest transition-all duration-300 flex items-center justify-between gap-2 text-blue-400 shadow-2xl cursor-pointer group"
+             className="w-full h-11 bg-[#e8dcc4] text-black hover:bg-white active:scale-95 text-xs font-bold tracking-[0.15em] uppercase rounded-full flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-300 pointer-events-auto cursor-pointer"
            >
-             <div className="flex items-center gap-2">
-               <ArrowLeft size={14} className="text-blue-400 group-hover:text-[#00ffff] group-hover:-translate-x-1 transition-all" />
-               <span className="font-bold tracking-widest uppercase group-hover:text-white transition-colors">EXIT 3D</span>
-             </div>
-             <div className="text-[#00ffff] font-mono font-bold text-[9px]">&lt;Back&gt;</div>
+             <ArrowLeft size={16} strokeWidth={2.5} />
+             <span>EXIT 3D</span>
            </button>
         </div>
       )}
+
+
 
     </div>
   );

@@ -1,18 +1,27 @@
 import React, { useState } from "react";
 import { Space, SubAgentConfig } from "../../types";
-import { Bot, Code, Search, Activity, MoreHorizontal, Minus, Plus, X, Save, ArrowLeft, ArrowRight, Trash2, Users, Monitor } from "lucide-react";
+import { Bot, Code, Search, Activity, MoreHorizontal, Minus, Plus, X, Save, ArrowLeft, ArrowRight, Trash2, Users, Monitor, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
 import { Office3DMode } from "./office3d/Office3DMode";
+import { SidebarToggle } from "../SidebarToggle";
 
 interface AgentOrgChartProps {
   space: Space;
   onManageTeam?: () => void;
   onUpdateSpace?: (space: Space) => void;
   onClose?: () => void;
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
 }
 
-export const AgentOrgChart: React.FC<AgentOrgChartProps> = ({ space, onUpdateSpace, onClose }) => {
+export const AgentOrgChart: React.FC<AgentOrgChartProps> = ({ 
+  space, 
+  onUpdateSpace, 
+  onClose,
+  onToggleSidebar,
+  isSidebarOpen = false
+}) => {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<SubAgentConfig>>({});
   const [orchestratorForm, setOrchestratorForm] = useState({
@@ -120,70 +129,67 @@ export const AgentOrgChart: React.FC<AgentOrgChartProps> = ({ space, onUpdateSpa
     <div className="w-full h-full flex bg-transparent overflow-hidden text-pplx-text">
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        {/* Header */}
-        {viewMode === 'chart' ? (
-          <div className="flex items-center justify-between px-6 py-4 shrink-0 bg-transparent">
-            <div className="flex items-center gap-4">
-              <h1 className="text-sm font-bold tracking-[0.2em] uppercase text-pplx-text opacity-90">Org Chart</h1>
-              <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
-                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                 {agents.length} Agents Live
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex bg-pplx-card border border-pplx-border rounded-lg p-0.5">
-                <button 
-                  onClick={() => setViewMode('chart')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold tracking-wide flex items-center gap-2 transition-all bg-pplx-hover text-emerald-400`}
-                >
-                  <Users size={14} /> Chart
-                </button>
-                <button 
-                  onClick={() => setViewMode('office')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold tracking-wide flex items-center gap-2 transition-all text-pplx-muted hover:text-pplx-text`}
-                >
-                  <Monitor size={14} /> 3D Office
-                </button>
-              </div>
-              <button onClick={handleAddAgent} className="px-3 py-1.5 rounded-lg border border-pplx-border hover:bg-pplx-hover transition-colors text-xs font-semibold tracking-wide flex items-center gap-2">
-                <Plus size={14} /> Add Agent
+        {/* Unified Sticky Header - Styled exactly like ChatHeader to match in position, height, shape, and blur filter */}
+        <div className="sticky top-0 z-40 flex items-center justify-between w-full px-4 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4 bg-pplx-primary/80 backdrop-blur-md transition-all shrink-0">
+          
+          {/* Left: Navigation Actions (SidebarToggle & Back/Close) */}
+          <div className="flex items-center gap-1.5 shrink-0 z-10">
+            {onToggleSidebar && !isSidebarOpen && (
+              <SidebarToggle
+                onClick={onToggleSidebar}
+                className="mr-1 hover:bg-transparent"
+                size={20}
+              />
+            )}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full transition-all duration-300 text-pplx-text bg-pplx-secondary/85 backdrop-blur-md md:bg-transparent border-transparent shadow-sm md:shadow-none hover:bg-pplx-hover flex items-center justify-center cursor-pointer"
+                title="Back to Chat"
+              >
+                <ChevronLeft size={20} className="md:stroke-[2.2]" />
               </button>
-              {onClose && (
-                <button onClick={onClose} className="p-1.5 rounded-md hover:bg-pplx-hover text-pplx-muted hover:text-pplx-text transition-colors">
-                   <span className="sr-only">Close</span>
-                   <X size={16} />
-                </button>
-              )}
-            </div>
+            )}
           </div>
-        ) : (
-          /* Office Mode Floating Controls */
-          <div className="absolute top-4 left-0 right-0 z-10 flex items-center justify-between pointer-events-none px-6">
-            <div className="flex-1" />
-            <div className="flex bg-black/40 backdrop-blur-md border border-white/10 rounded-full p-1 shadow-xl pointer-events-auto">
+
+          {/* Center: Switcher Pill (Matching the exact capsule look, size, and centering of Chat's space title pill) */}
+          <div className="flex-1 flex justify-center px-1 min-w-0 z-10 select-none">
+            <div className="bg-[#121212]/90 backdrop-blur-md border border-white/5 shadow-md rounded-full p-0.5 flex items-center gap-1 max-w-full">
               <button 
                 onClick={() => setViewMode('chart')}
-                className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wider flex items-center gap-2 transition-all text-white/60 hover:text-white`}
+                className={`px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'chart' ? 'bg-[#e8dcc4] text-black shadow-inner font-extrabold scale-100' : 'text-white/60 hover:text-white'}`}
               >
-                <Users size={14} /> Org Chart
+                <Users size={12} strokeWidth={2.5} /> Chart
               </button>
               <button 
                 onClick={() => setViewMode('office')}
-                className={`px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wider flex items-center gap-2 transition-all bg-white/15 text-emerald-400 shadow-inner`}
+                className={`px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'office' ? 'bg-[#e8dcc4] text-black shadow-inner font-extrabold scale-100' : 'text-white/60 hover:text-white'}`}
               >
-                <Monitor size={14} /> 3D Office
+                <Monitor size={12} strokeWidth={2.5} /> 3D Office
               </button>
             </div>
-            <div className="flex-1 flex justify-end pointer-events-auto">
-              {onClose && (
-                <button onClick={onClose} className="p-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-black/60 transition-all shadow-xl">
-                   <span className="sr-only">Close</span>
-                   <X size={18} />
-                </button>
-              )}
-            </div>
           </div>
-        )}
+
+          {/* Right: Actions Segment (Add Agent or Spacers) */}
+          <div className="flex items-center shrink-0 w-[42px] md:w-[120px] justify-end z-10">
+            <>
+              <button 
+                onClick={handleAddAgent} 
+                className="p-2 rounded-full transition-all duration-300 text-pplx-text bg-pplx-secondary/85 backdrop-blur-md border-transparent shadow-sm hover:bg-pplx-hover flex items-center justify-center cursor-pointer md:hidden"
+                title="Add Agent"
+              >
+                <Plus size={20} />
+              </button>
+              <button 
+                onClick={handleAddAgent} 
+                className="px-3 py-1.5 rounded-full border border-pplx-border hover:bg-pplx-hover text-xs font-semibold tracking-wide items-center gap-1.5 transition-all hidden md:flex cursor-pointer bg-pplx-card/45"
+                title="Add Agent"
+              >
+                <Plus size={14} /> Add Agent
+              </button>
+            </>
+          </div>
+        </div>
 
         {/* Main Canvas Area */}
         <div className={`flex-1 relative overflow-hidden flex items-center justify-center p-0 ${viewMode === 'office' ? 'absolute inset-0 z-0' : 'min-h-[600px]'}`}>

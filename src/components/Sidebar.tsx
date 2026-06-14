@@ -21,6 +21,10 @@ import {
   Video,
   File,
   Folder,
+  Home,
+  Search,
+  Sparkles,
+  X,
 } from "lucide-react";
 import { UI_STRINGS } from "../constants";
 import { Tooltip } from "./Tooltip";
@@ -486,8 +490,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   icon={<LayoutGrid size={20} />}
                   label={t.spaces}
                   onClick={() => {
-                    if (expandedSection !== "spaces") toggleSection("spaces");
-                    onChangeView("spaces");
+                    handleNavClick(() => {
+                      if (expandedSection !== "spaces") toggleSection("spaces");
+                      onChangeView("spaces");
+                    });
                   }}
                   onChevronClick={() => toggleSection("spaces")}
                   hasChevron={!isCollapsed}
@@ -553,6 +559,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   label={t.library}
                   onClick={() => {
                     if (window.innerWidth < 768) {
+                      setSidebarOpen(false);
                       setIsMobileLibraryOpen(true);
                       setMobileLibraryFilter("all");
                     } else {
@@ -724,158 +731,345 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
       </div>
-      {/* Mobile Full-Screen Library Modal */}
       {isMobileLibraryOpen && (
-        <div className="fixed inset-0 z-[100] bg-pplx-sidebar flex flex-col md:hidden animate-in slide-in-from-bottom-4 duration-150 overflow-x-hidden">
-          <div className="flex items-center justify-between p-4 shrink-0">
+        <div className="fixed inset-0 z-[150] bg-[#121212] flex flex-col md:hidden overflow-x-hidden text-white font-sans animate-in slide-in-from-bottom-4 duration-150 select-none pb-28">
+          {/* Top Header Bar */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0 bg-[#121212] z-10 border-b border-white/[0.03]">
+            {/* Round User Avatar & Title Group */}
+            <div className="flex items-center gap-3">
+              <div 
+                onClick={() => {
+                  openSettings("profile");
+                  setIsMobileLibraryOpen(false);
+                  setSidebarOpen(false);
+                }}
+                className="w-9 h-9 rounded-full overflow-hidden bg-white/5 flex items-center justify-center text-white text-xs font-bold shrink-0 border border-white/10 active:scale-90 transition-transform cursor-pointer"
+              >
+                {userProfile.avatar ? (
+                  <img src={userProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  getUserInitials(userProfile.name)
+                )}
+              </div>
+              <span className="text-base font-semibold tracking-tight text-white/95">Library</span>
+            </div>
+
+            {/* Muted Close Button */}
             <button
               onClick={() => setIsMobileLibraryOpen(false)}
-              className="p-2 text-pplx-text hover:bg-pplx-hover rounded-full transition-colors"
+              className="p-1.5 text-white/40 hover:text-white hover:bg-white/5 rounded-full active:scale-90 transition-all"
             >
-              <ChevronLeft size={24} />
+              <X size={20} />
             </button>
-            <h2 className="text-xl font-medium tracking-tight text-pplx-text font-serif">
-              {mobileLibraryFilter === "favorites" ? "Favorites" : "Pages"}
-            </h2>
+          </div>
+
+          {/* Scrollable Content Container */}
+          <div className="flex-1 overflow-y-auto no-scrollbar pb-16 px-5 space-y-6 pt-3">
+            {/* Recents Section */}
+            <div className="flex flex-col">
+              <h3 className="text-white/40 text-[11px] font-semibold tracking-wider uppercase mb-3">
+                Recents
+              </h3>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar py-1 snap-x scroll-smooth">
+                {[...notes]
+                  .filter((n) => n.category !== "folder" && n.emoji !== "📁")
+                  .sort((a, b) => b.updatedAt - a.updatedAt)
+                  .slice(0, 5)
+                  .map((note) => (
+                    <div
+                      key={`recent-card-${note.id}`}
+                      onClick={() => {
+                        onSelectNote(note.id);
+                        setIsMobileLibraryOpen(false);
+                      }}
+                      className="flex-shrink-0 w-[110px] h-[95px] bg-[#18181a] border border-[#2d2d2d] rounded-[14px] overflow-hidden flex flex-col snap-start cursor-pointer active:scale-95 transition-transform shadow-lg relative"
+                    >
+                      {/* Card Header Top portion */}
+                      <div className="h-[52%] w-full bg-[#1e1e21] flex items-center justify-center relative border-b border-[#2d2d2d]/30">
+                        {note.cover && (
+                          <img
+                            src={note.cover}
+                            alt=""
+                            className="w-full h-full object-cover opacity-30 absolute inset-0"
+                          />
+                        )}
+                        <span className="text-lg drop-shadow-md">
+                          {note.emoji || "📄"}
+                        </span>
+                      </div>
+                      {/* Card title lower portion */}
+                      <div className="p-2 h-[48%] flex flex-col justify-center bg-[#131315]">
+                        <span className="text-[10px] font-medium text-white/90 line-clamp-2 leading-tight">
+                          {note.title || "Untitled"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                {[...notes].filter((n) => n.category !== "folder" && n.emoji !== "📁").length === 0 && (
+                  <div className="text-xs text-white/40 italic py-2">No recent documents.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Favourites Section */}
+            <div className="flex flex-col">
+              <h3 className="text-white/40 text-[11px] font-semibold tracking-wider uppercase mb-2">
+                Favourites
+              </h3>
+              <div className="flex flex-col">
+                {notes
+                  .filter((n) => n.isFavorite && n.category !== "folder" && n.emoji !== "📁")
+                  .map((note) => (
+                    <div
+                      key={`fav-row-${note.id}`}
+                      onClick={() => {
+                        onSelectNote(note.id);
+                        setIsMobileLibraryOpen(false);
+                      }}
+                      className="flex items-center justify-between py-2.5 border-b border-white/5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all cursor-pointer relative"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <ChevronRight size={14} className="text-white/30 shrink-0" />
+                        <span className="text-base shrink-0 select-none">
+                          {note.emoji || "📄"}
+                        </span>
+                        <span className="text-sm font-medium text-white/90 truncate">
+                          {note.title || "Untitled"}
+                        </span>
+                      </div>
+                      
+                      {/* Row Actions */}
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuNoteId(
+                              activeMenuNoteId === note.id ? null : note.id
+                            );
+                          }}
+                          className="p-1.5 text-white/40 hover:text-white rounded-md hover:bg-white/5 active:scale-90 transition-all shrink-0"
+                        >
+                          <MoreHorizontal size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onNewNote(note.id);
+                          }}
+                          className="p-1.5 text-white/40 hover:text-white rounded-md hover:bg-white/5 active:scale-90 transition-all shrink-0"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+
+                      {/* Popup Menu */}
+                      {activeMenuNoteId === note.id && (
+                        <div
+                          ref={menuRef}
+                          className="absolute right-0 top-10 z-[160] w-40 border border-white/10 shadow-2xl rounded-xl overflow-hidden bg-[#1a1a1c] pointer-events-auto text-left"
+                        >
+                          <div className="flex flex-col py-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDuplicateNote(note.id);
+                                setActiveMenuNoteId(null);
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-white/5"
+                            >
+                              <Copy size={12} /> Duplicate
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onMoveNote(note.id);
+                                setActiveMenuNoteId(null);
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-white/5"
+                            >
+                              <FolderInput size={12} /> Move
+                            </button>
+                            <div className="h-px bg-white/10 my-1" />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteNote(note.id);
+                                setActiveMenuNoteId(null);
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-white/5"
+                            >
+                              <Trash2 size={12} /> Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                {notes.filter((n) => n.isFavorite && n.category !== "folder" && n.emoji !== "📁").length === 0 && (
+                  <div className="text-xs text-white/40 italic py-2 pl-6">No starred documents.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Private Section (All other non-folder notes) */}
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-2 pb-1 border-b border-white/5">
+                <span className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">Private</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="p-1 text-white/40 hover:text-white rounded transition-colors active:scale-90"
+                  >
+                    <MoreHorizontal size={14} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNewNote();
+                    }}
+                    className="p-1 text-white/40 hover:text-white rounded transition-colors active:scale-90"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                {notes
+                  .filter((n) => !n.parentId && n.category !== "folder" && n.emoji !== "📁")
+                  .map((note) => (
+                    <div
+                      key={`private-row-${note.id}`}
+                      onClick={() => {
+                        onSelectNote(note.id);
+                        setIsMobileLibraryOpen(false);
+                      }}
+                      className="flex items-center justify-between py-2.5 border-b border-white/5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all cursor-pointer relative"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <ChevronRight size={14} className="text-white/30 shrink-0" />
+                        <span className="text-base shrink-0 select-none">
+                          {note.emoji || "📄"}
+                        </span>
+                        <span className="text-sm font-medium text-white/90 truncate">
+                          {note.title || "Untitled"}
+                        </span>
+                      </div>
+                      
+                      {/* Row Actions */}
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuNoteId(
+                              activeMenuNoteId === note.id ? null : note.id
+                            );
+                          }}
+                          className="p-1.5 text-white/40 hover:text-white rounded-md hover:bg-white/5 active:scale-90 transition-all shrink-0"
+                        >
+                          <MoreHorizontal size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onNewNote(note.id);
+                          }}
+                          className="p-1.5 text-white/40 hover:text-white rounded-md hover:bg-white/5 active:scale-90 transition-all shrink-0"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+
+                      {/* Popup Menu */}
+                      {activeMenuNoteId === note.id && (
+                        <div
+                          ref={menuRef}
+                          className="absolute right-0 top-10 z-[160] w-40 border border-[#2d2d2d] shadow-2xl rounded-xl overflow-hidden bg-[#1a1a1c] pointer-events-auto text-left"
+                        >
+                          <div className="flex flex-col py-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDuplicateNote(note.id);
+                                setActiveMenuNoteId(null);
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-white/5"
+                            >
+                              <Copy size={12} /> Duplicate
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onMoveNote(note.id);
+                                setActiveMenuNoteId(null);
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:bg-white/5"
+                            >
+                              <FolderInput size={12} /> Move
+                            </button>
+                            <div className="h-px bg-white/10 my-1" />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteNote(note.id);
+                                setActiveMenuNoteId(null);
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-white/5"
+                            >
+                              <Trash2 size={12} /> Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                {notes.filter((n) => !n.parentId && n.category !== "folder" && n.emoji !== "📁").length === 0 && (
+                  <div className="text-xs text-white/40 italic py-2 pl-6">No private documents.</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Floating Bottom Control Bar - Glassmorphism, transparent wrapper, individual rounded items */}
+          <div className="absolute bottom-5 left-5 right-5 z-[151] flex items-center gap-3 bg-transparent p-0 border-none rounded-none shadow-none pointer-events-none">
+            {/* Search Button */}
+            <button
+              onClick={() => {
+                onChangeView("search");
+                setIsMobileLibraryOpen(false);
+                setSidebarOpen(false);
+              }}
+              className="pointer-events-auto w-11 h-11 rounded-full bg-[#1c1c1e] border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all active:scale-90 shadow-2xl shrink-0"
+            >
+              <Search size={18} />
+            </button>
+            
+            {/* Ask AI Capsule */}
+            <button
+              onClick={() => {
+                onChangeView("chat");
+                setIsMobileLibraryOpen(false);
+                setSidebarOpen(false);
+              }}
+              className="pointer-events-auto flex-1 h-11 px-4 bg-[#1c1c1e] border border-white/10 rounded-full flex items-center justify-center gap-2 text-white/80 text-xs font-semibold active:scale-[0.98] transition-all shadow-2xl"
+            >
+              <Sparkles size={14} className="text-[#00ffff]" />
+              <span>Ask AI</span>
+            </button>
+
+            {/* Compose Button (SquarePen) */}
             <button
               onClick={() => {
                 onNewNote();
                 setIsMobileLibraryOpen(false);
+                setSidebarOpen(false);
               }}
-              className="p-2 text-pplx-text hover:bg-pplx-hover rounded-full transition-colors"
+              className="pointer-events-auto w-11 h-11 rounded-full bg-[#00ffff] flex items-center justify-center text-black hover:bg-[#00ffff]/90 transition-all active:scale-90 shadow-[0_0_15px_rgba(0,255,255,0.25)] shrink-0"
             >
-              <Plus size={24} />
+              <SquarePen size={18} />
             </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar pb-20">
-            {/* Recents Section */}
-            {mobileLibraryFilter === "all" && (
-              <div className="px-4 py-4">
-                <h3 className="text-sm font-medium text-pplx-muted mb-3">
-                  Recents
-                </h3>
-                <div className="flex space-x-3 overflow-x-auto pb-2 -mx-4 pl-8 pr-4 no-scrollbar snap-x">
-                  {[...notes]
-                    .filter((n) => n.category !== "folder" && n.emoji !== "📁")
-                    .sort((a, b) => b.updatedAt - a.updatedAt)
-                    .slice(0, 5)
-                    .map((note) => (
-                      <div
-                        key={note.id}
-                        onClick={() => {
-                          onSelectNote(note.id);
-                          setIsMobileLibraryOpen(false);
-                        }}
-                        className="flex-shrink-0 w-24 h-24 bg-pplx-card border border-pplx-border rounded-xl overflow-hidden relative snap-start cursor-pointer active:scale-95 transition-transform"
-                      >
-                        <div className="h-1/2 w-full bg-gradient-to-br from-pplx-secondary to-pplx-border relative">
-                          {note.cover && (
-                            <img
-                              src={note.cover}
-                              alt=""
-                              className="w-full h-full object-cover opacity-80"
-                            />
-                          )}
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-xl drop-shadow-md">
-                              {note.emoji || "📄"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="p-2 h-1/2 flex flex-col justify-between">
-                          <span className="text-xs font-medium text-pplx-text line-clamp-2 leading-tight">
-                            {note.title || "Untitled"}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Favorites Section Mobile */}
-            {notes.some((n) => n.isFavorite && n.category !== "folder" && n.emoji !== "📁") ? (
-              <div className="px-2 mb-4">
-                <div className="px-3 py-2 text-xs font-bold text-pplx-muted uppercase tracking-wider flex items-center gap-1.5 opacity-70">
-                  <Star size={12} className="text-yellow-400 fill-yellow-400" />{" "}
-                  Favorites
-                </div>
-                {notes
-                  .filter((n) => n.isFavorite && n.category !== "folder" && n.emoji !== "📁")
-                  .map((note) => (
-                    <NoteItem
-                      key={`fav-mobile-${note.id}`}
-                      note={note}
-                      allNotes={notes}
-                      activeNoteId={activeNoteId}
-                      onSelectNote={(id: string) => {
-                        onSelectNote(id);
-                        setIsMobileLibraryOpen(false);
-                      }}
-                      onDuplicateNote={onDuplicateNote}
-                      onMoveNote={onMoveNote}
-                      onDeleteNote={onDeleteNote}
-                      onNewNote={(parentId?: string) => {
-                        onNewNote(parentId);
-                        setIsMobileLibraryOpen(false);
-                      }}
-                      activeMenuNoteId={activeMenuNoteId}
-                      setActiveMenuNoteId={setActiveMenuNoteId}
-                      menuRef={menuRef}
-                      isMobile={true}
-                    />
-                  ))}
-                {mobileLibraryFilter === "all" && (
-                  <div className="h-px bg-pplx-border/50 my-2 mx-3" />
-                )}
-              </div>
-            ) : (
-              mobileLibraryFilter === "favorites" && (
-                <div className="px-4 py-12 text-center animate-fadeIn">
-                  <Star size={48} className="mx-auto text-pplx-muted/20 mb-4" />
-                  <p className="text-pplx-muted text-sm">
-                    No favorite pages yet.
-                  </p>
-                </div>
-              )
-            )}
-
-            {/* All Pages Section */}
-            {mobileLibraryFilter === "all" && (
-              <div className="px-2">
-                {notes.filter((n) => !n.parentId && n.category !== "folder" && n.emoji !== "📁").length === 0 && (
-                  <div className="px-3 py-4 text-sm text-pplx-muted italic text-center">
-                    No pages yet. Create one to get started!
-                  </div>
-                )}
-                {notes
-                  .filter((n) => !n.parentId && n.category !== "folder" && n.emoji !== "📁")
-                  .map((note) => (
-                    <NoteItem
-                      key={note.id}
-                      note={note}
-                      allNotes={notes}
-                      activeNoteId={activeNoteId}
-                      onSelectNote={(id: string) => {
-                        onSelectNote(id);
-                        setIsMobileLibraryOpen(false);
-                      }}
-                      onDuplicateNote={onDuplicateNote}
-                      onMoveNote={onMoveNote}
-                      onDeleteNote={onDeleteNote}
-                      onNewNote={(parentId?: string) => {
-                        onNewNote(parentId);
-                        setIsMobileLibraryOpen(false);
-                      }}
-                      activeMenuNoteId={activeMenuNoteId}
-                      setActiveMenuNoteId={setActiveMenuNoteId}
-                      menuRef={menuRef}
-                      isMobile={true}
-                    />
-                  ))}
-              </div>
-            )}
           </div>
         </div>
       )}

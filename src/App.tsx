@@ -55,6 +55,7 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   Star,
   MoreHorizontal,
@@ -79,6 +80,7 @@ import {
   ArrowDown,
   MessageSquare,
   Plus,
+  Users,
   Menu,
   History,
   SquarePen,
@@ -225,7 +227,7 @@ function App() {
   >(null);
 
   // Mobile Sliding Chat panel height states
-  const [chatMobileHeight, setChatMobileHeight] = useState(37.5);
+  const [chatMobileHeight, setChatMobileHeight] = useState(50);
   const [isResizingChatMobile, setIsResizingChatMobile] = useState(false);
 
   // Monitor resize for the mobile chat drawer in browser/split mode
@@ -3979,17 +3981,14 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
             />
           </div>
         ) : viewToRender === "team_dashboard" ? (
-          <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar relative z-50 md:pt-0 pt-10">
-             <div className="absolute top-0 left-0 right-0 z-20 p-2 pt-4 flex flex-col items-start gap-4 pointer-events-none md:hidden">
-               {!sidebarOpen && (
-                 <SidebarToggle onClick={handleOpenSidebar} className="flex p-0 hover:bg-transparent text-white/50 pointer-events-auto transition-all -ml-1 md:hidden" size={36} />
-               )}
-             </div>
+          <div className="flex-1 overflow-y-auto bg-pplx-primary custom-scrollbar relative z-50 md:pt-0 pt-0">
              {activeSpace ? (
                <AgentOrgChart 
                  space={activeSpace} 
                  onManageTeam={() => setSpacesModalOpen(true)}
                  onClose={() => setActiveView("chat")}
+                 onToggleSidebar={handleOpenSidebar}
+                 isSidebarOpen={sidebarOpen}
                  onUpdateSpace={(updatedSpace) => {
                    setSpaces((prev) => prev.map((s) => (s.id === updatedSpace.id ? updatedSpace : s)));
                    db.set(STORES.SPACES, updatedSpace.id, updatedSpace);
@@ -4080,23 +4079,34 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
               style={isCompanionOpen && window.innerWidth < 768 ? { height: `${chatMobileHeight}vh` } : undefined}
               className={`flex-1 flex flex-col overflow-hidden relative transition-all duration-150 ${
                 isCompanionOpen 
-                  ? "h-[37.5vh] md:h-[calc(100%-24px)] bg-white dark:bg-pplx-card md:my-3 md:ml-3 md:mr-1.5 text-pplx-text border-none md:border border-zinc-200 dark:border-white/5 order-2 md:order-1 rounded-t-[32px] md:rounded-2xl shadow-xl shrink-0" 
+                  ? "h-[50vh] md:h-[calc(100%-24px)] bg-pplx-card md:my-3 md:ml-3 md:mr-1.5 text-pplx-text border-t border-white/10 md:border md:border-zinc-200/50 dark:md:border-white/10 order-2 md:order-1 rounded-t-[32px] md:rounded-2xl shadow-2xl shrink-0" 
                   : `h-full border-r border-white/5 ${(!activeThreadId && !activeSpace) ? "bg-transparent" : "bg-pplx-primary"} text-pplx-text`
               }`}
             >
               {isCompanionOpen && (
-                <div
-                  className="w-full flex flex-col items-center pt-2.5 pb-2 cursor-row-resize touch-none z-[45] shrink-0 md:hidden bg-white dark:bg-pplx-card rounded-t-[32px] border-none"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    setIsResizingChatMobile(true);
-                  }}
-                  onTouchStart={(event) => {
-                    setIsResizingChatMobile(true);
-                  }}
-                >
-                  <div className="w-12 h-1 bg-[#d4d4d8] dark:bg-white/20 rounded-full transition-colors" />
-                </div>
+                <>
+                  {/* Handle / Resize Trigger - Always elegant and visible */}
+                  <div
+                    className="w-full flex flex-col items-center pt-2.5 pb-2 cursor-row-resize touch-none z-[45] shrink-0 md:hidden bg-transparent rounded-t-[32px] border-none"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      setIsResizingChatMobile(true);
+                    }}
+                    onTouchStart={(event) => {
+                      setIsResizingChatMobile(true);
+                    }}
+                  >
+                    <div className="w-12 h-1 bg-[#d4d4d8] dark:bg-white/20 rounded-full transition-colors" />
+                  </div>
+
+                  {/* Mobile Back Button (Overlay) - Exactly identical back button config */}
+                  <button
+                    onClick={() => setIsCompanionOpen(false)}
+                    className="md:hidden absolute top-2 left-2 p-2 text-pplx-muted hover:text-pplx-text bg-pplx-secondary/80 backdrop-blur-md rounded-full z-50"
+                  >
+                    <ChevronDown size={18} className="rotate-90" />
+                  </button>
+                </>
               )}
               {/* Top action headers shown in sidebar-hidden or companion-open conditions */}
               <div
@@ -4145,8 +4155,8 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
 
 
 
-                            {/* Mobile Actions (Instructions & Files) */}
-                            <div className="grid grid-cols-2 gap-3 md:hidden">
+                            {/* Mobile Actions (Instructions & Files & Optional 3D Office) */}
+                            <div className={`grid ${activeSpace.isTeamMode ? "grid-cols-3 gap-2" : "grid-cols-2 gap-3"} md:hidden mb-2`}>
                               <button
                                 onClick={() => {
                                   setSpaceModalInitialId(activeSpace.id);
@@ -4186,6 +4196,25 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
                                   </span>
                                 </div>
                               </button>
+
+                              {activeSpace.isTeamMode && (
+                                <button
+                                  onClick={() => setActiveView("team_dashboard")}
+                                  className="flex flex-col items-start gap-2 p-4 bg-pplx-card/40 border border-pplx-border/60 rounded-xl hover:bg-pplx-hover/30 transition-colors text-left"
+                                >
+                                  <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+                                    <Users size={18} />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-pplx-text text-emerald-300">
+                                      3D Office
+                                    </span>
+                                    <span className="text-[10px] text-emerald-500 font-bold truncate">
+                                      {activeSpace.subAgents?.length || 0} agents live
+                                    </span>
+                                  </div>
+                                </button>
+                              )}
                             </div>
 
 

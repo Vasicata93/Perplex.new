@@ -47,6 +47,24 @@ async function getBrowser(): Promise<Browser> {
   }
 }
 
+function isValidUrl(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+    if (!parsed.hostname || ["null", "undefined", "localhost.localdomain", "placeholder", ""].includes(parsed.hostname.toLowerCase())) {
+      return false;
+    }
+    if (parsed.hostname !== "localhost" && !parsed.hostname.includes(".")) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Puppeteer Active Page Pointer for programmatic control by the AI Agent
 let activePage: any = null;
 
@@ -439,16 +457,22 @@ async function startServer() {
         targetUrl = "https://" + targetUrl;
       }
 
+      if (!isValidUrl(targetUrl)) {
+        return res.status(400).json({ success: false, error: "Invalid URL format" });
+      }
+
       console.log(`[Agent-API] Navigating active page to: ${targetUrl}`);
       const page = await getActivePage();
-      await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
+      await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45000 }).catch((e: any) => {
+        console.warn("[Puppeteer] API Navigation warning: Load failed or cancelled.");
+      });
       
       // Bypass cookie barriers
       await autoBypassConsent(page);
 
       res.json({ success: true, url: page.url(), title: await page.title() });
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
+      res.status(500).json({ success: false, error: "Failed to navigate" });
     }
   });
 
@@ -1122,9 +1146,13 @@ Ce decizie iei la acest pas? Transmite următorul pas în formatul JSON cerut.`;
               if (!/^https?:\/\//i.test(targetUrl)) {
                 targetUrl = "https://" + targetUrl;
               }
+              if (!isValidUrl(targetUrl)) {
+                sendToClient({ type: "status", text: "Invalid URL ignored." });
+                break;
+              }
               sendToClient({ type: "status", text: "Loading page..." });
               await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45000 }).catch((e: any) => {
-                console.warn("[Puppeteer] Navigation warn:", e.message);
+                console.warn("[Puppeteer] WS Navigation warning: Load failed or cancelled.");
               });
             }
             break;

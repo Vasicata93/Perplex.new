@@ -96,7 +96,10 @@ const TaskVisualizer = ({ thought, isOrchestrator }: { thought: string, isOrches
 export const AgentCharacter: React.FC<AgentCharacterProps> = ({ id, name, role, position, rotation = [0, 0, 0], isOrchestrator }) => {
   const group = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Group>(null);
-  const armRef = useRef<THREE.Group>(null);
+  const leftArmRef = useRef<THREE.Group>(null);
+  const rightArmRef = useRef<THREE.Group>(null);
+  const leftLegRef = useRef<THREE.Group>(null);
+  const rightLegRef = useRef<THREE.Group>(null);
   
   const [targetPos, setTargetPos] = useState(new THREE.Vector3(...position));
   const [simulatedState, setSimulatedState] = useState(STATES[0]);
@@ -176,7 +179,7 @@ export const AgentCharacter: React.FC<AgentCharacterProps> = ({ id, name, role, 
 
     // Movement logic (lerp to target)
     if (currentState === 'walking' || currentState === 'playing_ping_pong' || !group.current.position.equals(targetPos)) {
-      group.current.position.lerp(targetPos, delta * 2);
+      group.current.position.lerp(targetPos, delta * 2.5);
       
       // Face direction of movement (unless playing ping pong where they should face the table)
       if (currentState === 'playing_ping_pong') {
@@ -194,14 +197,20 @@ export const AgentCharacter: React.FC<AgentCharacterProps> = ({ id, name, role, 
          );
          
          const currentRotation = group.current.rotation.y;
-         // Avoid spinning around the long way
          let diff = targetRotation - currentRotation;
          while (diff < -Math.PI) diff += Math.PI * 2;
          while (diff > Math.PI) diff -= Math.PI * 2;
-         group.current.rotation.y += diff * delta * 5;
+         group.current.rotation.y += diff * delta * 6;
          
-         // Bobbing walking animation
-         group.current.position.y = Math.abs(Math.sin(t * 10)) * 0.2;
+         // Bobbing walking animation (natural humanoid bounce)
+         group.current.position.y = Math.abs(Math.sin(t * 10)) * 0.15;
+         
+         // Human-like asymmetric arm/leg swinging during walking
+         if (leftArmRef.current) leftArmRef.current.rotation.x = Math.sin(t * 10) * 0.5;
+         if (rightArmRef.current) rightArmRef.current.rotation.x = -Math.sin(t * 10) * 0.5;
+         if (leftLegRef.current) leftLegRef.current.rotation.x = -Math.sin(t * 10) * 0.45;
+         if (rightLegRef.current) rightLegRef.current.rotation.x = Math.sin(t * 10) * 0.45;
+         if (headRef.current) headRef.current.rotation.y = Math.sin(t * 5) * 0.05;
       } else {
          if (currentState === 'walking') setSimulatedState('idle');
          group.current.position.y = THREE.MathUtils.lerp(group.current.position.y, 0, delta * 10);
@@ -212,35 +221,118 @@ export const AgentCharacter: React.FC<AgentCharacterProps> = ({ id, name, role, 
     if (currentState === 'dancing') {
       group.current.rotation.y += delta * 2;
       group.current.position.y = Math.abs(Math.sin(t * 8)) * 0.3;
+      
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.z = Math.PI/3 + Math.sin(t * 8) * 0.4;
+        leftArmRef.current.rotation.x = Math.sin(t * 4) * 0.2;
+      }
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.z = -Math.PI/3 - Math.sin(t * 8) * 0.4;
+        rightArmRef.current.rotation.x = -Math.sin(t * 4) * 0.2;
+      }
+      if (leftLegRef.current) leftLegRef.current.rotation.z = Math.sin(t * 8) * 0.1;
+      if (rightLegRef.current) rightLegRef.current.rotation.z = -Math.sin(t * 8) * 0.1;
     }
 
     // Ping Pong Animation
     if (currentState === 'playing_ping_pong') {
-       // Bob side to side
        group.current.position.x += Math.sin(t * 5) * 0.02;
-       if (armRef.current) {
-          // Swing arm
-          armRef.current.rotation.x = Math.sin(t * 8) * 0.5 - 0.5;
+       if (rightArmRef.current) {
+          // Swing right arm dynamically matching action
+          rightArmRef.current.rotation.x = -Math.PI / 4 + Math.sin(t * 12) * 0.6;
        }
-    } else if (armRef.current) {
-       armRef.current.rotation.x = THREE.MathUtils.lerp(armRef.current.rotation.x, 0, delta * 5);
+       if (leftArmRef.current) {
+          leftArmRef.current.rotation.x = -0.2;
+       }
     }
 
-    // Working animation (head nods)
-    if (currentState === 'working' && headRef.current) {
-      headRef.current.rotation.x = Math.sin(t * 4) * 0.1 + 0.1;
-    } else if (headRef.current) {
-      headRef.current.rotation.x = THREE.MathUtils.lerp(headRef.current.rotation.x, 0, delta * 5);
-    }
-    
-    // Idle gentle float
+    // Working animation (interactive typing on keyboard)
+    if (currentState === 'working') {
+      if (headRef.current) {
+        // Head looks slightly down towards keyboard, nodding periodically as if debugging
+        headRef.current.rotation.x = 0.15 + Math.sin(t * 4) * 0.05;
+        headRef.current.rotation.y = Math.sin(t * 2) * 0.04;
+      }
+      // Lifelike typing kinematics (left and right hands bob independently!)
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = -0.65 + Math.sin(t * 18) * 0.08;
+        leftArmRef.current.rotation.y = -0.15;
+      }
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = -0.65 + Math.sin(t * 18 + Math.PI) * 0.08;
+        rightArmRef.current.rotation.y = 0.15;
+      }
+      if (leftLegRef.current) leftLegRef.current.rotation.x = 0;
+      if (rightLegRef.current) rightLegRef.current.rotation.x = 0;
+    } 
+
+    // Idle gentle float (breathing mechanics)
     if (currentState === 'idle') {
-      group.current.position.y = Math.sin(t * 2) * 0.05;
+      group.current.position.y = Math.sin(t * 2.5) * 0.03;
+      
+      // Smoothly relax limbs back
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.08, delta * 5);
+        leftArmRef.current.rotation.y = THREE.MathUtils.lerp(leftArmRef.current.rotation.y, 0, delta * 5);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.05, delta * 5);
+      }
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.08, delta * 5);
+        rightArmRef.current.rotation.y = THREE.MathUtils.lerp(rightArmRef.current.rotation.y, 0, delta * 5);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.05, delta * 5);
+      }
+      if (leftLegRef.current) {
+        leftLegRef.current.rotation.x = THREE.MathUtils.lerp(leftLegRef.current.rotation.x, 0, delta * 5);
+      }
+      if (rightLegRef.current) {
+        rightLegRef.current.rotation.x = THREE.MathUtils.lerp(rightLegRef.current.rotation.x, 0, delta * 5);
+      }
+      if (headRef.current) {
+        headRef.current.rotation.x = THREE.MathUtils.lerp(headRef.current.rotation.x, 0, delta * 5);
+        headRef.current.rotation.y = THREE.MathUtils.lerp(headRef.current.rotation.y, 0, delta * 5);
+      }
     }
   });
 
-  const primaryColor = isOrchestrator ? '#f59e0b' : '#3b82f6';
-  const headColor = isOrchestrator ? '#fbbf24' : '#60a5fa';
+  // Role-specific premium paint armor themes for realistic humanoid styling
+  const getThemeMaterials = () => {
+    const roleLower = role.toLowerCase();
+    if (isOrchestrator) {
+      return {
+        armorColor: '#e0981b', // Luxurious gold plate
+        jointColor: '#0a0d14', // Carbon fibers joint
+        glowingVisor: '#e0981b', // Warm amber
+        roughness: 0.12,
+        metalness: 0.95
+      };
+    } else if (roleLower.includes('code') || roleLower.includes('dev')) {
+      return {
+        armorColor: '#f1f5f9', // Polished arctic white ceramic
+        jointColor: '#1e293b',
+        glowingVisor: '#01fdfd', // Electric cyber-cyan
+        roughness: 0.16,
+        metalness: 0.2
+      };
+    } else if (roleLower.includes('search') || roleLower.includes('research')) {
+      return {
+        armorColor: '#0c241a', // Glossy racing emerald
+        jointColor: '#000000',
+        glowingVisor: '#10b981', // Vivid green
+        roughness: 0.08,
+        metalness: 0.8
+      };
+    } else {
+      return {
+        armorColor: '#34384c', // Matte dark obsidian navy
+        jointColor: '#212529',
+        glowingVisor: '#c084fc', // Quantum purple
+        roughness: 0.25,
+        metalness: 0.7
+      };
+    }
+  };
+
+  const mat = getThemeMaterials();
 
   return (
     <group ref={group} position={position} rotation={rotation}>
@@ -256,95 +348,186 @@ export const AgentCharacter: React.FC<AgentCharacterProps> = ({ id, name, role, 
          </group>
       )}
 
-      {/* Sub Agent Humanoid Body */}
+      {/* --- RECONSTRUCTED HUMANOID ROBOT BODY (HUMAN-LIKE SHAPE & KINEMATIC SEGMENTS) --- */}
       <group position={[0, 0, 0]}>
-         {/* Torso */}
-         <Box args={[0.5, 0.7, 0.25]} position={[0, 0.95, 0]}  >
-           <meshStandardMaterial color={primaryColor} roughness={0.5} metalness={0.1} />
+         {/* 1. Pelvis / Hip Block */}
+         <Box args={[0.36, 0.14, 0.2]} position={[0, 0.76, 0]} castShadow>
+           <meshStandardMaterial color={mat.jointColor} roughness={0.4} metalness={0.8} />
          </Box>
-         
-         {/* Left Leg */}
-         <Cylinder args={[0.08, 0.06, 0.6]} position={[-0.15, 0.3, 0]}  >
-            <meshStandardMaterial color="#334155" roughness={0.8} /> {/* pants */}
-         </Cylinder>
-         
-         {/* Right Leg */}
-         <Cylinder args={[0.08, 0.06, 0.6]} position={[0.15, 0.3, 0]}  >
-            <meshStandardMaterial color="#334155" roughness={0.8} />
-         </Cylinder>
 
-         {/* Left Arm */}
-         <group position={[-0.3, 1.15, 0]} ref={armRef}>
-            <Cylinder args={[0.06, 0.05, 0.55]} position={[0, -0.25, 0]} rotation={[0, 0, 0.1]}  >
-               <meshStandardMaterial color={primaryColor} roughness={0.5} />
+         {/* Spine spacer joint */}
+         <Sphere args={[0.08, 16, 16]} position={[0, 0.84, 0]}>
+           <meshStandardMaterial color={mat.armorColor} roughness={0.2} metalness={0.9} />
+         </Sphere>
+
+         {/* 2. Sleek Segmented Chest Ribcage */}
+         <Box args={[0.45, 0.44, 0.24]} position={[0, 1.08, 0]} castShadow>
+           <meshStandardMaterial color={mat.armorColor} roughness={mat.roughness} metalness={mat.metalness} />
+         </Box>
+
+         {/* Glowing power core center (Dynamic Status Arc Reactor) */}
+         <Cylinder args={[0.065, 0.065, 0.05]} position={[0, 1.15, 0.122]} rotation={[Math.PI / 2, 0, 0]}>
+           <meshStandardMaterial color={mat.glowingVisor} emissive={mat.glowingVisor} emissiveIntensity={2.5} />
+         </Cylinder>
+         
+         {/* 3. Left Leg assembly */}
+         <group position={[-0.14, 0.7, 0]} ref={leftLegRef}>
+            {/* Thigh (Upper limb) */}
+            <Cylinder args={[0.06, 0.05, 0.36]} position={[0, -0.18, 0]} castShadow>
+               <meshStandardMaterial color={mat.armorColor} roughness={mat.roughness} metalness={mat.metalness} />
             </Cylinder>
+            {/* Knee joint */}
+            <Sphere args={[0.055, 12, 12]} position={[0, -0.36, 0]}>
+              <meshStandardMaterial color={mat.jointColor} metalness={0.9} />
+            </Sphere>
+            {/* Shin (Lower limb) */}
+            <Cylinder args={[0.045, 0.045, 0.32]} position={[0, -0.52, 0]} castShadow>
+               <meshStandardMaterial color={mat.jointColor} roughness={0.6} />
+            </Cylinder>
+            {/* Ankle joint + Shoe */}
+            <Box args={[0.07, 0.06, 0.16]} position={[0, -0.71, 0.04]} castShadow>
+               <meshStandardMaterial color="#0b0f19" roughness={0.5} />
+            </Box>
+         </group>
+         
+         {/* 4. Right Leg assembly */}
+         <group position={[0.14, 0.7, 0]} ref={rightLegRef}>
+            {/* Thigh */}
+            <Cylinder args={[0.06, 0.05, 0.36]} position={[0, -0.18, 0]} castShadow>
+               <meshStandardMaterial color={mat.armorColor} roughness={mat.roughness} metalness={mat.metalness} />
+            </Cylinder>
+            {/* Knee */}
+            <Sphere args={[0.055, 12, 12]} position={[0, -0.36, 0]}>
+              <meshStandardMaterial color={mat.jointColor} metalness={0.9} />
+            </Sphere>
+            {/* Shin */}
+            <Cylinder args={[0.045, 0.045, 0.32]} position={[0, -0.52, 0]} castShadow>
+               <meshStandardMaterial color={mat.jointColor} roughness={0.6} />
+            </Cylinder>
+            {/* Shoe */}
+            <Box args={[0.07, 0.06, 0.16]} position={[0, -0.71, 0.04]} castShadow>
+               <meshStandardMaterial color="#0b0f19" roughness={0.5} />
+            </Box>
          </group>
 
-         {/* Right Arm */}
-         <group position={[0.3, 1.15, 0]}>
-            <Cylinder args={[0.06, 0.05, 0.55]} position={[0, -0.25, 0]} rotation={[0, 0, -0.1]}  >
-               <meshStandardMaterial color={primaryColor} roughness={0.5} />
+         {/* 5. Left Arm Assembly */}
+         <group position={[-0.26, 1.25, 0]} ref={leftArmRef}>
+            {/* Shoulder Ball joint */}
+            <Sphere args={[0.065, 12, 12]} position={[0, 0, 0]}>
+              <meshStandardMaterial color={mat.jointColor} metalness={0.8} />
+            </Sphere>
+            {/* Upper arm cylinder */}
+            <Cylinder args={[0.045, 0.04, 0.3]} position={[-0.04, -0.15, 0]} rotation={[0, 0, 0.08]} castShadow>
+               <meshStandardMaterial color={mat.armorColor} roughness={mat.roughness} metalness={mat.metalness} />
             </Cylinder>
+            {/* Elbow assembly */}
+            <Sphere args={[0.045, 12, 12]} position={[-0.04, -0.3, 0]}>
+              <meshStandardMaterial color={mat.jointColor} />
+            </Sphere>
+            {/* Lower arm cylinder */}
+            <Cylinder args={[0.038, 0.035, 0.28]} position={[-0.04, -0.44, 0.05]} rotation={[0.15, 0, 0]} castShadow>
+               <meshStandardMaterial color={mat.jointColor} roughness={0.5} />
+            </Cylinder>
+            {/* Wrist joint and hand */}
+            <Box args={[0.05, 0.05, 0.05]} position={[-0.04, -0.58, 0.1]} castShadow>
+               <meshStandardMaterial color={mat.armorColor} />
+            </Box>
+         </group>
+
+         {/* 6. Right Arm Assembly */}
+         <group position={[0.26, 1.25, 0]} ref={rightArmRef}>
+            {/* Shoulder */}
+            <Sphere args={[0.065, 12, 12]} position={[0, 0, 0]}>
+              <meshStandardMaterial color={mat.jointColor} metalness={0.8} />
+            </Sphere>
+            {/* Upper arm */}
+            <Cylinder args={[0.045, 0.04, 0.3]} position={[0.04, -0.15, 0]} rotation={[0, 0, -0.08]} castShadow>
+               <meshStandardMaterial color={mat.armorColor} roughness={mat.roughness} metalness={mat.metalness} />
+            </Cylinder>
+            {/* Elbow */}
+            <Sphere args={[0.045, 12, 12]} position={[0.04, -0.3, 0]}>
+              <meshStandardMaterial color={mat.jointColor} />
+            </Sphere>
+            {/* Lower arm */}
+            <Cylinder args={[0.038, 0.035, 0.28]} position={[0.04, -0.44, 0.05]} rotation={[0.15, 0, 0]} castShadow>
+               <meshStandardMaterial color={mat.jointColor} roughness={0.5} />
+            </Cylinder>
+            {/* Wrist and Hand */}
+            <Box args={[0.05, 0.05, 0.05]} position={[0.04, -0.58, 0.1]} castShadow>
+               <meshStandardMaterial color={mat.armorColor} />
+            </Box>
          </group>
       </group>
 
-      {/* Head Group */}
-      <group ref={headRef} position={[0, 1.5, 0]}>
-        {/* Neck */}
-        <Cylinder args={[0.05, 0.08, 0.15]} position={[0, -0.1, 0]}  >
-           <meshStandardMaterial color="#fcd34d" roughness={0.4} />
+      {/* 7. Head Group */}
+      <group ref={headRef} position={[0, 1.42, 0]}>
+        {/* Sleek metallic neck collar */}
+        <Cylinder args={[0.055, 0.07, 0.12]} position={[0, -0.08, 0]}>
+           <meshStandardMaterial color={mat.jointColor} roughness={0.3} metalness={0.9} />
         </Cylinder>
-        {/* Head */}
-        <Sphere args={[0.18, 32, 32]} position={[0, 0.05, 0]}  >
-          <meshStandardMaterial color="#fcd34d" roughness={0.3} />
+        {/* Futuristic premium Android Helm / Face */}
+        <Sphere args={[0.16, 32, 32]} position={[0, 0.06, 0]} castShadow>
+          <meshStandardMaterial color={mat.armorColor} roughness={mat.roughness} metalness={mat.metalness} />
         </Sphere>
-        {/* Hair/Helmet style */}
-        <Sphere args={[0.19, 16, 16]} position={[0, 0.1, -0.02]} >
-          <meshStandardMaterial color={headColor} roughness={0.7} />
-        </Sphere>
-        {/* Eyes */}
-        <Box args={[0.04, 0.02, 0.02]} position={[-0.06, 0.05, 0.17]} >
-          <meshStandardMaterial color="#1e293b" />
+        {/* Glow neon-wrapped headset rings (ear cylinders for micro detailing) */}
+        <Cylinder args={[0.08, 0.08, 0.04]} position={[-0.154, 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <meshStandardMaterial color={mat.jointColor} roughness={0.1} />
+        </Cylinder>
+        <mesh position={[-0.176, 0.06, 0]} rotation={[0, -Math.PI/2, 0]}>
+          <circleGeometry args={[0.04, 16]} />
+          <meshBasicMaterial color={mat.glowingVisor} />
+        </mesh>
+        <Cylinder args={[0.08, 0.08, 0.04]} position={[0.154, 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <meshStandardMaterial color={mat.jointColor} roughness={0.1} />
+        </Cylinder>
+        <mesh position={[0.176, 0.06, 0]} rotation={[0, Math.PI/2, 0]}>
+          <circleGeometry args={[0.04, 16]} />
+          <meshBasicMaterial color={mat.glowingVisor} />
+        </mesh>
+        
+        {/* OLED Visor Screen (Glowing curved glass visor instead of block eyes) */}
+        <Box args={[0.22, 0.06, 0.12]} position={[0, 0.08, 0.1]} rotation={[0.1, 0, 0]} castShadow>
+          <meshPhysicalMaterial color="#020815" roughness={0.05} metalness={0.9} clearcoat={1.0} />
         </Box>
-        <Box args={[0.04, 0.02, 0.02]} position={[0.06, 0.05, 0.17]} >
-          <meshStandardMaterial color="#1e293b" />
+        {/* Emissive cyber-neon glowing eye stream */}
+        <Box args={[0.17, 0.015, 0.012]} position={[0, 0.08, 0.16]}>
+          <meshStandardMaterial color={mat.glowingVisor} emissive={mat.glowingVisor} emissiveIntensity={3.0} />
         </Box>
       </group>
 
-      {/* Working Task Visualizer prop */}
+      {/* Task Visualizer prop */}
       {(currentState === 'working' || currentState === 'idle') && thought && (
          <TaskVisualizer thought={thought} isOrchestrator={isOrchestrator} />
       )}
 
-      {/* Status indicator */}
-      <Sphere args={[0.1, 8, 8]} position={[0, 2.3, 0]}>
+      {/* Glow Status Floating Beacon Orb */}
+      <Sphere args={[0.06, 12, 12]} position={[0, 2.15, 0]}>
          <meshStandardMaterial 
             color={currentState === 'working' ? '#10b981' : currentState === 'dancing' ? '#a855f7' : currentState === 'walking' ? '#3b82f6' : '#94a3b8'} 
             emissive={currentState === 'working' ? '#10b981' : currentState === 'dancing' ? '#a855f7' : currentState === 'walking' ? '#3b82f6' : '#94a3b8'} 
-            emissiveIntensity={0.5}
+            emissiveIntensity={2.0}
          />
       </Sphere>
 
-      {/* Nameplate */}
-      <group position={[0, 2.5, 0]}>
+      {/* Beautiful High-contrast Nameplate */}
+      <group position={[0, 2.38, 0]}>
         <Html transform center style={{ pointerEvents: 'none' }}>
-          <div className="flex items-center gap-2 bg-[#2a3028]/80 backdrop-blur-sm rounded-xl px-2 py-1 shadow-[0_0_20px_rgba(0,40,0,0.6)] border border-green-700/40 min-w-max">
-             <div className="w-6 h-6 rounded overflow-hidden bg-gray-500 border border-white/20 shrink-0">
-               {/* Stand-in for generated avatar */}
+          <div className="flex items-center gap-2 bg-[#0d1117]/95 backdrop-blur-md rounded-xl px-2.5 py-1.5 shadow-[0_4px_30px_rgba(0,0,0,0.8)] border border-emerald-500/20 min-w-max scale-95 hover:scale-100 transition-all duration-300">
+             <div className="w-6.5 h-6.5 rounded-full overflow-hidden bg-gray-500 border border-emerald-500/40 shrink-0">
                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}&backgroundColor=b6e3f4`} alt="avatar" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col items-start pr-1 border-l border-white/10 pl-2">
               <div className="flex gap-2 items-center">
-                 <span className="text-white text-[9px] font-bold tracking-widest font-sans uppercase">
+                 <span className="text-white text-[9px] font-extrabold tracking-wider font-sans uppercase">
                    {name.toUpperCase().includes('AGENT') ? name : `AGENT ${name.toUpperCase()}`}
                  </span>
-                 <span className="text-emerald-400/80 text-[7px] font-bold tracking-widest font-sans uppercase bg-emerald-900/40 px-1 rounded">
-                   {role.length > 0 ? role.substring(0,6) : 'DATA'}
+                 <span className="text-emerald-400 text-[7px] font-bold tracking-widest font-sans uppercase bg-emerald-950/80 border border-emerald-800/40 px-1 py-0.5 rounded">
+                   {role.length > 0 ? role.substring(0,8) : 'DATA'}
                  </span>
               </div>
-              <div className="flex items-center gap-2">
-                 <span className="text-[#a3b19b] text-[7px] uppercase tracking-widest font-mono mt-0.5">COMPAS</span>
-                 <div className="w-4 h-0.5 bg-emerald-500/50 rounded-full mt-0.5"></div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                 <span className="text-[#8b949e] text-[7px] uppercase tracking-widest font-mono">LIVE // {currentState.toUpperCase().replace('_', ' ')}</span>
+                 <div className={`w-1.5 h-1.5 rounded-full ${currentState === 'working' ? 'bg-emerald-500 animate-pulse' : currentState === 'dancing' ? 'bg-purple-500 animate-pulse' : 'bg-blue-500'}`}></div>
               </div>
             </div>
           </div>

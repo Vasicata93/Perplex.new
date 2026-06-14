@@ -586,22 +586,22 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   // Box Styles
   const boxClass = isCompanionOpen
-    ? `bg-pplx-card border border-pplx-border shadow-md rounded-[20px] flex flex-col transition-all duration-150 ${isMobile ? "p-1" : ""}`
+    ? "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-150 md:rounded-3xl"
     : centered
       ? "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-150 md:rounded-3xl"
       : "bg-pplx-card border border-pplx-border shadow-xl rounded-[24px] flex flex-col transition-all duration-150 md:rounded-3xl";
 
   // -- Sizing Constants --
   const buttonPadding = isCompanionOpen && isMobile
-    ? "p-1.5"
+    ? "p-2 sm:px-2.5 sm:py-1.5"
     : centered
       ? "p-2 sm:px-2.5 sm:py-1.5"
       : "p-2 sm:px-2.5 sm:py-1.5";
   const roundButtonPadding = isCompanionOpen && isMobile
-    ? "p-1"
+    ? "p-2 sm:p-1.5"
     : centered ? "p-2 sm:p-1.5" : "p-2 sm:p-1.5";
   const iconSize = isCompanionOpen && isMobile
-    ? 18
+    ? (isMobile ? 24 : 20)
     : isMobile ? 24 : 20; // 24 is 20% larger than 20
 
   // Mobile: No background, just the icon (Light icon)
@@ -650,7 +650,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
         {/* Text Area */}
         <div
-          className={`flex items-start w-full ${compact ? "px-2 pt-1" : centered ? "px-3 pt-2" : "px-3 pt-2"} ${mobileSidePanel ? "!pt-0 !px-1.5" : ""} ${isCompanionOpen && isMobile ? "!px-2 !pt-1 !pb-0" : ""}`}
+          className={`flex items-start w-full ${compact ? "px-2 pt-1" : centered ? "px-3 pt-2" : "px-3 pt-2"} ${mobileSidePanel ? "!pt-0 !px-1.5" : ""}`}
         >
           <textarea
             ref={textareaRef}
@@ -670,7 +670,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
             className={`w-full bg-transparent leading-relaxed resize-none outline-none overflow-y-auto max-h-[160px] text-pplx-text placeholder-gray-500/90 ${
               // Standardized font size logic to keep it compact but readable on mobile home
               centered ? "text-[18px] md:text-lg py-2" : "text-[16px] py-2"
-            } ${mobileSidePanel ? "!text-[13px] !py-0.5 !leading-tight min-h-[32px]" : ""} ${isCompanionOpen && isMobile ? "!text-[13px] !py-0.5 !leading-snug min-h-[30px]" : ""}`}
+            } ${mobileSidePanel ? "!text-[13px] !py-0.5 !leading-tight min-h-[32px]" : ""}`}
             rows={1}
             // Lock the input while listening to ensure "Single Path" for voice input on mobile
             disabled={isThinking}
@@ -705,7 +705,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
         {/* Action Bar */}
         <div
-          className={`flex justify-between items-center ${compact ? "px-1 pb-1 mt-0.5" : centered ? "px-2 pb-2 mt-2 gap-3 md:gap-0" : "px-2 pb-2 mt-1"} ${mobileSidePanel ? "!mt-0 !pb-1 !px-1" : ""} ${isCompanionOpen && isMobile ? "!mt-0.5 !pb-1 !px-1.5" : ""}`}
+          className={`flex justify-between items-center ${compact ? "px-1 pb-1 mt-0.5" : centered ? "px-2 pb-2 mt-2 gap-3 md:gap-0" : "px-2 pb-2 mt-1"} ${mobileSidePanel ? "!mt-0 !pb-1 !px-1" : ""}`}
         >
           {/* LEFT GROUP: Attach */}
           <div
