@@ -57,6 +57,7 @@ import {
   ChevronRight,
   ChevronDown,
   X,
+  PanelLeftClose,
   Star,
   MoreHorizontal,
   Download,
@@ -84,6 +85,8 @@ import {
   Menu,
   History,
   SquarePen,
+  Search,
+  Sparkles,
 } from "lucide-react";
 import { db, STORES } from "./services/db";
 import { initializeIntegrations } from "./services/integration/init";
@@ -107,6 +110,16 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // --- Premium Tornado Thinking Component (Updated: Persistent Visibility) ---
 function App() {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   useEffect(() => {
     // Moved from top-level to prevent module evaluation crashes
     try {
@@ -3266,6 +3279,20 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
     }
   }, [settings.enableMobileDock]);
 
+  useEffect(() => {
+    const handleGoGlobalSearch = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const query = customEvent.detail || "";
+      setGlobalSearchQuery(query);
+      if (activeView !== "search") {
+        setPreviousViewBeforeSearch(activeView);
+      }
+      setActiveView("search");
+    };
+    window.addEventListener("go-global-search", handleGoGlobalSearch);
+    return () => window.removeEventListener("go-global-search", handleGoGlobalSearch);
+  }, [activeView]);
+
   return (
     <div
       className="flex h-[100dvh] w-full bg-pplx-primary text-pplx-text overflow-hidden font-sans transition-colors duration-150"
@@ -3335,6 +3362,8 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
         showFavorites={showFavorites}
         setShowFavorites={setShowFavorites}
       />
+
+
 
       <main
         className={`flex-1 h-full flex flex-col relative overflow-hidden transition-all duration-150 bg-pplx-primary`}
@@ -3446,14 +3475,14 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
             <div className="flex items-center h-10 px-3 select-none bg-pplx-primary border-none z-50 w-full relative border-b border-pplx-border/50 md:border-none">
               <div className="flex-1 flex items-center min-w-0">
                 {/* SIDEBAR TOGGLE & UNDO / REDO BUTTONS */}
-                <div className="flex items-center gap-2 mr-2 shrink-0 -ml-2">
-                  {!sidebarOpen && (
-                    <SidebarToggle
-                      onClick={handleOpenSidebar}
-                      className="flex p-1 hover:bg-pplx-hover rounded text-pplx-muted transition-all mr-1 animate-fadeIn"
-                      size={20}
-                    />
-                  )}
+                <div className="flex items-center gap-1.5 mr-2 shrink-0 -ml-2">
+                  <button
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className="hidden md:flex p-1.5 hover:bg-pplx-hover rounded-lg text-pplx-muted hover:text-pplx-text transition-all items-center justify-center cursor-pointer"
+                    title={sidebarOpen ? "Închide Meniu" : "Deschide Meniu"}
+                  >
+                    {sidebarOpen ? <PanelLeftClose size={20} /> : <Menu size={20} />}
+                  </button>
                   {/* Navigation Back */}
                   <button
                     onClick={handleNavBack}
@@ -4860,6 +4889,7 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
                     onTTS={handleTTS}
                     isPlayingAudio={isPlayingAudio}
                     isCompanionOpen={isCompanionOpen}
+                    activeNote={activeNote || undefined}
                   />
                 </div>
               </div>
@@ -4952,13 +4982,57 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
           style={{
             bottom:
               settings.enableMobileDock && window.innerWidth < 640
-                ? "calc(24px + 72px + env(safe-area-inset-bottom))"
+                ? "calc(24px + 80px + env(safe-area-inset-bottom))"
                 : "24px",
           }}
           title="Open Page Chat"
         >
           <MessageSquare size={20} />
         </button>
+      )}
+
+      {/* Floating Bottom Control Bar in Note/Page - Mobile Only */}
+      {viewToRender === "library" && activeNoteId && !isSideChatOpen && (
+        <div 
+          className="fixed left-4 right-4 z-40 flex items-center justify-center pointer-events-none md:hidden animate-in slide-in-from-bottom-4 duration-200"
+          style={{
+            bottom: "calc(20px + env(safe-area-inset-bottom))"
+          }}
+        >
+          <div className="flex items-center gap-3 bg-[#1c1c1e]/90 backdrop-blur-xl px-4 py-2.5 rounded-full border border-white/10 shadow-2xl pointer-events-auto">
+            {/* Search Button */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("trigger-page-search"));
+              }}
+              className="w-11 h-11 rounded-full bg-[#2c2c2e] border border-white/5 flex items-center justify-center text-white/70 hover:text-white transition-all active:scale-90"
+            >
+              <Search size={18} />
+            </button>
+            
+            {/* Ask AI Button */}
+            <button
+              onClick={() => {
+                setActiveView("chat");
+                setActiveThreadId(null);
+              }}
+              className="px-5 h-11 bg-[#2c2c2e] border border-white/5 rounded-full flex items-center justify-center gap-2 text-white/80 text-xs font-semibold active:scale-[0.98] transition-all"
+            >
+              <Sparkles size={14} className="text-[#00ffff]" />
+              <span>Ask AI</span>
+            </button>
+
+            {/* Compose/New Page Button */}
+            <button
+              onClick={() => {
+                handleNewNote();
+              }}
+              className="w-11 h-11 rounded-full bg-[#00ffff] flex items-center justify-center text-black hover:bg-[#00ffff]/90 transition-all active:scale-90 shadow-[0_0_15px_rgba(0,255,255,0.25)]"
+            >
+              <SquarePen size={18} />
+            </button>
+          </div>
+        </div>
       )}
 
       {deleteConfirmState && (
@@ -4971,7 +5045,7 @@ IMPORTANT: Reply ONLY with the exact new code. Standard text will break the widg
       )}
 
       <MobileDock
-        visible={settings.enableMobileDock && !isDashboardMode}
+        visible={settings.enableMobileDock && !isDashboardMode && !(viewToRender === "library" && activeNoteId)}
         onNavigate={handleMobileNavigate}
         onNewPage={handleMobileNewPage}
         notes={notes}

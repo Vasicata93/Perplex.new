@@ -287,10 +287,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const currentWidth = sidebarWidth;
 
   const sidebarClasses = `
-    fixed inset-y-0 left-0 z-[150] bg-pplx-sidebar shadow-2xl h-full
-    w-[280px] md:static md:shadow-none md:translate-x-0
-    md:my-3 md:ml-3 md:mr-1 md:h-[calc(100%-24px)] md:rounded-xl md:border md:border-pplx-border/50
-    ${isOpen ? "translate-x-0 md:w-[var(--sidebar-width)] border-r border-pplx-border" : "-translate-x-full md:w-0 md:border-transparent md:overflow-hidden md:ml-0 md:my-0 md:h-full md:border-l-0"}
+    fixed inset-y-0 left-0 z-[150] bg-pplx-sidebar shadow-[4px_0_24px_rgba(0,0,0,0.5)] h-full
+    w-[280px] max-w-[85vw] md:w-[var(--sidebar-width)] md:max-w-none md:static md:shadow-none md:translate-x-0
+    md:my-3 md:ml-3 md:mr-1 md:h-[calc(100%-24px)] md:rounded-r-xl md:rounded-l-xl md:border md:border-pplx-border/50
+    rounded-r-[24px] md:rounded-r-xl
+    ${isOpen ? "translate-x-0 md:w-[var(--sidebar-width)] border-r border-pplx-border/30" : "-translate-x-full md:w-0 md:border-transparent md:overflow-hidden md:ml-0 md:my-0 md:h-full md:border-l-0"}
     flex flex-col
     ${!isResizing ? "transition-all duration-150 cubic-bezier(0.4, 0, 0.2, 1)" : ""}
   `;
@@ -333,53 +334,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-pplx-accent/50 transition-colors z-50 hidden md:block"
         />
 
-        <div className="h-full flex flex-col overflow-hidden w-[280px] md:w-[var(--sidebar-width)]">
-          {/* Top Agent Section */}
-          <div className={`pt-2 pb-1 px-3 shrink-0`}>
+        <div className="h-full flex flex-col overflow-hidden w-full md:w-[var(--sidebar-width)]">
+          {/* Top Profile / Settings Section (replaces Hermes) */}
+          <div className="pt-5 pb-3 px-4 md:pt-4 md:pb-2 md:px-3 shrink-0">
             <div
-              className={`text-sm text-pplx-muted hover:text-pplx-text flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-0"} py-2 rounded-lg transition-colors group`}
+              className={`text-sm text-pplx-text flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-2"} py-2 rounded-lg transition-colors group cursor-pointer hover:bg-pplx-hover`}
             >
-              <div
-                onClick={() => {
-                  onChangeView("chat");
-                  onSelectSpace(null);
-                  onNewThread();
-                }}
-                className={`flex items-center p-1 rounded-md cursor-pointer ${isCollapsed ? "justify-center w-full" : "flex-1"}`}
+              <div 
+                onClick={() => openSettings("profile")}
+                className={`flex items-center gap-2 ${isCollapsed ? "justify-center w-full" : "flex-1"} truncate`}
               >
-                {isCollapsed ? (
-                  <div className="w-[40px] h-[40px] shrink-0 mx-auto rounded-full overflow-hidden bg-pplx-secondary flex items-center justify-center border border-pplx-border">
-                    <Bot size={24} className="text-pplx-text opacity-80" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 truncate w-full relative -left-[4px]">
-                    <div className="w-[40px] h-[40px] rounded-[14px] overflow-hidden bg-pplx-secondary flex items-center justify-center shrink-0 border border-pplx-border">
-                      <Bot size={26} className="text-pplx-text opacity-80" />
-                    </div>
-                    <span className="font-serif font-light tracking-tight text-pplx-text group-hover:text-pplx-text text-[32px] leading-tight truncate">
-                      Hermes
-                    </span>
-                  </div>
+                <div className="w-[40px] h-[40px] rounded-full overflow-hidden bg-pplx-primary flex items-center justify-center text-pplx-text text-[17px] font-bold shrink-0 border border-pplx-border">
+                  {userProfile.avatar ? (
+                    <img src={userProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    getUserInitials(userProfile.name)
+                  )}
+                </div>
+                {!isCollapsed && (
+                  <span className="font-medium truncate text-[19px]">
+                    {userProfile.name || "User"}
+                  </span>
                 )}
               </div>
               {!isCollapsed && (
-                <div className="relative">
+                <div className="relative shrink-0">
                   <button
-                    onClick={() => {
-                      if (window.innerWidth < 768) {
-                        setSidebarOpen(false);
-                      } else {
-                        setSidebarWidth(0);
-                      }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openSettings();
                     }}
-                    onMouseEnter={() => setHoveredTooltip("close-sidebar")}
+                    onMouseEnter={() => setHoveredTooltip("settings")}
                     onMouseLeave={() => setHoveredTooltip(null)}
-                    className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-pplx-hover text-pplx-muted transition-colors active:scale-90 shrink-0 right-[2px] relative"
+                    className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary rounded-md transition-colors active:scale-90 shrink-0"
                   >
-                    <PanelLeftClose size={18} />
+                    <Settings size={21} />
                   </button>
-                  {hoveredTooltip === "close-sidebar" && (
-                    <Tooltip text="Close Sidebar" position="right" />
+                  {hoveredTooltip === "settings" && (
+                    <Tooltip text="Settings" position="right" />
                   )}
                 </div>
               )}
@@ -686,50 +678,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
 
-            {/* Profile / Settings Button */}
-            <div className={`w-full`}>
-              <div
-                className={`text-sm text-pplx-muted hover:text-pplx-text flex items-center ${isCollapsed ? "justify-center px-0" : "justify-between px-2"} py-2 rounded-lg transition-colors group cursor-pointer hover:bg-pplx-hover`}
-              >
-                <div 
-                  onClick={() => openSettings("profile")}
-                  className={`flex items-center gap-2 ${isCollapsed ? "justify-center w-full" : "flex-1"} truncate`}
-                >
-                  <div className="w-[40px] h-[40px] rounded-full overflow-hidden bg-pplx-primary flex items-center justify-center text-pplx-text text-[17px] font-bold shrink-0 border border-pplx-border">
-                    {userProfile.avatar ? (
-                      <img src={userProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                      getUserInitials(userProfile.name)
-                    )}
-                  </div>
-                  {!isCollapsed && (
-                    <span className="font-medium truncate text-[19px]">
-                      {userProfile.name || "User"}
-                    </span>
-                  )}
-                </div>
-                {!isCollapsed && (
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openSettings();
-                      }}
-                      onMouseEnter={() => setHoveredTooltip("settings")}
-                      onMouseLeave={() => setHoveredTooltip(null)}
-                      className="p-1.5 text-pplx-muted hover:text-pplx-text hover:bg-pplx-secondary rounded-md transition-colors active:scale-90 shrink-0"
-                    >
-                      <Settings size={21} />
-                    </button>
-                    {hoveredTooltip === "settings" && (
-                      <Tooltip text="Settings" position="right" />
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Profile / Settings Button removed from bottom to be unified at top */}
           </div>
         </div>
+
+        {/* Floating Green Mobile New Chat Button */}
+        {isOpen && (
+          <button
+            onClick={() => {
+              onChangeView("chat");
+              onSelectSpace(null);
+              onNewThread();
+              setSidebarOpen(false);
+            }}
+            className="md:hidden absolute bottom-5 right-5 z-[160] flex items-center justify-center gap-1.5 bg-[#10a37f] hover:bg-[#10a37f]/90 text-white font-bold px-3.5 py-2.5 rounded-full shadow-[0_4px_16px_rgba(16,163,127,0.3)] active:scale-95 transition-all text-xs border border-[#10a37f] scale-[0.8] origin-bottom-right"
+          >
+            <Plus size={16} className="stroke-[2.5]" />
+            <span>Conversație nouă</span>
+          </button>
+        )}
       </div>
       {isMobileLibraryOpen && (
         <div className="fixed inset-0 z-[150] bg-[#121212] flex flex-col md:hidden overflow-x-hidden text-white font-sans animate-in slide-in-from-bottom-4 duration-150 select-none pb-28">
@@ -1037,7 +1004,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Search Button */}
             <button
               onClick={() => {
-                onChangeView("search");
+                if (activeView === "library" && activeNoteId) {
+                  window.dispatchEvent(new CustomEvent("trigger-page-search"));
+                } else {
+                  onChangeView("search");
+                }
                 setIsMobileLibraryOpen(false);
                 setSidebarOpen(false);
               }}

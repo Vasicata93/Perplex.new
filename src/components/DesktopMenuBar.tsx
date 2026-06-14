@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Bell, LayoutDashboard, CheckCircle, MessageSquare, FileText, Calendar, LayoutGrid, X, Users, HardDrive, Globe } from "lucide-react";
+import { Search, Bell, LayoutDashboard, CheckCircle, MessageSquare, FileText, Calendar, LayoutGrid, X, Users, HardDrive, Globe, PanelLeftClose, Menu } from "lucide-react";
 import { SidebarToggle } from "./SidebarToggle";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { Tooltip } from "./Tooltip";
@@ -182,13 +182,13 @@ export const DesktopMenuBar: React.FC<DesktopMenuBarProps> = ({
     <div className="absolute top-0 left-0 right-0 h-10 z-50 hidden md:flex items-center justify-between px-4 bg-pplx-primary border-transparent text-xs font-medium text-pplx-text group">
       {/* Left side: Sidebar Toggle & System Status */}
       <div className="flex items-center gap-3">
-        {!sidebarOpen && (
-          <SidebarToggle
-            onClick={onToggleSidebar}
-            className="flex p-1 hover:bg-pplx-hover rounded text-pplx-muted transition-all"
-            size={20}
-          />
-        )}
+        <button
+          onClick={onToggleSidebar}
+          className="p-1.5 hover:bg-pplx-hover rounded-lg text-pplx-muted hover:text-pplx-text transition-all flex items-center justify-center cursor-pointer"
+          title={sidebarOpen ? "Închide Meniu" : "Deschide Meniu"}
+        >
+          {sidebarOpen ? <PanelLeftClose size={20} /> : <Menu size={20} />}
+        </button>
         
         {/* Workspace Title */}
         {activeSpace && (

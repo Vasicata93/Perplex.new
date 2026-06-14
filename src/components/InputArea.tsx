@@ -94,6 +94,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
   placeholder,
   compact = false,
   mobileSidePanel = false,
+  activeNote,
   // Lifted State Props
   proMode: propProMode,
   setProMode: propSetProMode,
@@ -553,6 +554,19 @@ export const InputArea: React.FC<InputAreaProps> = ({
         "px";
     }
   }, [input, centered, mobileSidePanel, isCompanionOpen, isMobile]);
+
+  // Sync activePage / activeNote as attached context for the chat agent
+  useEffect(() => {
+    if (activeNote) {
+      setSelectedLibraryIds([activeNote.id]);
+      setFocusModes((prev) => {
+        if (!prev.includes(FocusMode.LIBRARY)) {
+          return [...prev.filter((id) => id !== FocusMode.ALL), FocusMode.LIBRARY];
+        }
+        return prev;
+      });
+    }
+  }, [activeNote]);
 
   // Close menus when clicking outside
   useEffect(() => {

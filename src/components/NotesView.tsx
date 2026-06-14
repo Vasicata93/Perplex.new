@@ -51,6 +51,8 @@ import {
   CalendarDays,
   Layers,
   ListOrdered,
+  Globe,
+  Search,
 } from "lucide-react";
 import { Note } from "../types";
 import { EMOJI_LIST } from "../constants";
@@ -1039,6 +1041,32 @@ export const NotesView: React.FC<NotesViewProps> = ({
   );
   const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
 
+  // In-page search state
+  const [isPageSearchOpen, setIsPageSearchOpen] = useState(false);
+  const [pageSearchQuery, setPageSearchQuery] = useState("");
+
+  useEffect(() => {
+    const handleTriggerPageSearch = () => {
+      setIsPageSearchOpen((prev) => !prev);
+    };
+    window.addEventListener("trigger-page-search", handleTriggerPageSearch);
+    return () => {
+      window.removeEventListener("trigger-page-search", handleTriggerPageSearch);
+    };
+  }, []);
+
+  // Auto-focus search input when search bar is opened
+  useEffect(() => {
+    if (isPageSearchOpen) {
+      setTimeout(() => {
+        const inputEl = document.getElementById("page-search-input");
+        if (inputEl) inputEl.focus();
+      }, 100);
+    } else {
+      setPageSearchQuery("");
+    }
+  }, [isPageSearchOpen]);
+
   // Refs for synchronization and undo/redo handling
   const lastSavedContentRef = useRef<string | null>(null);
   const lastNoteIdRef = useRef<string | null>(null);
@@ -1698,6 +1726,48 @@ export const NotesView: React.FC<NotesViewProps> = ({
 
   return (
     <div className="flex flex-col flex-1 bg-pplx-primary text-pplx-text overflow-hidden relative">
+      {/* In-Page Search Bar Overlay */}
+      {isPageSearchOpen && (
+        <div className="absolute top-4 left-4 right-4 z-50 bg-[#1c1c1e]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex items-center gap-3 shadow-2xl animate-in slide-in-from-top-2 duration-200">
+          <Search size={18} className="text-[#00ffff]" />
+          <input
+            id="page-search-input"
+            type="text"
+            value={pageSearchQuery}
+            onChange={(e) => setPageSearchQuery(e.target.value)}
+            placeholder="Căutare în această pagină..."
+            className="flex-1 bg-transparent text-sm text-white outline-none placeholder-white/30"
+          />
+          {pageSearchQuery && (
+            <button
+              onClick={() => setPageSearchQuery("")}
+              className="text-white/40 hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
+          <div className="h-4 w-[1px] bg-white/10" />
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("go-global-search", { detail: pageSearchQuery }));
+              setIsPageSearchOpen(false);
+            }}
+            className="px-3.5 py-1.5 bg-[#00ffff] hover:bg-[#00ffff]/90 text-black font-semibold text-xs rounded-xl transition-all active:scale-95 flex items-center gap-1.5 opacity-90 hover:opacity-100"
+          >
+            <Globe size={12} />
+            <span>Căutare generală</span>
+          </button>
+          <button
+            onClick={() => {
+              setIsPageSearchOpen(false);
+              setPageSearchQuery("");
+            }}
+            className="p-1 px-2.5 rounded-xl hover:bg-white/5 text-white/50 hover:text-white transition-colors text-xs font-semibold shrink-0"
+          >
+            Închide
+          </button>
+        </div>
+      )}
       <TableOfContents blocks={blocks} />
       <div
         className={`flex-1 overflow-y-auto custom-scrollbar relative ${getFontClass(activeNote.fontStyle)}`}
@@ -1901,36 +1971,48 @@ export const NotesView: React.FC<NotesViewProps> = ({
                 items={blocks.map((b) => b.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {blocks.map((block) => (
-                  <SortableBlockItem key={block.id} id={block.id}>
-                    {(dragHandleProps, isDragging) => (
-                      <BlockRow
-                        block={block}
-                        activeNote={activeNote}
-                        activeBlockId={activeBlockId}
-                        setActiveBlockId={setActiveBlockId}
-                        showAddMenu={showAddMenu}
-                        setShowAddMenu={setShowAddMenu}
-                        aiMenuBlockId={aiMenuBlockId}
-                        setAiMenuBlockId={setAiMenuBlockId}
-                        thinkingBlockId={thinkingBlockId}
-                        updateBlock={updateBlock}
-                        addBlock={addBlock}
-                        deleteBlock={deleteBlock}
-                        handlePaste={handlePaste}
-                        onSelectNote={onSelectNote}
-                        notes={notes}
-                        handleAiAction={handleAiAction}
-                        onDeleteNote={onDeleteNote}
-                        setIsTagInputOpen={setIsTagInputOpen}
-                        dragHandleProps={dragHandleProps}
-                        isDragging={isDragging}
-                        showBlockMenu={showBlockMenu}
-                        setShowBlockMenu={setShowBlockMenu}
-                      />
-                    )}
-                  </SortableBlockItem>
-                ))}
+                {blocks.map((block) => {
+                  const isMatch = pageSearchQuery && block.content && block.content.toLowerCase().includes(pageSearchQuery.toLowerCase());
+                  return (
+                    <div 
+                      key={block.id} 
+                      className={`transition-all duration-300 rounded-xl ${
+                        isMatch 
+                          ? "ring-2 ring-[#00ffff]/45 bg-[#00ffff]/5 shadow-[0_0_12px_rgba(0,255,255,0.15)] px-2 py-1 my-1" 
+                          : ""
+                      }`}
+                    >
+                      <SortableBlockItem id={block.id}>
+                        {(dragHandleProps, isDragging) => (
+                          <BlockRow
+                            block={block}
+                            activeNote={activeNote}
+                            activeBlockId={activeBlockId}
+                            setActiveBlockId={setActiveBlockId}
+                            showAddMenu={showAddMenu}
+                            setShowAddMenu={setShowAddMenu}
+                            aiMenuBlockId={aiMenuBlockId}
+                            setAiMenuBlockId={setAiMenuBlockId}
+                            thinkingBlockId={thinkingBlockId}
+                            updateBlock={updateBlock}
+                            addBlock={addBlock}
+                            deleteBlock={deleteBlock}
+                            handlePaste={handlePaste}
+                            onSelectNote={onSelectNote}
+                            notes={notes}
+                            handleAiAction={handleAiAction}
+                            onDeleteNote={onDeleteNote}
+                            setIsTagInputOpen={setIsTagInputOpen}
+                            dragHandleProps={dragHandleProps}
+                            isDragging={isDragging}
+                            showBlockMenu={showBlockMenu}
+                            setShowBlockMenu={setShowBlockMenu}
+                          />
+                        )}
+                      </SortableBlockItem>
+                    </div>
+                  );
+                })}
               </SortableContext>
               <DragOverlay
                 dropAnimation={{
