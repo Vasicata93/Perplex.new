@@ -791,26 +791,25 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
 
         {/* ========================================== */}
         {/* COL 2: RIGHT SIDE - BROWSER VIEWPORT & ADDR */}
-        {/* ========================================== */}
-        {shouldShowBrowser && (
-          <div className={`flex-grow flex flex-col ${isInline ? isDesktop ? "px-1.5 pb-1.5 md:px-6 md:pb-6" : "p-0" : "px-6 pb-6"} overflow-hidden h-full z-10 bg-[#f4f4f6] dark:bg-pplx-primary`}>
+        {/* ======================        {shouldShowBrowser && (
+          <div className={`flex-grow flex flex-col p-0 overflow-hidden h-full z-10 bg-zinc-50 dark:bg-pplx-primary`}>
             
             {/* INSET FLOATING CARD DESIGN FOR MOCK BROWSER */}
-            <div className={`flex-1 flex flex-col bg-white dark:bg-pplx-secondary ${isDesktop ? "rounded-2xl border border-zinc-200/85 dark:border-white/5 shadow-md" : "border-b border-zinc-200 dark:border-white/5"} overflow-hidden min-h-0`}>
+            <div className={`flex-1 flex flex-col bg-white dark:bg-pplx-secondary border-none overflow-hidden min-h-0`}>
               
               {isDesktop ? (
                 <>
                   {/* Google Chrome Tab bar */}
-                  <div className="flex items-center justify-between bg-[#eaecef] dark:bg-pplx-primary border-b border-zinc-200/60 dark:border-white/5 px-3 h-9 select-none shrink-0 gap-1.5 pt-1.5">
+                  <div className="flex items-center justify-between bg-zinc-100 dark:bg-pplx-primary border-b border-zinc-200/40 dark:border-white/5 px-3 h-9 select-none shrink-0 gap-1.5 pt-1.5">
                     <div className="flex items-center gap-1.5">
-                      <div className="flex items-center gap-1 bg-white dark:bg-pplx-secondary border-t border-x border-zinc-250/20 dark:border-white/5 px-3 py-1.5 rounded-t-lg text-zinc-800 dark:text-pplx-text text-[11px] font-medium shadow-2xs max-w-[280px] truncate">
+                      <div className="flex items-center gap-1 bg-white dark:bg-pplx-secondary border border-zinc-200/40 dark:border-white/5 px-3.5 py-1 rounded-t-lg text-zinc-800 dark:text-pplx-text text-[11px] font-medium max-w-[280px] truncate transition-colors">
                         <Globe size={11} className="text-[#2563eb] shrink-0" />
                         <span className="truncate">{currentTitle || "Hipcamp | Tent Camping, RV Spots, Cabins & Glamping"}</span>
-                        <button className="ml-2 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-full p-0.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 transition-colors">
+                        <button className="ml-2 hover:bg-zinc-150 dark:hover:bg-zinc-850 rounded-full p-0.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350 transition-colors">
                           <X size={10} />
                         </button>
                       </div>
-                      <button className="p-1 rounded-md hover:bg-zinc-250 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors font-semibold shadow-3xs hover:text-zinc-950 dark:hover:text-white" title="New Tab">
+                      <button className="h-6 w-6 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors font-medium flex items-center justify-center" title="New Tab">
                         <span className="text-xs">+</span>
                       </button>
                     </div>
@@ -819,7 +818,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => setIsFullscreen(!isFullscreen)}
-                        className="p-1 hover:text-[#2563eb] text-zinc-500 dark:text-zinc-400 dark:hover:text-blue-400 hover:bg-zinc-250 dark:hover:bg-zinc-850 rounded-md transition-colors"
+                        className="p-1 hover:text-[#2563eb] text-zinc-500 dark:text-zinc-400 dark:hover:text-blue-400 hover:bg-zinc-200 dark:hover:bg-zinc-850 rounded-md transition-colors"
                         title={isFullscreen ? "Ieși din Mod Complet" : "Mod Complet"}
                       >
                         {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
@@ -828,7 +827,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                       <button
                         id="close_companion_button"
                         onClick={onClose}
-                        className="p-1 hover:text-red-500 text-zinc-500 dark:text-zinc-400 dark:hover:text-red-400 hover:bg-zinc-250 dark:hover:bg-zinc-850 rounded-md transition-colors"
+                        className="p-1 hover:text-red-500 text-zinc-500 dark:text-zinc-400 dark:hover:text-red-400 hover:bg-zinc-200 dark:hover:bg-zinc-850 rounded-md transition-colors"
                         title="Close Panel"
                       >
                         <X size={13} />
@@ -837,13 +836,13 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                   </div>
 
                   {/* Address bar search navigation */}
-                  <div className="px-4 py-2.5 bg-white dark:bg-pplx-secondary border-b border-zinc-200/80 dark:border-white/5 shrink-0 flex items-center gap-3">
+                  <div className="px-4 py-2 bg-white dark:bg-pplx-secondary border-b border-zinc-200/40 dark:border-white/5 shrink-0 flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
                       <button
                         id="browser_back_btn"
                         type="button"
                         onClick={handleBack}
-                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
+                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-650 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
                         title="Go Back"
                       >
                         <ChevronLeft size={15} className="stroke-[2.2]" />
@@ -852,7 +851,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                         id="browser_fwd_btn"
                         type="button"
                         onClick={handleForward}
-                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
+                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-650 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
                         title="Go Forward"
                       >
                         <ChevronRight size={15} className="stroke-[2.2]" />
@@ -861,7 +860,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                         id="browser_refresh_btn"
                         type="button"
                         onClick={handleRefresh}
-                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-600 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
+                        className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-pplx-hover text-zinc-650 dark:text-pplx-muted hover:text-zinc-900 dark:hover:text-pplx-text transition-colors"
                         title="Reload"
                       >
                         <RefreshCw size={13} className="stroke-[2.2]" />
@@ -869,7 +868,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                     </div>
 
                     <form onSubmit={handleUrlSubmit} className="flex-1 relative flex flex-row items-center">
-                      <div className="w-full flex items-center bg-[#f1f3f4] dark:bg-pplx-primary border border-transparent rounded-lg py-1 px-3 gap-2 focus-within:bg-white dark:focus-within:bg-pplx-secondary focus-within:border-[#2563eb]/40 dark:focus-within:border-pplx-accent/40 shadow-3xs transition-all">
+                      <div className="w-full flex items-center bg-zinc-100 dark:bg-pplx-primary border border-transparent rounded-lg py-1 px-3 gap-2 focus-within:bg-white dark:focus-within:bg-pplx-secondary focus-within:border-[#2563eb]/45 shadow-none transition-all">
                         <Lock size={12} className="text-zinc-400 dark:text-zinc-500 shrink-0" />
                         {currentUrl ? (
                           <span className="text-[9px] text-[#2563eb] bg-[#2563eb]/5 border border-[#2563eb]/10 dark:border-white/5 px-1.5 py-0.5 rounded font-mono select-none font-semibold shrink-0">
@@ -891,14 +890,14 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
               ) : (
                 /* Chrome-style Mobile Browser Header - All Elements nested on a Single Row */
                 <div className="relative flex flex-col w-full shrink-0 select-none z-[60]">
-                  <div className="flex items-center gap-1.5 px-2 py-2 bg-[#eaecef] dark:bg-pplx-primary border-b border-zinc-200 dark:border-white/5 select-none shrink-0">
+                  <div className="flex items-center gap-1.5 px-2 py-2 bg-zinc-100 dark:bg-pplx-primary border-b border-zinc-200/40 dark:border-white/5 select-none shrink-0">
                     {/* Home button (Casă) */}
                     <button
                       onClick={() => {
                         setInputUrl("https://www.google.com");
                         wsRef.current?.send(JSON.stringify({ type: "navigate", url: "https://www.google.com" }));
                       }}
-                      className="h-8 px-2 bg-white dark:bg-pplx-secondary rounded-lg text-zinc-700 dark:text-pplx-text border border-zinc-200 dark:border-zinc-800 shadow-2xs hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-95 transition-all flex items-center justify-center font-medium shrink-0"
+                      className="h-8 px-2 bg-white dark:bg-pplx-secondary rounded-lg text-zinc-700 dark:text-pplx-text hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-95 transition-all flex items-center justify-center font-medium shrink-0 shadow-none border-none"
                       title="Acasă"
                     >
                       <span className="text-sm">🏠</span>
@@ -906,7 +905,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
 
                     {/* URL Address Input Bar */}
                     <form onSubmit={handleUrlSubmit} className="flex-1 relative flex flex-row items-center min-w-0">
-                      <div className="w-full flex items-center bg-white dark:bg-pplx-secondary border border-zinc-250 dark:border-zinc-800 rounded-lg py-1 px-2.5 gap-1.5 shadow-3xs">
+                      <div className="w-full flex items-center bg-white dark:bg-pplx-secondary border border-zinc-200 dark:border-zinc-800 rounded-lg py-1 px-2.5 gap-1.5 shadow-none">
                         <Lock size={10} className="text-zinc-400 dark:text-zinc-500 shrink-0" />
                         <input
                           id="companion_url_address_input_mobile"
@@ -930,7 +929,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                         setCurrentUrl("https://www.google.com");
                         wsRef.current?.send(JSON.stringify({ type: "navigate", url: "https://www.google.com" }));
                       }}
-                      className="h-8 w-8 bg-white dark:bg-pplx-secondary border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-pplx-text hover:bg-zinc-55 flex items-center justify-center shrink-0 shadow-3xs active:scale-95 transition-all text-sm font-semibold"
+                      className="h-8 w-8 bg-white dark:bg-pplx-secondary rounded-lg text-zinc-700 dark:text-pplx-text hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-center shrink-0 shadow-none border-none active:scale-95 transition-all text-sm font-semibold"
                       title="Pagină nouă (+)"
                     >
                       +
@@ -941,10 +940,10 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                       onClick={() => {
                         setShowTabsList(!showTabsList);
                       }}
-                      className={`h-8 w-8 border rounded-lg flex items-center justify-center shrink-0 shadow-3xs active:scale-95 transition-all ${
+                      className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 shadow-none border-none active:scale-95 transition-all ${
                         showTabsList 
-                          ? "bg-[#2563eb]/10 border-[#2563eb]/35 text-[#2563eb]" 
-                          : "bg-white dark:bg-pplx-secondary border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-pplx-text"
+                          ? "bg-[#2563eb]/10 text-[#2563eb]" 
+                          : "bg-white dark:bg-pplx-secondary text-zinc-700 dark:text-pplx-text"
                       }`}
                       title="Taburi deschise"
                     >
@@ -956,7 +955,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                     {/* Close Browser Button right next to Tabs */}
                     <button
                       onClick={onClose}
-                      className="h-8 w-8 bg-white dark:bg-pplx-secondary border border-red-200 dark:border-red-950/20 rounded-lg text-red-500 hover:text-red-650 flex items-center justify-center shrink-0 shadow-3xs active:scale-95 transition-all"
+                      className="h-8 w-8 bg-white dark:bg-pplx-secondary rounded-lg text-red-500 hover:text-red-650 flex items-center justify-center shrink-0 shadow-none border-none active:scale-95 transition-all"
                       title="Închide browser"
                     >
                       <X size={15} className="stroke-[2.5]" />
@@ -1110,13 +1109,13 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                     </button>
                   )}
 
-                  <div className="flex flex-col border-t border-zinc-200 dark:border-zinc-850 bg-[#fbfbfb] dark:bg-pplx-primary shrink-0 select-none">
+                  <div className="flex flex-col border-t border-zinc-200/40 dark:border-white/5 bg-zinc-50 dark:bg-pplx-primary shrink-0 select-none">
                     {isDesktop ? (
                       /* Desktop Standard Bar */
                       <div className={`flex flex-col lg:flex-row items-stretch lg:items-center justify-between ${isInline ? "px-3 py-2 md:px-4 md:py-3 gap-2 md:gap-3" : "px-4 py-3 gap-3"}`}>
                         {/* Col 1: Live indicators & Instant keyboard input */}
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <div className="flex items-center gap-1 shrink-0 bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl border border-emerald-500/20 shadow-3xs">
+                          <div className="flex items-center gap-1 shrink-0 bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl border border-emerald-500/20 shadow-none">
                             <span className="relative flex items-center justify-center">
                               <span className="absolute inline-flex h-2 w-2 rounded-full bg-emerald-500/80 animate-ping" />
                               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
@@ -1131,13 +1130,13 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                               type="text"
                               value={typingText}
                               onChange={(e) => setTypingText(e.target.value)}
-                              className={`w-full text-xs ${isInline ? "h-8 md:h-9" : "h-9"} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-3 pr-9 outline-none focus:ring-1 focus:ring-pplx-accent/50 focus:border-pplx-accent text-zinc-800 dark:text-zinc-100 font-sans tracking-wide transition-all placeholder-zinc-450 dark:placeholder-zinc-500`}
+                              className={`w-full text-xs ${isInline ? "h-8 md:h-9" : "h-9"} bg-zinc-100 dark:bg-[#1a1a1a] border border-transparent rounded-lg pl-3 pr-9 outline-none focus:bg-white dark:focus:bg-zinc-950 focus:ring-1 focus:ring-pplx-accent/50 text-zinc-800 dark:text-zinc-100 font-sans tracking-wide transition-all placeholder-zinc-400 dark:placeholder-zinc-500`}
                               placeholder="Tostează ceva pe pagină..."
                             />
                             <button
                               type="submit"
                               disabled={!typingText}
-                              className={`absolute right-1 leading-none ${isInline ? "p-1 md:p-1.5" : "p-1.5"} bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-30 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white rounded-lg shrink-0 transition-opacity cursor-pointer flex items-center justify-center shadow-3xs`}
+                              className={`absolute right-1 leading-none ${isInline ? "p-1 md:p-1.5" : "p-1.5"} bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-30 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white rounded-lg shrink-0 transition-opacity cursor-pointer flex items-center justify-center shadow-none`}
                               title="Tastați pe pagină (Send)"
                             >
                               <Send size={11} className={!typingText ? "text-zinc-500 dark:text-zinc-400" : ""} />
@@ -1151,16 +1150,16 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => handleQuickKey("Tab")}
-                              className={`text-[11px] ${isInline ? "h-8 md:h-9 px-2.5" : "h-9 px-2.5"} rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white font-sans font-medium transition-all shadow-3xs active:scale-95 flex items-center gap-1`}
+                              className={`text-[11px] ${isInline ? "h-8 md:h-9 px-3" : "h-9 px-3"} rounded-lg bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10 font-sans font-medium transition-all shadow-none border-none active:scale-95 flex items-center gap-1`}
                               title="Sari la următorul element (Tab)"
                             >
-                              <CornerDownLeft size={10} className="rotate-180 text-zinc-400 dark:text-zinc-500" />
+                              <CornerDownLeft size={10} className="rotate-180 text-zinc-450 dark:text-zinc-500" />
                               <span>Tab</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => handleQuickKey("Backspace")}
-                              className={`text-[11px] ${isInline ? "h-8 md:h-9 px-2.5" : "h-9 px-2.5"} rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white font-sans font-medium transition-all shadow-3xs active:scale-95 flex items-center gap-1`}
+                              className={`text-[11px] ${isInline ? "h-8 md:h-9 px-3" : "h-9 px-3"} rounded-lg bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10 font-sans font-medium transition-all shadow-none border-none active:scale-95 flex items-center gap-1`}
                               title="Șterge ultimul caracter scris (Backspace)"
                             >
                               <span>Șterge</span>
@@ -1171,10 +1170,10 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             type="button"
                             onClick={handleBypassConsent}
                             disabled={isBypassing}
-                            className={`flex items-center justify-center ${isInline ? "h-8 md:h-9 px-2 md:px-3 text-[11px] md:text-xs" : "h-9 px-3 text-xs"} rounded-xl border cursor-pointer transition-all shadow-3xs active:scale-95 font-medium ${
+                            className={`flex items-center justify-center ${isInline ? "h-8 md:h-9 px-3 text-[11px] md:text-xs" : "h-9 px-3 text-xs"} rounded-lg cursor-pointer transition-all shadow-none border-none active:scale-95 font-medium ${
                               isBypassing 
-                                ? "bg-amber-500/10 border-amber-500/30 text-amber-500" 
-                                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-amber-600 dark:text-amber-500 hover:bg-amber-500/5 hover:border-amber-500/20 hover:text-amber-700 dark:hover:text-amber-400"
+                                ? "bg-amber-500/10 text-amber-500" 
+                                : "bg-zinc-100 dark:bg-white/5 text-amber-600 dark:text-amber-500 hover:bg-zinc-250 dark:hover:bg-white/10"
                             }`}
                             title="Ascunde module cookie blocate"
                           >
@@ -1186,21 +1185,21 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             <span>Sari Cookies</span>
                           </button>
 
-                          <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 p-0.5 shadow-3xs" title="Navigare Scroll">
+                          <div className="flex items-center rounded-lg bg-zinc-100 dark:bg-white/5 p-0.5 shadow-none border-none" title="Navigare Scroll">
                             <button
                               type="button"
                               onClick={() => handleScrollManual("up")}
-                              className={`${isInline ? "h-7 md:h-8" : "h-8"} px-2 flex items-center justify-center gap-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90 text-[10px] font-medium`}
+                              className={`${isInline ? "h-7 md:h-8" : "h-8"} px-2.5 flex items-center justify-center gap-1 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-md text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90 text-[10px] font-medium`}
                               title="Scurtătură Scroll în Sus"
                             >
                               <ChevronUp size={13} />
                               <span className="hidden sm:inline">Sus</span>
                             </button>
-                            <div className="w-[1px] h-3.5 bg-zinc-200 dark:bg-zinc-800 self-center mx-0.5" />
+                            <div className="w-[1px] h-3.5 bg-zinc-250 dark:bg-zinc-800 self-center mx-0.5" />
                             <button
                               type="button"
                               onClick={() => handleScrollManual("down")}
-                              className={`${isInline ? "h-7 md:h-8" : "h-8"} px-2 flex items-center justify-center gap-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90 text-[10px] font-medium`}
+                              className={`${isInline ? "h-7 md:h-8" : "h-8"} px-2.5 flex items-center justify-center gap-1 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-md text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90 text-[10px] font-medium`}
                               title="Scurtătură Scroll în Jos"
                             >
                               <ChevronDown size={13} />
@@ -1208,20 +1207,20 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             </button>
                           </div>
 
-                          <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 p-0.5 shadow-3xs" title="Control Media">
+                          <div className="flex items-center rounded-lg bg-zinc-100 dark:bg-white/5 p-0.5 shadow-none border-none" title="Control Media">
                             <button
                               type="button"
                               onClick={handleTogglePlay}
-                              className={`${isInline ? "h-7 w-7 md:h-8 md:w-8" : "h-8 w-8"} flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90`}
+                              className={`${isInline ? "h-7 w-7 md:h-8 md:w-8" : "h-8 w-8"} flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-white/10 rounded-md text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90`}
                               title={isPlaying ? "Pune pauză" : "Redă clip"}
                             >
                               {isPlaying ? <Pause size={12} /> : <Play size={12} />}
                             </button>
-                            <div className="w-[1px] h-3.5 bg-zinc-200 dark:bg-zinc-800 self-center mx-0.5" />
+                            <div className="w-[1px] h-3.5 bg-zinc-250 dark:bg-zinc-800 self-center mx-0.5" />
                             <button
                               type="button"
                               onClick={handleToggleMute}
-                              className={`${isInline ? "h-7 w-7 md:h-8 md:w-8" : "h-8 w-8"} flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90`}
+                              className={`${isInline ? "h-7 w-7 md:h-8 md:w-8" : "h-8 w-8"} flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-white/10 rounded-md text-zinc-650 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white transition-all active:scale-90`}
                               title={isMuted ? "Pornește sunet" : "Oprește sunet (Mute)"}
                             >
                               {isMuted ? <Volume2 size={12} /> : <VolumeX size={12} />}
@@ -1231,7 +1230,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                           <button
                             type="button"
                             onClick={handleSkipAd}
-                            className={`flex items-center justify-center gap-1.5 ${isInline ? "px-2 md:px-3 h-8 md:h-9 text-[10px] md:text-[11px]" : "px-3 h-9 text-[11px]"} rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 font-bold cursor-pointer transition-all shadow-3xs active:scale-95`}
+                            className={`flex items-center justify-center gap-1.5 ${isInline ? "px-2.5 md:px-3 h-8 md:h-9 text-[10px] md:text-[11px]" : "px-3 h-9 text-[11px]"} rounded-lg bg-red-550/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold cursor-pointer transition-all shadow-none border-none active:scale-95`}
                             title="Sari peste reclama YouTube curentă"
                           >
                             <SkipForward size={11} className="text-red-500" />
@@ -1242,10 +1241,10 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                     ) : (
                       /* Mobile Two-Row Control Layout */
                       mobileControlsOpen && (
-                        <div className="flex flex-col bg-zinc-50 dark:bg-pplx-primary p-2 md:p-3 gap-2 border-t border-zinc-250 dark:border-white/5 shadow-inner">
+                        <div className="flex flex-col bg-zinc-50 dark:bg-pplx-primary p-2 md:p-3 gap-2 border-t border-zinc-200/40 dark:border-white/5 shadow-none">
                           {/* ROW 1: LIVE Badge + Typing Form + Tab + Șterge */}
                           <div className="flex items-center gap-1.5 w-full">
-                            <div className="flex items-center gap-1 shrink-0 bg-emerald-500/10 dark:bg-emerald-500/5 px-1.5 py-1 rounded-lg border border-emerald-500/20 shadow-3xs">
+                            <div className="flex items-center gap-1 shrink-0 bg-emerald-500/10 dark:bg-emerald-500/5 px-1.5 py-1 rounded-lg border border-emerald-500/20 shadow-none">
                               <span className="relative flex items-center justify-center">
                                 <span className="absolute inline-flex h-1 w-1 rounded-full bg-emerald-500/80 animate-ping" />
                                 <span className="relative inline-flex rounded-full h-1 w-1 bg-emerald-500" />
@@ -1259,7 +1258,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                                 type="text"
                                 value={typingText}
                                 onChange={(e) => setTypingText(e.target.value)}
-                                className="w-full text-[11px] h-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-2 pr-7 outline-none focus:ring-1 focus:ring-pplx-accent/50 focus:border-pplx-accent text-zinc-800 dark:text-zinc-100 font-sans transition-all placeholder-zinc-400 dark:placeholder-zinc-500"
+                                className="w-full text-[11px] h-8 bg-zinc-105 dark:bg-zinc-900 border-none rounded-lg pl-2 pr-7 outline-none focus:ring-1 focus:ring-pplx-accent/50 text-zinc-800 dark:text-zinc-100 font-sans transition-all placeholder-zinc-400 dark:placeholder-zinc-500"
                                 placeholder="Postează pe pagină..."
                               />
                               <button
@@ -1276,7 +1275,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => handleQuickKey("Tab")}
-                              className="text-[10px] h-8 px-2 shrink-0 rounded-lg border border-zinc-250 dark:border-zinc-805 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 font-medium active:scale-95 transition-all shadow-3xs"
+                              className="text-[10px] h-8 px-2.5 shrink-0 rounded-lg bg-zinc-150/70 dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 font-medium active:scale-95 transition-all shadow-none border-none"
                               title="Tab"
                             >
                               Tab
@@ -1286,7 +1285,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => handleQuickKey("Backspace")}
-                              className="text-[10px] h-8 px-2 shrink-0 rounded-lg border border-zinc-250 dark:border-zinc-805 bg-white dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 font-medium active:scale-95 transition-all shadow-3xs"
+                              className="text-[10px] h-8 px-2.5 shrink-0 rounded-lg bg-zinc-150/70 dark:bg-zinc-900 text-zinc-650 dark:text-zinc-300 font-medium active:scale-95 transition-all shadow-none border-none"
                               title="Șterge"
                             >
                               Șterge
@@ -1297,21 +1296,21 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                           <div className="flex items-center justify-between gap-1 w-full text-[10px]">
                             
                             {/* Page scroll: Sus / Jos */}
-                            <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 p-0.5 shadow-3xs shrink-0">
+                            <div className="flex items-center rounded-lg bg-zinc-150/70 dark:bg-zinc-900 p-0.5 shadow-none shrink-0 border-none">
                               <button
                                 type="button"
                                 onClick={() => handleScrollManual("up")}
-                                className="h-6 px-1.5 flex items-center justify-center gap-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-600 dark:text-zinc-300 font-medium"
+                                className="h-6 px-1.5 flex items-center justify-center gap-0.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-md text-zinc-600 dark:text-zinc-300 font-medium"
                                 title="Scroll Sus"
                               >
                                 <ChevronUp size={11} />
                                 <span>Sus</span>
                               </button>
-                              <div className="w-[1px] h-2.5 bg-zinc-250 dark:bg-zinc-800 self-center mx-0.5" />
+                              <div className="w-[1px] h-2.5 bg-zinc-250 dark:bg-zinc-800 self-center mx-1" />
                               <button
                                 type="button"
                                 onClick={() => handleScrollManual("down")}
-                                className="h-6 px-1.5 flex items-center justify-center gap-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-600 dark:text-zinc-300 font-medium"
+                                className="h-6 px-1.5 flex items-center justify-center gap-0.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-md text-zinc-600 dark:text-zinc-300 font-medium"
                                 title="Scroll Jos"
                               >
                                 <ChevronDown size={11} />
@@ -1320,20 +1319,20 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             </div>
 
                             {/* Play & Media toggles */}
-                            <div className="flex items-center border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 p-0.5 shadow-3xs shrink-0">
+                            <div className="flex items-center rounded-lg bg-zinc-150/70 dark:bg-zinc-900 p-0.5 shadow-none shrink-0 border-none">
                               <button
                                 type="button"
                                 onClick={handleTogglePlay}
-                                className="h-6 w-6 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-650 dark:text-zinc-300"
+                                className="h-6 w-6 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-white/10 rounded-md text-zinc-650 dark:text-zinc-300"
                                 title="Play/Pauză"
                               >
                                 {isPlaying ? <Pause size={10} /> : <Play size={10} />}
                               </button>
-                              <div className="w-[1px] h-2.5 bg-zinc-250 dark:bg-zinc-800 self-center mx-0.5" />
+                              <div className="w-[1px] h-2.5 bg-zinc-250 dark:bg-zinc-800 self-center mx-1" />
                               <button
                                 type="button"
                                 onClick={handleToggleMute}
-                                className="h-6 w-6 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-650 dark:text-zinc-300"
+                                className="h-6 w-6 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-white/10 rounded-md text-zinc-650 dark:text-zinc-300"
                                 title="Mute"
                               >
                                 {isMuted ? <Volume2 size={10} /> : <VolumeX size={10} />}
@@ -1345,10 +1344,10 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                               type="button"
                               onClick={handleBypassConsent}
                               disabled={isBypassing}
-                              className={`flex items-center justify-center h-7 px-1.5 text-[9px] shrink-0 rounded-lg border cursor-pointer font-medium shadow-3xs active:scale-95 ${
+                              className={`flex items-center justify-center h-7 px-2 text-[9px] shrink-0 rounded-lg cursor-pointer font-medium shadow-none border-none active:scale-95 ${
                                 isBypassing 
-                                  ? "bg-amber-500/10 border-amber-500/30 text-amber-550" 
-                                  : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-amber-600 dark:text-amber-505"
+                                  ? "bg-amber-500/10 text-amber-550" 
+                                  : "bg-zinc-150/70 dark:bg-zinc-900 text-amber-600 dark:text-amber-505"
                               }`}
                               title="Sari Cookies"
                             >
@@ -1360,7 +1359,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             <button
                               type="button"
                               onClick={handleSkipAd}
-                              className="flex items-center justify-center gap-0.5 px-1.5 h-7 text-[9px] shrink-0 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-650 dark:text-red-400 border border-red-500/20 font-bold active:scale-95 text-nowrap"
+                              className="flex items-center justify-center gap-0.5 px-2 text-[9px] shrink-0 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-650 dark:text-red-400 border-none shadow-none font-bold active:scale-95 text-nowrap"
                               title="Sari Reclame"
                             >
                               <SkipForward size={9} className="text-red-500" />
@@ -1371,7 +1370,7 @@ export const CompanionPanel: React.FC<CompanionPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => setMobileControlsOpen(false)}
-                              className="h-7 w-7 bg-red-105 dark:bg-zinc-800 hover:bg-red-200 dark:text-red-400 text-red-650 rounded-lg flex items-center justify-center shrink-0 shadow-3xs active:scale-95 transition-all ml-auto"
+                              className="h-7 w-7 bg-[#ff1a1a]/10 dark:bg-zinc-900 dark:text-red-450 hover:bg-red-200 text-red-600 rounded-lg flex items-center justify-center shrink-0 shadow-none border-none active:scale-95 transition-all ml-auto"
                               title="Ascunde control"
                             >
                               <X size={11} className="stroke-[2.5]" />
